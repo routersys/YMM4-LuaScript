@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+<data name="CurrentCulture" xml:space="preserve"><value>zh-tw</value></data>
+<data name="LuaScript" xml:space="preserve"><value>Lua腳本</value></data>
+<data name="ScriptGroup" xml:space="preserve"><value>腳本</value></data>
+<data name="ScriptCode" xml:space="preserve"><value>腳本代碼</value></data>
+<data name="ScriptCodeDesc" xml:space="preserve"><value>編寫Lua腳本，使用obj.x/y/zoom/alpha等控制效果。</value></data>
+<data name="ParametersGroup" xml:space="preserve"><value>參數</value></data>
+<data name="Track0" xml:space="preserve"><value>軌道0</value></data>
+<data name="Track1" xml:space="preserve"><value>軌道1</value></data>
+<data name="Track2" xml:space="preserve"><value>軌道2</value></data>
+<data name="Track3" xml:space="preserve"><value>軌道3</value></data>
+<data name="TrackDesc" xml:space="preserve"><value>滑塊值(AviUtl兼容: track0~3)</value></data>
+<data name="ToolBarImport" xml:space="preserve"><value>導入</value></data>
+<data name="ToolBarExport" xml:space="preserve"><value>導出</value></data>
+<data name="ToolBarClear" xml:space="preserve"><value>清除</value></data>
+<data name="ToolBarClearConfirm" xml:space="preserve"><value>將腳本重置為預設值？</value></data>
+<data name="ToolBarClearTitle" xml:space="preserve"><value>確認</value></data>
+<data name="ToolBarImportErrorTitle" xml:space="preserve"><value>導入錯誤</value></data>
+<data name="ToolBarExportErrorTitle" xml:space="preserve"><value>導出錯誤</value></data>
+<data name="LuaFileFilter" xml:space="preserve"><value>Lua腳本 (*.lua)|*.lua|所有檔案 (*.*)|*.*</value></data>
+</root>

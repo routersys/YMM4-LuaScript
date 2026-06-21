@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+<data name="CurrentCulture" xml:space="preserve"><value>ja-jp</value></data>
+<data name="LuaScript" xml:space="preserve"><value>Luaスクリプト</value></data>
+<data name="ScriptGroup" xml:space="preserve"><value>スクリプト</value></data>
+<data name="ScriptCode" xml:space="preserve"><value>スクリプトコード</value></data>
+<data name="ScriptCodeDesc" xml:space="preserve"><value>Luaスクリプトを記述します。obj.x/y/zoom/alpha等でエフェクトを制御できます。</value></data>
+<data name="ParametersGroup" xml:space="preserve"><value>パラメータ</value></data>
+<data name="Track0" xml:space="preserve"><value>トラック0</value></data>
+<data name="Track1" xml:space="preserve"><value>トラック1</value></data>
+<data name="Track2" xml:space="preserve"><value>トラック2</value></data>
+<data name="Track3" xml:space="preserve"><value>トラック3</value></data>
+<data name="TrackDesc" xml:space="preserve"><value>スライダー値 (AviUtl準拠 track0〜3 に対応)</value></data>
+<data name="ToolBarImport" xml:space="preserve"><value>インポート</value></data>
+<data name="ToolBarExport" xml:space="preserve"><value>エクスポート</value></data>
+<data name="ToolBarClear" xml:space="preserve"><value>クリア</value></data>
+<data name="ToolBarClearConfirm" xml:space="preserve"><value>スクリプトをデフォルトに戻しますか？</value></data>
+<data name="ToolBarClearTitle" xml:space="preserve"><value>確認</value></data>
+<data name="ToolBarImportErrorTitle" xml:space="preserve"><value>インポートエラー</value></data>
+<data name="ToolBarExportErrorTitle" xml:space="preserve"><value>エクスポートエラー</value></data>
+<data name="LuaFileFilter" xml:space="preserve"><value>Luaスクリプト (*.lua)|*.lua|すべてのファイル (*.*)|*.*</value></data>
+</root>
