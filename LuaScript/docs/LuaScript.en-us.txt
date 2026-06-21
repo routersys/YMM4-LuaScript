@@ -1,4 +1,4 @@
-﻿- About the Lua Script Effect -
+- About the Lua Script Effect -
 
         The "Lua Script" video effect in YukkuriMovieMaker4 uses
         the Lua language for scripting.
@@ -76,14 +76,13 @@
         * Variables not marked ReadOnly can be modified in the script, and the changes will be reflected in rendering.
 
         o Position / Offset
-        obj.x         : Display reference coordinate X [ReadOnly]
+        obj.x         : Display reference coordinate X (writable)
                         * Corresponds to "Display Reference X" in AviUtl2 specification.
-                        * Changes made inside the script are not read back and have no effect.
                         * Internally set from DrawDescription.Draw.X;
                           changes take effect after the script runs.
-        obj.y         : Display reference coordinate Y [ReadOnly equivalent]
+        obj.y         : Display reference coordinate Y (writable)
                         * Internally set from DrawDescription.Draw.Y.
-        obj.z         : Display reference coordinate Z [ReadOnly equivalent]
+        obj.z         : Display reference coordinate Z (writable)
                         * Internally set from DrawDescription.Draw.Z.
         obj.ox        : Center offset X (writable)
                         * Internally set from DrawDescription.CenterPoint.X (inDesc).
@@ -310,7 +309,7 @@
         anim.bounce(t)          : Bouncing ease effect
         anim.hsv_to_rgb(h, s, v): Converts HSV (Hue 0~360, Saturation 0~1, Value 0~1) to RGB (0~255)
         anim.rgb_to_hsv(r, g, b): Converts RGB (0~255) to HSV
-        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (-1.0 ~ 1.0)
+        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (0.0 ~ 1.0)
         anim.rand(min, max, s)  : Stable random value based on seed `s`
         anim.len(x, y)          : Gets the length (norm) of the vector (x, y)
         anim.dist(x1, y1, x2, y2): Gets the distance between two points (x1, y1) and (x2, y2)

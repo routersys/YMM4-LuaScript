@@ -1,4 +1,4 @@
-﻿- Tentang Efek Script Lua -
+- Tentang Efek Script Lua -
 
         Efek video "Script Lua" di YukkuriMovieMaker4 menggunakan
         bahasa Lua untuk penulisan skrip.
@@ -74,14 +74,13 @@
         * Variabel yang tidak ditandai Hanya Baca dapat dimodifikasi dalam skrip, dan perubahannya akan tercermin dalam render.
 
         o Koordinat / Offset
-        obj.x         : Koordinat referensi tampilan X [Hanya Baca]
+        obj.x         : Koordinat referensi tampilan X (dapat dimodifikasi)
                         * Setara dengan «Koordinat Referensi Tampilan X» dalam spesifikasi AviUtl2.
-                        * Perubahan yang dilakukan di dalam skrip tidak dibaca kembali dan tidak berpengaruh.
                         * Ditetapkan secara internal dari DrawDescription.Draw.X;
                           perubahan berlaku setelah skrip dijalankan.
-        obj.y         : Koordinat referensi tampilan Y [setara Hanya Baca]
+        obj.y         : Koordinat referensi tampilan Y (dapat dimodifikasi)
                         * Ditetapkan secara internal dari DrawDescription.Draw.Y.
-        obj.z         : Koordinat referensi tampilan Z [setara Hanya Baca]
+        obj.z         : Koordinat referensi tampilan Z (dapat dimodifikasi)
                         * Ditetapkan secara internal dari DrawDescription.Draw.Z.
         obj.ox        : Offset pusat X (dapat dimodifikasi)
                         * Ditetapkan secara internal dari DrawDescription.CenterPoint.X (inDesc).
@@ -307,7 +306,7 @@
         anim.bounce(t)          : Bouncing ease effect
         anim.hsv_to_rgb(h, s, v): Converts HSV (Hue 0~360, Saturation 0~1, Value 0~1) to RGB (0~255)
         anim.rgb_to_hsv(r, g, b): Converts RGB (0~255) to HSV
-        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (-1.0 ~ 1.0)
+        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (0.0 ~ 1.0)
         anim.rand(min, max, s)  : Stable random value based on seed `s`
         anim.len(x, y)          : Mendapatkan panjang (norma) dari vektor (x, y)
         anim.dist(x1, y1, x2, y2): Mendapatkan jarak antara dua titik (x1, y1) dan (x2, y2)

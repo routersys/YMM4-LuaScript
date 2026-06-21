@@ -1,4 +1,4 @@
-﻿- 關於 Lua 腳本特效 -
+- 關於 Lua 腳本特效 -
 
         YukkuriMovieMaker4 的「Lua 腳本」視訊特效使用
         Lua 語言編寫腳本。
@@ -74,14 +74,13 @@
         * 未標注「唯讀」的變數可在腳本中修改，修改後的值將反映至繪製中。
 
         ○ 座標·偏移
-        obj.x         : 顯示基準座標 X [唯讀]
+        obj.x         : 顯示基準座標 X（可修改）
                         * 對應 AviUtl2 規範的「顯示基準座標 X」。
-                        * 在腳本內修改無效，不會被回讀。
                         * 內部由 DrawDescription.Draw.X 設定，
                           腳本執行後更改內容才會生效。
-        obj.y         : 顯示基準座標 Y [相當於唯讀]
+        obj.y         : 顯示基準座標 Y（可修改）
                         * 內部由 DrawDescription.Draw.Y 設定。
-        obj.z         : 顯示基準座標 Z [相當於唯讀]
+        obj.z         : 顯示基準座標 Z（可修改）
                         * 內部由 DrawDescription.Draw.Z 設定。
         obj.ox        : 中心偏移 X（可修改）
                         * 內部由 DrawDescription.CenterPoint.X (inDesc) 設定。
@@ -307,7 +306,7 @@
         anim.bounce(t)          : 彈跳緩動
         anim.hsv_to_rgb(h, s, v): 將HSV (色相0～360, 飽和度0～1, 明度0～1) 轉為 RGB
         anim.rgb_to_hsv(r, g, b): 將RGB (0～255) 轉為 HSV
-        anim.noise(x, y, z)     : 1維～3維的平滑雜訊 (-1.0～1.0)
+        anim.noise(x, y, z)     : 1維～3維的平滑雜訊 (0.0～1.0)
         anim.rand(min, max, s)  : 基於種子 s 的穩定亂數
         anim.len(x, y)          : 獲取向量 (x, y) 的長度 (範數)
         anim.dist(x1, y1, x2, y2): 獲取兩點 (x1, y1) 和 (x2, y2) 之間的距離

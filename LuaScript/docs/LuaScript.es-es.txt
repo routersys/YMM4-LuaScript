@@ -1,4 +1,4 @@
-﻿- Acerca del efecto de script Lua -
+- Acerca del efecto de script Lua -
 
         El efecto de video «Script Lua» de YukkuriMovieMaker4 utiliza
         el lenguaje Lua para los scripts.
@@ -74,14 +74,13 @@
         * Las variables no marcadas como Solo lectura pueden modificarse en el script y los cambios se reflejan en el renderizado.
 
         o Coordenadas / Desplazamiento
-        obj.x         : Coordenada X de referencia de visualización [Solo lectura]
+        obj.x         : Coordenada X de referencia de visualización (modificable)
                         * Equivale a «Coordenada X de referencia de visualización» en la especificación de AviUtl2.
-                        * Los cambios realizados dentro del script no se leen de vuelta y no tienen efecto.
                         * Internamente se establece desde DrawDescription.Draw.X;
                           los cambios surten efecto después de ejecutar el script.
-        obj.y         : Coordenada Y de referencia de visualización [equivalente a Solo lectura]
+        obj.y         : Coordenada Y de referencia de visualización (modificable)
                         * Internamente se establece desde DrawDescription.Draw.Y.
-        obj.z         : Coordenada Z de referencia de visualización [equivalente a Solo lectura]
+        obj.z         : Coordenada Z de referencia de visualización (modificable)
                         * Internamente se establece desde DrawDescription.Draw.Z.
         obj.ox        : Desplazamiento de centro X (modificable)
                         * Internamente se establece desde DrawDescription.CenterPoint.X (inDesc).
@@ -307,7 +306,7 @@
         anim.bounce(t)          : Bouncing ease effect
         anim.hsv_to_rgb(h, s, v): Converts HSV (Hue 0~360, Saturation 0~1, Value 0~1) to RGB (0~255)
         anim.rgb_to_hsv(r, g, b): Converts RGB (0~255) to HSV
-        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (-1.0 ~ 1.0)
+        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (0.0 ~ 1.0)
         anim.rand(min, max, s)  : Stable random value based on seed `s`
         anim.len(x, y)          : Obtiene la longitud (norma) del vector (x, y)
         anim.dist(x1, y1, x2, y2): Obtiene la distancia entre dos puntos (x1, y1) y (x2, y2)

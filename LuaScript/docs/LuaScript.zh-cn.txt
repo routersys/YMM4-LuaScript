@@ -1,4 +1,4 @@
-﻿- 关于 Lua 脚本特效 -
+- 关于 Lua 脚本特效 -
 
         YukkuriMovieMaker4 的"Lua 脚本"视频特效使用
         Lua 语言编写脚本。
@@ -74,14 +74,13 @@
         * 未标注"只读"的变量可在脚本中修改，修改后的值将反映到绘制中。
 
         ○ 坐标·偏移
-        obj.x         : 显示基准坐标 X [只读]
+        obj.x         : 显示基准坐标 X（可修改）
                         * 对应 AviUtl2 规范的"显示基准坐标 X"。
-                        * 在脚本内修改无效，不会被回读。
                         * 内部由 DrawDescription.Draw.X 设置，
                           脚本执行后更改内容才会生效。
-        obj.y         : 显示基准坐标 Y [相当于只读]
+        obj.y         : 显示基准坐标 Y（可修改）
                         * 内部由 DrawDescription.Draw.Y 设置。
-        obj.z         : 显示基准坐标 Z [相当于只读]
+        obj.z         : 显示基准坐标 Z（可修改）
                         * 内部由 DrawDescription.Draw.Z 设置。
         obj.ox        : 中心偏移 X（可修改）
                         * 内部由 DrawDescription.CenterPoint.X (inDesc) 设置。
@@ -307,7 +306,7 @@
         anim.bounce(t)          : 弹跳缓动
         anim.hsv_to_rgb(h, s, v): 将HSV (色相0～360, 饱和度0～1, 明度0～1) 转为 RGB
         anim.rgb_to_hsv(r, g, b): 将RGB (0～255) 转为 HSV
-        anim.noise(x, y, z)     : 1维～3维的平滑噪声 (-1.0～1.0)
+        anim.noise(x, y, z)     : 1维～3维的平滑噪声 (0.0～1.0)
         anim.rand(min, max, s)  : 基于种子 s 的稳定随机数
         anim.len(x, y)          : 获取向量 (x, y) 的长度 (范数)
         anim.dist(x1, y1, x2, y2): 获取两点 (x1, y1) 和 (x2, y2) 之间的距离

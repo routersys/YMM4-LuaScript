@@ -1,4 +1,4 @@
-﻿- حول تأثير نصوص Lua -
+- حول تأثير نصوص Lua -
 
         يستخدم تأثير الفيديو "نص Lua" في YukkuriMovieMaker4
         لغة Lua لكتابة النصوص البرمجية.
@@ -74,14 +74,13 @@
         * المتغيرات غير المحددة بـ «للقراءة فقط» يمكن تعديلها في النص البرمجي، وتنعكس القيم المعدّلة في الرسم.
 
         ○ الإحداثيات والإزاحة
-        obj.x         : إحداثي X المرجعي للعرض [للقراءة فقط]
+        obj.x         : إحداثي X المرجعي للعرض (قابل للتعديل)
                         * يعادل «إحداثي X المرجعي للعرض» في مواصفات AviUtl2.
-                        * التعديلات داخل النص البرمجي لا تُقرأ مجدداً وليس لها تأثير.
                         * يُعيَّن داخلياً من DrawDescription.Draw.X؛
                           تسري التغييرات بعد تنفيذ النص البرمجي.
-        obj.y         : إحداثي Y المرجعي للعرض [ما يعادل للقراءة فقط]
+        obj.y         : إحداثي Y المرجعي للعرض (قابل للتعديل)
                         * يُعيَّن داخلياً من DrawDescription.Draw.Y.
-        obj.z         : إحداثي Z المرجعي للعرض [ما يعادل للقراءة فقط]
+        obj.z         : إحداثي Z المرجعي للعرض (قابل للتعديل)
                         * يُعيَّن داخلياً من DrawDescription.Draw.Z.
         obj.ox        : إزاحة المركز X (قابل للتعديل)
                         * يُعيَّن داخلياً من DrawDescription.CenterPoint.X (inDesc).
@@ -307,7 +306,7 @@
         anim.bounce(t)          : Bouncing ease effect
         anim.hsv_to_rgb(h, s, v): Converts HSV (Hue 0~360, Saturation 0~1, Value 0~1) to RGB (0~255)
         anim.rgb_to_hsv(r, g, b): Converts RGB (0~255) to HSV
-        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (-1.0 ~ 1.0)
+        anim.noise(x, y, z)     : 1D to 3D continuous smooth noise (0.0 ~ 1.0)
         anim.rand(min, max, s)  : Stable random value based on seed `s`
         anim.len(x, y)          : الحصول على طول (معيار) المتجه (x, y)
         anim.dist(x1, y1, x2, y2): الحصول على المسافة بين نقطتين (x1, y1) و (x2, y2)
