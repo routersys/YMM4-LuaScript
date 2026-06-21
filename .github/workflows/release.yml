@@ -64,7 +64,7 @@ jobs:
         shell: pwsh
         run: |
           $version   = "${{ steps.version.outputs.TAG }}"
-          $outDir    = "LuaScript/bin/Release/net10.0-windows10.0.19041.0"
+          $outDir    = "LuaScript/bin/x64/Release/net10.0-windows10.0.19041.0"
           $stageRoot = "stage/LuaScript"
           $pkgName   = "LuaScript_$version.ymme"
 
