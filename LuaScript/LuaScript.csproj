@@ -16,7 +16,8 @@
 			<Private>false</Private>
 		</Reference>
 		<Reference Include="ICSharpCode.AvalonEdit">
-		  <HintPath>C:\Program Files\YukkuriMovieMaker_v4_Lite_Dev\ICSharpCode.AvalonEdit.dll</HintPath>
+			<HintPath>$(YMM4DirPath)ICSharpCode.AvalonEdit.dll</HintPath>
+			<Private>false</Private>
 		</Reference>
 		<Reference Include="NAudio">
 			<HintPath>$(YMM4DirPath)NAudio.dll</HintPath>
@@ -100,7 +101,7 @@
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Light.xshd" />
 	</ItemGroup>
 
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CI)' != 'true'">
 		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
 	</Target>
 
