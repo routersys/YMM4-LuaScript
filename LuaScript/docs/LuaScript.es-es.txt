@@ -189,6 +189,44 @@
 
 - Tabla obj - Funciones -
 
+        o obj.getobject(tag)
+                Obtiene la información de dibujo actual de otro objeto que tiene
+                la etiqueta especificada.
+                * La etiqueta coincide con el texto introducido en el campo
+                  "Observación (Remark)" del elemento de destino.
+                * Si varios elementos comparten la misma etiqueta, se devuelve
+                  con prioridad el elemento visible en el fotograma actual.
+                  Si ninguno es visible, se devuelve el primer elemento que
+                  coincida.
+                * Los valores devueltos son las coordenadas, rotación y escala
+                  propias del elemento. NO se incluyen las transformaciones por
+                  control de grupo, control de cámara o efectos superiores.
+                * Cada valor usa el mismo sistema de unidades que la tabla obj.
+                tag     : El texto definido en la observación del elemento de destino
+                Retorno : Una tabla de información del objeto. Devuelve nil cuando
+                          no existe ningún elemento coincidente.
+                          .exist : Si es visible en el fotograma actual (boolean)
+                          .x     : Coordenada base de visualización X
+                          .y     : Coordenada base de visualización Y
+                          .z     : Coordenada base de visualización Z
+                          .zoom  : Escala (1.0 = tamaño original)
+                          .sx    : Escala en X (= zoom)
+                          .sy    : Escala en Y (= zoom)
+                          .rx    : Ángulo de rotación en el eje X (grados, siempre 0)
+                          .ry    : Ángulo de rotación en el eje Y (grados, siempre 0)
+                          .rz    : Ángulo de rotación en el eje Z (grados)
+                          .rxr   : Ángulo de rotación en el eje X (radianes, siempre 0)
+                          .ryr   : Ángulo de rotación en el eje Y (radianes, siempre 0)
+                          .rzr   : Ángulo de rotación en el eje Z (radianes)
+                          .alpha : Opacidad (0.0 - 255.0, fundido aplicado)
+                          .layer : Número de capa donde está colocado
+                Ejemplo:
+                    local funnel = obj.getobject("funnel")
+                    if funnel then
+                        obj.x = funnel.x
+                        obj.y = funnel.y
+                    end
+
         o obj.getpixel(x, y)
                 Obtiene información del píxel en las coordenadas especificadas.
                 * Se produce una transferencia de datos de imagen GPU→CPU en la primera llamada (con sobrecarga de procesamiento).

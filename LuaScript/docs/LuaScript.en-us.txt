@@ -192,6 +192,43 @@
 
 - obj Table - Functions -
 
+        o obj.getobject(tag)
+                Gets the current drawing information of another object that has
+                the specified tag.
+                * The tag matches the string entered in the target item's
+                  "Remark" field.
+                * If multiple items share the same tag, the item currently
+                  visible at the present frame is returned with priority.
+                  If none is visible, the first matching item is returned.
+                * The returned values are the item's own coordinates, rotation
+                  and scale. Transforms from group control, camera control or
+                  upper effects are NOT included.
+                * Each value uses the same unit system as the obj table.
+                tag     : The string set in the target item's remark
+                Return  : An object information table. Returns nil when no
+                          matching item exists.
+                          .exist : Whether it is visible at the current frame (boolean)
+                          .x     : Display base coordinate X
+                          .y     : Display base coordinate Y
+                          .z     : Display base coordinate Z
+                          .zoom  : Scale (1.0 = original size)
+                          .sx    : Scale along X (= zoom)
+                          .sy    : Scale along Y (= zoom)
+                          .rx    : Rotation angle around X axis (degrees, always 0)
+                          .ry    : Rotation angle around Y axis (degrees, always 0)
+                          .rz    : Rotation angle around Z axis (degrees)
+                          .rxr   : Rotation angle around X axis (radians, always 0)
+                          .ryr   : Rotation angle around Y axis (radians, always 0)
+                          .rzr   : Rotation angle around Z axis (radians)
+                          .alpha : Opacity (0.0 - 255.0, fade applied)
+                          .layer : Layer number where it is placed
+                Example:
+                    local funnel = obj.getobject("funnel")
+                    if funnel then
+                        obj.x = funnel.x
+                        obj.y = funnel.y
+                    end
+
         o obj.getpixel(x, y)
                 Retrieves pixel information at the specified coordinates.
                 * A GPU->CPU image data transfer occurs on the first call (involves processing overhead).

@@ -216,7 +216,7 @@ namespace LuaScript
                     script.Globals["scene"] = sceneTable;
 
                     var objTable = new Table(script);
-                    RegisterPixelCallbacks(objTable);
+                    RegisterObjectCallbacks(objTable);
                     script.Globals["obj"] = objTable;
 
                     var animTable = new Table(script);
@@ -246,7 +246,7 @@ namespace LuaScript
                     if (!ReferenceEquals(script.Globals.Get("obj").Table, _objTable))
                     {
                         var objTable = new Table(script);
-                        RegisterPixelCallbacks(objTable);
+                        RegisterObjectCallbacks(objTable);
                         script.Globals["obj"] = objTable;
                         _objTable = objTable;
                         _objTableSnapshot = null;
@@ -397,8 +397,21 @@ namespace LuaScript
                     script.Globals[key] = DynValue.Nil;
             }
 
-            private void RegisterPixelCallbacks(Table obj)
+            private void RegisterObjectCallbacks(Table obj)
             {
+                obj["getobject"] = DynValue.NewCallback((execCtx, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count == 0)
+                        return DynValue.Nil;
+                    var tag = args[0];
+                    if (tag.Type != DataType.String)
+                        return DynValue.Nil;
+                    if (!_activeContext.TryGetObject(tag.String, out var info))
+                        return DynValue.Nil;
+                    return BuildObjectTable(execCtx.GetScript(), info);
+                });
+
                 obj["getpixel"] = DynValue.NewCallback((_, args) =>
                 {
                     _activeCancellation.ThrowIfCancellationRequested();
@@ -436,6 +449,29 @@ namespace LuaScript
                 });
 
                 obj["putpixeldata"] = DynValue.NewCallback((_, _) => DynValue.Void);
+            }
+
+            private static DynValue BuildObjectTable(Script script, SceneObjectInfo info)
+            {
+                var table = new Table(script)
+                {
+                    ["exist"] = info.Exist,
+                    ["x"] = info.X,
+                    ["y"] = info.Y,
+                    ["z"] = info.Z,
+                    ["zoom"] = info.Zoom,
+                    ["sx"] = info.Zoom,
+                    ["sy"] = info.Zoom,
+                    ["rx"] = 0d,
+                    ["ry"] = 0d,
+                    ["rz"] = info.Rz,
+                    ["rxr"] = 0d,
+                    ["ryr"] = 0d,
+                    ["rzr"] = info.Rz * Math.PI / 180d,
+                    ["alpha"] = info.Alpha,
+                    ["layer"] = info.Layer,
+                };
+                return DynValue.NewTable(table);
             }
 
             private void ReadBackGlobals(AviUtlScriptContext ctx)

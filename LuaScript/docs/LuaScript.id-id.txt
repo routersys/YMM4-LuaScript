@@ -189,6 +189,44 @@
 
 - Tabel obj - Fungsi -
 
+        o obj.getobject(tag)
+                Mengambil informasi gambar terkini dari objek lain yang memiliki
+                tag yang ditentukan.
+                * Tag cocok dengan teks yang dimasukkan pada kolom
+                  "Catatan (Remark)" item target.
+                * Jika beberapa item berbagi tag yang sama, item yang sedang
+                  tampil pada frame saat ini dikembalikan dengan prioritas.
+                  Jika tidak ada yang tampil, item pertama yang cocok
+                  dikembalikan.
+                * Nilai yang dikembalikan adalah koordinat, rotasi, dan skala
+                  milik item itu sendiri. Transformasi dari kontrol grup,
+                  kontrol kamera, atau efek di atasnya TIDAK disertakan.
+                * Setiap nilai menggunakan sistem satuan yang sama dengan tabel obj.
+                tag     : Teks yang diatur pada catatan item target
+                Kembali : Tabel informasi objek. Mengembalikan nil jika tidak ada
+                          item yang cocok.
+                          .exist : Apakah tampil pada frame saat ini (boolean)
+                          .x     : Koordinat dasar tampilan X
+                          .y     : Koordinat dasar tampilan Y
+                          .z     : Koordinat dasar tampilan Z
+                          .zoom  : Skala (1.0 = ukuran asli)
+                          .sx    : Skala arah X (= zoom)
+                          .sy    : Skala arah Y (= zoom)
+                          .rx    : Sudut rotasi sumbu X (derajat, selalu 0)
+                          .ry    : Sudut rotasi sumbu Y (derajat, selalu 0)
+                          .rz    : Sudut rotasi sumbu Z (derajat)
+                          .rxr   : Sudut rotasi sumbu X (radian, selalu 0)
+                          .ryr   : Sudut rotasi sumbu Y (radian, selalu 0)
+                          .rzr   : Sudut rotasi sumbu Z (radian)
+                          .alpha : Opasitas (0.0 - 255.0, fade diterapkan)
+                          .layer : Nomor layer tempat ditempatkan
+                Contoh:
+                    local funnel = obj.getobject("funnel")
+                    if funnel then
+                        obj.x = funnel.x
+                        obj.y = funnel.y
+                    end
+
         o obj.getpixel(x, y)
                 Mengambil informasi piksel pada koordinat yang ditentukan.
                 * Transfer data gambar GPU→CPU terjadi pada panggilan pertama (dengan overhead pemrosesan).

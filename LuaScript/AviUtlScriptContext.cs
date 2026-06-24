@@ -42,6 +42,8 @@ namespace LuaScript
         public int Index { get; init; }
         public int Num { get; init; }
 
+        public IReadOnlyList<SceneObjectInfo> SceneObjects { get; init; } = [];
+
         public double RxRad => Rx * Math.PI / 180d;
         public double RyRad => Ry * Math.PI / 180d;
         public double RzRad => Rz * Math.PI / 180d;
@@ -80,6 +82,33 @@ namespace LuaScript
         internal byte[]? GetPixelBuffer() => _pixelBuffer;
 
         internal void MarkPixelsDirty() => _isPixelsDirty = true;
+
+        public bool TryGetObject(string tag, out SceneObjectInfo info)
+        {
+            SceneObjectInfo? fallback = null;
+            var objects = SceneObjects;
+            for (int i = 0; i < objects.Count; i++)
+            {
+                var candidate = objects[i];
+                if (!string.Equals(candidate.Tag, tag, StringComparison.Ordinal))
+                    continue;
+                if (candidate.Exist)
+                {
+                    info = candidate;
+                    return true;
+                }
+                fallback ??= candidate;
+            }
+
+            if (fallback is { } value)
+            {
+                info = value;
+                return true;
+            }
+
+            info = default;
+            return false;
+        }
 
         public unsafe (double r, double g, double b, double a) GetPixel(int x, int y)
         {

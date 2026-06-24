@@ -9,6 +9,8 @@ using Vortice.Mathematics;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Player.Video.Effects;
+using YukkuriMovieMaker.Project;
+using YukkuriMovieMaker.Project.Items;
 
 namespace LuaScript
 {
@@ -57,6 +59,7 @@ namespace LuaScript
         private bool _isFirst = true;
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
+        private SceneObjectInfo[] _cachedSceneObjects = [];
         private DrawDescription? _cachedOutputDesc;
         private bool _cachedPixelsModified;
 
@@ -110,7 +113,10 @@ namespace LuaScript
                 desc.TimelineDuration.Time.TotalSeconds,
                 inDesc);
 
-            if (!_isFirst && key == _cachedKey)
+            var sceneObjects = BuildSceneObjects(desc);
+
+            if (!_isFirst && key == _cachedKey &&
+                _cachedSceneObjects.AsSpan().SequenceEqual(sceneObjects))
             {
                 effectOutput = _cachedPixelsModified ? _transformEffect?.Output : null;
                 return _cachedOutputDesc ?? inDesc;
@@ -120,7 +126,7 @@ namespace LuaScript
             int imgW = Math.Max(1, (int)Math.Ceiling(bounds.Right - bounds.Left));
             int imgH = Math.Max(1, (int)Math.Ceiling(bounds.Bottom - bounds.Top));
 
-            var ctx = BuildContext(in key, imgW, imgH);
+            var ctx = BuildContext(in key, imgW, imgH, sceneObjects);
             ctx.SetPixelLoader(() => LoadInputPixels(bounds, imgW, imgH));
 
             DrawDescription outDesc = inDesc;
@@ -159,13 +165,68 @@ namespace LuaScript
 
             _isFirst = false;
             _cachedKey = key;
+            _cachedSceneObjects = sceneObjects;
             _cachedOutputDesc = outDesc;
             _cachedPixelsModified = pixelsModified;
 
             return outDesc;
         }
 
-        private static AviUtlScriptContext BuildContext(in RenderKey key, int imgW, int imgH)
+        private static SceneObjectInfo[] BuildSceneObjects(EffectDescription desc)
+        {
+            var scenes = desc.Scenes;
+            if (scenes is null)
+                return [];
+
+            Scene? scene = null;
+            foreach (var info in scenes)
+            {
+                if (info is Scene candidate && candidate.ID == desc.SceneId)
+                {
+                    scene = candidate;
+                    break;
+                }
+            }
+            if (scene is null)
+                return [];
+
+            int timelineFrame = desc.TimelinePosition.Frame;
+            int fps = desc.FPS;
+            var items = scene.Timeline.Items;
+            var result = new List<SceneObjectInfo>(items.Count);
+
+            foreach (var item in items)
+            {
+                if (item is not VisualItem visual)
+                    continue;
+                var tag = item.Remark;
+                if (string.IsNullOrEmpty(tag))
+                    continue;
+
+                int length = item.Length;
+                int local = Math.Clamp(timelineFrame - item.Frame, 0, length);
+                bool exist = item.Frame <= timelineFrame && timelineFrame < item.Frame + length;
+
+                double x = visual.X.GetValue(local, length, fps);
+                double y = visual.Y.GetValue(local, length, fps);
+                double z = visual.Z.GetValue(local, length, fps);
+                double zoom = visual.Zoom.GetValue(local, length, fps) / 100d;
+                double rz = visual.Rotation.GetValue(local, length, fps);
+
+                double opacity = visual.Opacity.GetValue(local, length, fps) / 100d;
+                double timeSec = fps > 0 ? local / (double)fps : 0d;
+                double durationSec = fps > 0 ? length / (double)fps : 0d;
+                double fadeIn = visual.FadeIn <= 0d ? 1d : Math.Min(1d, timeSec / visual.FadeIn);
+                double fadeOut = visual.FadeOut <= 0d ? 1d : Math.Min(1d, (durationSec - timeSec) / visual.FadeOut);
+                double alpha = opacity * Math.Min(fadeIn, fadeOut) * 255d;
+
+                result.Add(new SceneObjectInfo(tag, exist, x, y, z, zoom, rz, alpha, item.Layer));
+            }
+
+            return [.. result];
+        }
+
+        private static AviUtlScriptContext BuildContext(in RenderKey key, int imgW, int imgH, SceneObjectInfo[] sceneObjects)
         {
             var zoom = key.InputDesc.Zoom;
             double zoomAvg = (zoom.X + zoom.Y) / 2d;
@@ -216,6 +277,7 @@ namespace LuaScript
                 IsPaused = key.Usage == TimelineSourceUsage.Paused,
                 SceneId = key.SceneId.ToString(),
                 TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d,
+                SceneObjects = sceneObjects,
             };
         }
 
