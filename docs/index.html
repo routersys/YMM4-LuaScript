@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luaスクリプト for YMM4 サンプル集</title>
+</head>
+<body>
+
+<img src="LuaScript.png" alt="Luaスクリプト for YMM4" width="640">
+
+<h1>Luaスクリプト for YMM4 サンプル集</h1>
+
+<p>
+YukkuriMovieMaker4 の「Luaスクリプト」映像エフェクトで使えるサンプルと、
+利用可能な変数・関数・定数の一覧をまとめたページです。
+各サンプルはエフェクトのスクリプト欄にそのまま貼り付けて利用できます。
+スクリプトエンジンは MoonSharp (Lua 5.2 互換) です。
+</p>
+
+<p>
+変数・関数の詳細な仕様は、スクリプトエディタのヘルプ、または
+<code>docs/LuaScript.ja-jp.txt</code> を参照してください。
+</p>
+
+<hr>
+
+<h2>目次</h2>
+<nav>
+<ul>
+<li><a href="#about">サンプルの読み方</a></li>
+<li><a href="#basic">1. 基本</a></li>
+<li><a href="#motion">2. 座標と動き</a></li>
+<li><a href="#rotation">3. 回転</a></li>
+<li><a href="#scale">4. 拡大・変形</a></li>
+<li><a href="#alpha">5. 不透明度・フェード</a></li>
+<li><a href="#ease">6. anim 補間・イージング</a></li>
+<li><a href="#range">7. anim 範囲・周期</a></li>
+<li><a href="#vector">8. anim ベクトル・幾何</a></li>
+<li><a href="#noise">9. anim ノイズ・乱数</a></li>
+<li><a href="#animcolor">10. anim 色</a></li>
+<li><a href="#const">11. anim 定数</a></li>
+<li><a href="#getobject">12. 他オブジェクトの参照 (obj.getobject)</a></li>
+<li><a href="#pixel">13. ピクセル操作</a></li>
+<li><a href="#scene">14. シーン情報 (scene)</a></li>
+<li><a href="#ymm4">15. 環境・メタ情報 (ymm4)</a></li>
+<li><a href="#globals">16. グローバル変数</a></li>
+<li><a href="#stdlib">17. 標準ライブラリ</a></li>
+<li><a href="#reference">クイックリファレンス</a></li>
+</ul>
+</nav>
+
+<hr>
+
+<h2 id="about">サンプルの読み方</h2>
+<p>
+スクリプト内では、変更可能な <code>obj</code> の値（座標・拡大率・回転・不透明度など）を
+書き換えると描画に反映されます。読み戻されるのは
+<code>x, y, z, ox, oy, zoom, aspect, alpha, rx, ry, rz</code>
+（およびラジアン版 <code>rxr, ryr, rzr</code>、独立スケール <code>sx, sy</code>）です。
+</p>
+<p>
+<code>time</code> はアイテム基準の経過秒数、<code>obj.t</code> はアイテム内の進行割合
+(0.0 ～ 1.0) です。グローバル変数の状態はフレーム間で保持されません。
+<code>math.random</code> は毎フレーム同じシードで初期化されるため、同一フレームでは
+同じ値を返します。安定した乱数が必要な場合は <code>anim.rand</code> を使います。
+</p>
+
+<hr>
+
+<h2 id="basic">1. 基本</h2>
+
+<h3>1-1. フェードイン (デフォルトスクリプト)</h3>
+<pre><code>obj.alpha = math.min(time * 255, 255)</code></pre>
+
+<h3>1-2. フェードアウト</h3>
+<pre><code>obj.alpha = math.max((obj.totalframe - obj.frame) / obj.framerate * 255, 0)</code></pre>
+
+<h3>1-3. Track0 で不透明度を制御</h3>
+<pre><code>obj.alpha = obj.track0</code></pre>
+
+<h3>1-4. 時間に応じて回転</h3>
+<pre><code>obj.rz = time * 90</code></pre>
+
+<h3>1-5. Track0 でズームを制御</h3>
+<pre><code>obj.zoom = obj.zoom * (1 + obj.track0 / 100)</code></pre>
+
+<hr>
+
+<h2 id="motion">2. 座標と動き</h2>
+
+<h3>2-1. 左右の揺れ</h3>
+<p>Track0 を振幅(px)、Track1 を周波数(回/秒)として使います。</p>
+<pre><code>local amp = obj.track0
+local freq = obj.track1
+obj.x = obj.x + math.sin(time * anim.tau * freq) * amp</code></pre>
+
+<h3>2-2. 円運動</h3>
+<pre><code>local r = obj.track0
+local dx, dy = anim.polar(r, time * 90)
+obj.x = obj.x + dx
+obj.y = obj.y + dy</code></pre>
+
+<h3>2-3. バウンド (跳ねる)</h3>
+<pre><code>local h = obj.track0
+obj.y = obj.y - anim.bounce(anim.pingpong(time, 1)) * h</code></pre>
+
+<h3>2-4. ゆらぎ (ノイズによる手ぶれ風)</h3>
+<pre><code>obj.x = obj.x + (anim.noise(time * 2, 0, 0) - 0.5) * 20
+obj.y = obj.y + (anim.noise(0, time * 2, 0) - 0.5) * 20
+obj.rz = (anim.noise(0, 0, time * 2) - 0.5) * 10</code></pre>
+
+<h3>2-5. 中心オフセットを基準に振り子運動</h3>
+<p>回転中心 <code>ox, oy</code> をずらして振り子のように揺らします。</p>
+<pre><code>obj.oy = -obj.hh
+obj.rz = math.sin(time * anim.tau) * 30</code></pre>
+
+<hr>
+
+<h2 id="rotation">3. 回転</h2>
+
+<h3>3-1. 度とラジアン</h3>
+<p>
+<code>rx, ry, rz</code> は度、<code>rxr, ryr, rzr</code> はラジアンです。
+ラジアン版を変更するとそちらが優先して反映されます。
+</p>
+<pre><code>obj.rzr = time * anim.tau</code></pre>
+
+<h3>3-2. Y軸回転で立体的に回す</h3>
+<pre><code>obj.ry = time * 180</code></pre>
+
+<h3>3-3. 加速しながら回転 (イージング)</h3>
+<pre><code>obj.rz = anim.ease_in(obj.t) * 360</code></pre>
+
+<hr>
+
+<h2 id="scale">4. 拡大・変形</h2>
+
+<h3>4-1. 弾むように登場 (スケールイン)</h3>
+<pre><code>local p = anim.duration(time, 0.3)
+obj.zoom = obj.zoom * anim.elastic(p)</code></pre>
+
+<h3>4-2. アスペクト比で横伸び・縦伸び</h3>
+<p>
+<code>aspect</code> は正で横方向に縮小、負で縦方向に縮小します。
+</p>
+<pre><code>obj.aspect = math.sin(time * anim.tau) * 0.5</code></pre>
+
+<h3>4-3. X・Y を独立して拡大 (sx, sy)</h3>
+<p>ぷにぷにと潰れる動きを <code>sx, sy</code> で表現します。</p>
+<pre><code>local s = math.sin(time * anim.tau * 2) * 0.2
+obj.sx = 1 + s
+obj.sy = 1 - s</code></pre>
+
+<hr>
+
+<h2 id="alpha">5. 不透明度・フェード</h2>
+
+<h3>5-1. 遅延フェードイン</h3>
+<pre><code>local p = anim.duration(anim.delay(time, 0.5), 1)
+obj.alpha = p * 255</code></pre>
+
+<h3>5-2. 点滅 (矩形波)</h3>
+<pre><code>obj.alpha = anim.square(time, 4) * 255</code></pre>
+
+<h3>5-3. 滑らかな明滅 (正弦波)</h3>
+<pre><code>obj.alpha = anim.oscillate(time, 64, 255, 1)</code></pre>
+
+<hr>
+
+<h2 id="ease">6. anim 補間・イージング</h2>
+
+<h3>6-1. 2点間をイージングで移動</h3>
+<pre><code>local tx, ty = 200, -100
+local p = anim.ease_in_out(obj.t)
+obj.x = anim.lerp(obj.x, tx, p)
+obj.y = anim.lerp(obj.y, ty, p)</code></pre>
+
+<h3>6-2. 行き過ぎてから戻る (back)</h3>
+<pre><code>obj.x = obj.x + anim.back(obj.t) * 200</code></pre>
+
+<h3>6-3. しきい値で切り替え (step / smoothstep)</h3>
+<pre><code>obj.alpha = anim.smoothstep(0, 0.5, obj.t) * 255</code></pre>
+
+<p>補間・イージング系関数の一覧です。</p>
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>anim.lerp(a, b, t)</td><td>a と b を t (0.0～1.0) で線形補間</td></tr>
+<tr><td>anim.smoothstep(e0, e1, x)</td><td>e0～e1 をエルミート補間で滑らかに遷移</td></tr>
+<tr><td>anim.smootherstep(e0, e1, x)</td><td>2次導関数まで連続な、より滑らかな遷移</td></tr>
+<tr><td>anim.ease_in(t)</td><td>2次イーズイン (加速)</td></tr>
+<tr><td>anim.ease_out(t)</td><td>2次イーズアウト (減速)</td></tr>
+<tr><td>anim.ease_in_out(t)</td><td>2次イーズイン・アウト (加速後減速)</td></tr>
+<tr><td>anim.elastic(t)</td><td>弾むようなスプリングイージング</td></tr>
+<tr><td>anim.back(t)</td><td>行き過ぎてから戻るイージング</td></tr>
+<tr><td>anim.bounce(t)</td><td>バウンドするイージング</td></tr>
+<tr><td>anim.step(edge, x)</td><td>x が edge 以上なら 1.0、未満なら 0.0</td></tr>
+<tr><td>anim.bezier(t, p0, p1, p2, p3)</td><td>t における3次ベジェ曲線の値</td></tr>
+</table>
+
+<hr>
+
+<h2 id="range">7. anim 範囲・周期</h2>
+
+<h3>7-1. 値の範囲変換 (map)</h3>
+<pre><code>obj.rz = anim.map(obj.track0, 0, 100, -180, 180)</code></pre>
+
+<h3>7-2. 三角波で往復</h3>
+<pre><code>obj.x = obj.x + (anim.triangle(time, 1) - 0.5) * 200</code></pre>
+
+<p>範囲・周期系関数の一覧です。</p>
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>anim.clamp(v, lo, hi)</td><td>v を lo ～ hi の範囲に収める</td></tr>
+<tr><td>anim.map(v, a1, b1, a2, b2)</td><td>範囲 a1～b1 の v を a2～b2 に変換</td></tr>
+<tr><td>anim.norm(v, lo, hi)</td><td>v が lo～hi のどの割合 (0.0～1.0) かを取得</td></tr>
+<tr><td>anim.wrap(v, lo, hi)</td><td>v を lo ～ hi でループさせる</td></tr>
+<tr><td>anim.pingpong(t, len)</td><td>0 ～ len を往復する値</td></tr>
+<tr><td>anim.sign(v)</td><td>符号 (正=1, 負=-1, ゼロ=0)</td></tr>
+<tr><td>anim.fract(v)</td><td>小数部分のみを取得</td></tr>
+<tr><td>anim.oscillate(t, lo, hi, freq)</td><td>freq の周波数で lo～hi を正弦波で往復</td></tr>
+<tr><td>anim.triangle(t, freq)</td><td>freq の周波数で 0.0～1.0 を往復する三角波</td></tr>
+<tr><td>anim.square(t, freq)</td><td>freq の周波数で 1.0 と 0.0 を切り替える矩形波</td></tr>
+<tr><td>anim.duration(t, dur)</td><td>時間 dur に対する割合 (0.0～1.0, clamp あり)</td></tr>
+<tr><td>anim.delay(t, d)</td><td>時間 d 経過後から開始する時間 (0以下は0)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="vector">8. anim ベクトル・幾何</h2>
+
+<h3>8-1. 座標を回転させる</h3>
+<pre><code>local rx, ry = anim.rotate(obj.track0, 0, time * 90)
+obj.x = obj.x + rx
+obj.y = obj.y + ry</code></pre>
+
+<h3>8-2. 2点間の距離で挙動を変える</h3>
+<pre><code>local d = anim.dist(obj.x, obj.y, 0, 0)
+obj.alpha = anim.clamp(255 - d, 0, 255)</code></pre>
+
+<p>ベクトル・幾何系関数の一覧です。</p>
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>anim.len(x, y)</td><td>ベクトル (x, y) の長さ</td></tr>
+<tr><td>anim.dist(x1, y1, x2, y2)</td><td>2点間の距離</td></tr>
+<tr><td>anim.dot(x1, y1, x2, y2)</td><td>2ベクトルの内積</td></tr>
+<tr><td>anim.normalize(x, y)</td><td>正規化した方向ベクトル (Tuple で返却)</td></tr>
+<tr><td>anim.polar(r, a)</td><td>半径 r・角度 a(度) から移動量 (x, y)</td></tr>
+<tr><td>anim.rotate(x, y, a)</td><td>(x, y) を a(度) 回転させた座標</td></tr>
+</table>
+
+<hr>
+
+<h2 id="noise">9. anim ノイズ・乱数</h2>
+
+<h3>9-1. 安定した乱数で個体差をつける</h3>
+<p>
+<code>anim.rand</code> はシード引数に基づく決定的な乱数です。レイヤー番号をシードにすると
+オブジェクトごとに異なる固定値が得られます。
+</p>
+<pre><code>local offset = anim.rand(-50, 50, obj.layer)
+obj.x = obj.x + offset</code></pre>
+
+<h3>9-2. ノイズで揺らぐ不透明度</h3>
+<pre><code>obj.alpha = anim.noise(time, obj.layer, 0) * 255</code></pre>
+
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>anim.noise(x, y, z)</td><td>1～3次元の滑らかなノイズ (0.0～1.0)</td></tr>
+<tr><td>anim.rand(min, max, s)</td><td>シード s に基づく安定した乱数</td></tr>
+</table>
+
+<hr>
+
+<h2 id="animcolor">10. anim 色</h2>
+
+<h3>10-1. 時間で色相を回す (虹色)</h3>
+<pre><code>local hue = anim.wrap(time * 60, 0, 360)
+local cr, cg, cb = anim.hsv_to_rgb(hue, 1, 1)
+local pd = obj.getpixeldata()
+local n = pd.width * pd.height
+for i = 0, n - 1 do
+    local base = i * 4
+    pd:set(base + 1, pd:get(base + 1) * cr / 255)
+    pd:set(base + 2, pd:get(base + 2) * cg / 255)
+    pd:set(base + 3, pd:get(base + 3) * cb / 255)
+end</code></pre>
+
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>anim.hsv_to_rgb(h, s, v)</td><td>HSV (色相0～360, 彩度0～1, 明度0～1) を RGB に変換</td></tr>
+<tr><td>anim.rgb_to_hsv(r, g, b)</td><td>RGB (0～255) を HSV に変換</td></tr>
+</table>
+
+<hr>
+
+<h2 id="const">11. anim 定数</h2>
+<table border="1">
+<tr><th>定数</th><th>説明</th></tr>
+<tr><td>anim.tau</td><td>円周率の2倍 (math.pi * 2)</td></tr>
+<tr><td>anim.e</td><td>ネイピア数 (math.exp(1))</td></tr>
+<tr><td>anim.phi</td><td>黄金比 ((1 + math.sqrt(5)) / 2)</td></tr>
+<tr><td>anim.sqrt2</td><td>2の平方根 (math.sqrt(2))</td></tr>
+</table>
+
+<hr>
+
+<h2 id="getobject">12. 他オブジェクトの参照 (obj.getobject)</h2>
+
+<p>
+<code>obj.getobject(tag)</code> は、対象アイテムの「備考」欄に入力した文字列をタグとして、
+そのアイテムの描画情報を取得します。備考欄はプロパティエリアの上側にあります。
+返り値は対象アイテム自身の座標・回転・拡大率であり、グループ制御・カメラ制御による
+変形は含みません。一致するアイテムが無い場合は <code>nil</code> を返します。
+同じタグのアイテムが複数あるときは、現在フレームで表示中のものを優先します。
+</p>
+
+<h3>12-1. 発射元の座標に合わせる</h3>
+<pre><code>local src = obj.getobject("routersys")
+if src then
+    obj.x = src.x
+    obj.y = src.y
+end</code></pre>
+
+<h3>12-2. 発射元へ向かって移動する</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local p = anim.ease_in_out(obj.t)
+    obj.x = anim.lerp(obj.x, target.x, p)
+    obj.y = anim.lerp(obj.y, target.y, p)
+end</code></pre>
+
+<h3>12-3. 発射元へ向きながら移動する (ファンネル風)</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local p = anim.ease_in_out(obj.t)
+    local nx = anim.lerp(obj.x, target.x, p)
+    local ny = anim.lerp(obj.y, target.y, p)
+    obj.rz = math.deg(math.atan2(target.y - obj.y, target.x - obj.x))
+    obj.x = nx
+    obj.y = ny
+end</code></pre>
+
+<h3>12-4. 一定速度で接近し、到達したら停止</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local dx = target.x - obj.x
+    local dy = target.y - obj.y
+    local dist = anim.len(dx, dy)
+    if dist > 0 then
+        local step = math.min(dist, obj.track0 * obj.time)
+        obj.x = obj.x + dx / dist * step
+        obj.y = obj.y + dy / dist * step
+    end
+end</code></pre>
+
+<h3>12-5. 表示中のときだけ追従する</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target and target.exist then
+    obj.x = target.x
+    obj.y = target.y
+end</code></pre>
+
+<h3>12-6. 発射元の拡大率・回転・不透明度も引き継ぐ</h3>
+<pre><code>local src = obj.getobject("routersys")
+if src then
+    obj.x = src.x
+    obj.y = src.y
+    obj.zoom = src.zoom
+    obj.rz = src.rz
+    obj.alpha = src.alpha
+end</code></pre>
+
+<p>返り値テーブルのメンバーは以下のとおりです。</p>
+<table border="1">
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td>exist</td><td>現在フレームが表示期間内か (boolean)</td></tr>
+<tr><td>x / y / z</td><td>描画位置 (ピクセル)</td></tr>
+<tr><td>zoom / sx / sy</td><td>拡大率 (1.0 で等倍)</td></tr>
+<tr><td>rx / ry / rz</td><td>X / Y / Z 軸回転角 (度)</td></tr>
+<tr><td>rxr / ryr / rzr</td><td>X / Y / Z 軸回転角 (ラジアン)</td></tr>
+<tr><td>alpha</td><td>不透明度 (0.0 ～ 255.0)</td></tr>
+<tr><td>layer</td><td>レイヤー番号</td></tr>
+</table>
+
+<hr>
+
+<h2 id="pixel">13. ピクセル操作</h2>
+
+<p>
+ピクセル操作は実際の入力画像へアクセスするため、初回アクセス時に画像データの
+転送が発生します。座標は画像の左上を (0, 0) とし、右・下方向が正です。
+取得値はストレートアルファ相当です。
+</p>
+
+<h3>13-1. getpixel / setpixel で赤成分を反転</h3>
+<pre><code>for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        obj.setpixel(x, y, 255 - r, g, b, a)
+    end
+end</code></pre>
+
+<h3>13-2. getpixeldata でグレースケール (高速)</h3>
+<p>
+<code>obj.getpixeldata()</code> はピクセルへ直接アクセスできるプロキシを返します。
+インデックスは 1 始まりで、チャンネルは R, G, B, A の繰り返しです。
+<code>pixel(x, y)</code> の R チャンネルのインデックスは <code>(y * obj.w + x) * 4 + 1</code> です。
+</p>
+<pre><code>local pd = obj.getpixeldata()
+local w = pd.width
+local h = pd.height
+for y = 0, h - 1 do
+    for x = 0, w - 1 do
+        local base = (y * w + x) * 4
+        local r = pd:get(base + 1)
+        local g = pd:get(base + 2)
+        local b = pd:get(base + 3)
+        local gray = r * 0.299 + g * 0.587 + b * 0.114
+        pd:set(base + 1, gray)
+        pd:set(base + 2, gray)
+        pd:set(base + 3, gray)
+    end
+end</code></pre>
+
+<h3>13-3. 中心からの距離でフェード (円形ビネット)</h3>
+<pre><code>local pd = obj.getpixeldata()
+local w = pd.width
+local h = pd.height
+local cx = w / 2
+local cy = h / 2
+local maxd = anim.len(cx, cy)
+for y = 0, h - 1 do
+    for x = 0, w - 1 do
+        local base = (y * w + x) * 4
+        local d = anim.len(x - cx, y - cy)
+        local k = anim.clamp(1 - d / maxd, 0, 1)
+        pd:set(base + 4, pd:get(base + 4) * k)
+    end
+end</code></pre>
+
+<p>
+<code>obj.putpixeldata()</code> は AviUtl との互換性のために存在しますが、
+このプラグインでは変更が自動的に反映されるため呼び出す必要はありません (no-op)。
+</p>
+
+<table border="1">
+<tr><th>関数</th><th>戻り値</th><th>説明</th></tr>
+<tr><td>obj.getpixel(x, y)</td><td>r, g, b, a</td><td>指定座標のピクセルを取得 (各成分 0～255)</td></tr>
+<tr><td>obj.setpixel(x, y, r, g, b [, a])</td><td>なし</td><td>指定座標へ書き込み (a 既定 255)</td></tr>
+<tr><td>obj.getpixeldata()</td><td>PixelDataProxy</td><td>全ピクセルへの直接アクセスプロキシ</td></tr>
+<tr><td>obj.putpixeldata()</td><td>なし</td><td>互換用の空実装</td></tr>
+</table>
+
+<hr>
+
+<h2 id="scene">14. シーン情報 (scene)</h2>
+
+<h3>14-1. シーンサイズに対する相対配置</h3>
+<pre><code>obj.x = scene.cx * obj.track0 / 100</code></pre>
+
+<table border="1">
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td>scene.width</td><td>シーンの横解像度 (ピクセル)</td></tr>
+<tr><td>scene.height</td><td>シーンの縦解像度 (ピクセル)</td></tr>
+<tr><td>scene.cx</td><td>横解像度の半分 (= scene.width / 2)</td></tr>
+<tr><td>scene.cy</td><td>縦解像度の半分 (= scene.height / 2)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="ymm4">15. 環境・メタ情報 (ymm4)</h2>
+
+<h3>15-1. グループ内のインデックスで時間差をつける</h3>
+<pre><code>local d = ymm4.group_index * 0.1
+local p = anim.duration(anim.delay(time, d), 0.5)
+obj.alpha = p * 255</code></pre>
+
+<h3>15-2. グループ内の進行割合で配置をずらす</h3>
+<pre><code>obj.x = obj.x + ymm4.group_ratio * 400</code></pre>
+
+<h3>15-3. 出力時のみ挙動を変える</h3>
+<pre><code>if ymm4.is_saving then
+    obj.alpha = 255
+else
+    obj.alpha = 128
+end</code></pre>
+
+<table border="1">
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td>ymm4.group_index</td><td>グループ制御内の現在のインデックス (0始まり)</td></tr>
+<tr><td>ymm4.group_count</td><td>グループ制御内の総アイテム数</td></tr>
+<tr><td>ymm4.group_ratio</td><td>グループ内の進行割合 (group_index / group_count)</td></tr>
+<tr><td>ymm4.timeline_totalframe</td><td>タイムライン全体の総フレーム数</td></tr>
+<tr><td>ymm4.timeline_totaltime</td><td>タイムライン全体の総時間 (秒)</td></tr>
+<tr><td>ymm4.time_ratio</td><td>現在の再生位置の割合 (0.0 ～ 1.0)</td></tr>
+<tr><td>ymm4.is_saving</td><td>動画出力中のみ true</td></tr>
+<tr><td>ymm4.is_playing</td><td>再生中のみ true</td></tr>
+<tr><td>ymm4.is_paused</td><td>一時停止中のみ true</td></tr>
+<tr><td>ymm4.scene_id</td><td>現在のシーンを識別する文字列 (Guid)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="globals">16. グローバル変数</h2>
+<p>以下の変数はスクリプトのグローバルスコープで直接参照できます (すべて読み取り専用)。</p>
+<table border="1">
+<tr><th>変数</th><th>説明</th></tr>
+<tr><td>time</td><td>オブジェクト基準の現在時間 (秒)。obj.time と同じ</td></tr>
+<tr><td>frame</td><td>オブジェクト基準の現在フレーム番号。obj.frame と同じ</td></tr>
+<tr><td>totalframe</td><td>オブジェクトの総フレーム数。obj.totalframe と同じ</td></tr>
+<tr><td>framerate</td><td>フレームレート (fps)。obj.framerate と同じ</td></tr>
+<tr><td>timelineframe</td><td>タイムライン先頭からの絶対フレーム番号</td></tr>
+<tr><td>timelinetime</td><td>タイムライン基準の現在時間 (秒)</td></tr>
+<tr><td>layer</td><td>配置されているレイヤー番号。obj.layer と同じ</td></tr>
+<tr><td>obj / scene / ymm4 / anim</td><td>各テーブル (本ページ参照)</td></tr>
+</table>
+
+<hr>
+
+<h2 id="stdlib">17. 標準ライブラリ</h2>
+<p>利用できる標準ライブラリは以下に限定されます。io, os, debug, ffi, require 等は使用できません。</p>
+
+<h3>math</h3>
+<p>
+abs, ceil, cos, exp, floor, fmod, huge, log, max, min, modf, pi, random, randomseed,
+sin, sqrt, tan, atan, atan2, deg, rad, ldexp, frexp, sinh, cosh, tanh, type,
+tointeger, maxinteger, mininteger
+</p>
+
+<h3>string</h3>
+<p>
+format, len, sub, upper, lower, rep, reverse, find, match, gmatch, gsub, byte, char,
+dump, pack, unpack, packsize
+</p>
+
+<h3>table</h3>
+<p>insert, remove, sort, concat, unpack, move</p>
+
+<h3>bit32</h3>
+<p>
+band, bor, bxor, bnot, lshift, rshift, arshift, extract, replace, btest, countlz, countrz
+</p>
+
+<h3>基本関数</h3>
+<p>
+type, tostring, tonumber, select, error, assert, print, ipairs, pairs, next, unpack,
+setmetatable, getmetatable, rawget, rawset, rawequal, rawlen, pcall, xpcall
+</p>
+
+<hr>
+
+<h2 id="reference">クイックリファレンス</h2>
+
+<h3>obj (変更可能メンバー)</h3>
+<table border="1">
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td>obj.x / obj.y / obj.z</td><td>描画位置 (ピクセル)</td></tr>
+<tr><td>obj.ox / obj.oy / obj.oz</td><td>回転中心のオフセット (ピクセル)</td></tr>
+<tr><td>obj.zoom</td><td>拡大率 (sx と sy の平均、1.0 で等倍)</td></tr>
+<tr><td>obj.aspect</td><td>アスペクト比 (-1.0 ～ 1.0)</td></tr>
+<tr><td>obj.sx / obj.sy</td><td>X / Y 方向の独立拡大率</td></tr>
+<tr><td>obj.alpha</td><td>不透明度 (0.0 ～ 255.0)</td></tr>
+<tr><td>obj.rx / obj.ry / obj.rz</td><td>X / Y / Z 軸回転角 (度)</td></tr>
+<tr><td>obj.rxr / obj.ryr / obj.rzr</td><td>X / Y / Z 軸回転角 (ラジアン)</td></tr>
+</table>
+
+<h3>obj (読み取り専用メンバー)</h3>
+<table border="1">
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td>obj.w / obj.h</td><td>入力画像の幅 / 高さ (ピクセル)</td></tr>
+<tr><td>obj.hw / obj.hh</td><td>幅 / 高さの半分</td></tr>
+<tr><td>obj.cx / obj.cy</td><td>画像中心 (= hw / hh)</td></tr>
+<tr><td>obj.cz / obj.sz</td><td>常に 0 / 常に 1</td></tr>
+<tr><td>obj.diagonal</td><td>対角線長 (sqrt(w^2 + h^2))</td></tr>
+<tr><td>obj.time / obj.frame</td><td>アイテム基準の経過時間 (秒) / フレーム</td></tr>
+<tr><td>obj.totalframe / obj.totaltime</td><td>アイテムの総フレーム数 / 総時間 (秒)</td></tr>
+<tr><td>obj.t</td><td>アイテム内の進行割合 (0.0 ～ 1.0)</td></tr>
+<tr><td>obj.framerate</td><td>フレームレート (fps)</td></tr>
+<tr><td>obj.layer</td><td>レイヤー番号</td></tr>
+<tr><td>obj.index / obj.num</td><td>グループ内のインデックス / 総数</td></tr>
+<tr><td>obj.track0 ～ obj.track3</td><td>エフェクトパネルの各トラックバーの値</td></tr>
+</table>
+
+<h3>obj 関数</h3>
+<table border="1">
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td>obj.getobject(tag)</td><td>他アイテムの描画情報を取得 (本ページ 12 章)</td></tr>
+<tr><td>obj.getpixel(x, y)</td><td>ピクセル取得</td></tr>
+<tr><td>obj.setpixel(x, y, r, g, b [, a])</td><td>ピクセル書き込み</td></tr>
+<tr><td>obj.getpixeldata()</td><td>ピクセル直接アクセスプロキシ</td></tr>
+<tr><td>obj.putpixeldata()</td><td>互換用の空実装</td></tr>
+</table>
+
+<hr>
+
+<h2>非対応・制限事項</h2>
+<ul>
+<li>AviUtl2 の obj.effect(), obj.draw(), obj.drawpoly(), obj.load() 等は非対応です。</li>
+<li>obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 等は非対応です。</li>
+<li>scene.set(), scene.get() 等は非対応です (scene.width / scene.height の読み取りのみ)。</li>
+<li>ファイルアクセス (require, dofile, io 等) は非対応です。</li>
+<li>スクリプトのタイムアウトは 5 秒です。無限ループに注意してください。</li>
+<li>--track@, --check@ 等のヘッダーディレクティブは非対応です (Track0 ～ Track3 のみ)。</li>
+</ul>
+
+<hr>
+
+<p>
+Luaスクリプト for YMM4 / MIT License /
+<a href="https://github.com/routersys/YMM4-LuaScript">https://github.com/routersys/YMM4-LuaScript</a>
+</p>
+
+</body>
+</html>
