@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -100,6 +100,8 @@
 		</Content>
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Dark.xshd" />
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Light.xshd" />
+		<Resource Include="Resources\SyntaxDefinitions\Lua-Black.xshd" />
+		<Resource Include="Resources\SyntaxDefinitions\Lua-Windows.xshd" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CI)' != 'true'">
