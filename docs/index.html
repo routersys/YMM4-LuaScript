@@ -308,11 +308,13 @@ end</code></pre>
 <h2 id="getobject">12. 他オブジェクトの参照 (obj.getobject)</h2>
 
 <p>
-<code>obj.getobject(tag)</code> は、対象アイテムの「備考」欄に入力した文字列をタグとして、
-そのアイテムの描画情報を取得します。備考欄はプロパティエリアの上側にあります。
-返り値は対象アイテム自身の座標・回転・拡大率であり、グループ制御・カメラ制御による
-変形は含みません。一致するアイテムが無い場合は <code>nil</code> を返します。
-同じタグのアイテムが複数あるときは、現在フレームで表示中のものを優先します。
+<code>obj.getobject(tag [, frame])</code> は、対象アイテムの「備考」欄に入力した文字列を
+タグとして、そのアイテムの描画情報を取得します。備考欄はプロパティエリアの上側にあります。
+第2引数 <code>frame</code> を指定すると、そのタイムラインフレーム時点の値を取得します
+(省略時は現在フレーム)。返り値は対象アイテム自身の座標・回転・拡大率であり、
+グループ制御・カメラ制御による変形は含みません。一致するアイテムが無い場合は
+<code>nil</code> を返します。同じタグのアイテムが複数あるときは、対象フレームで
+表示中のものを優先します。
 </p>
 
 <h3>12-1. 発射元の座標に合わせる</h3>
@@ -371,10 +373,23 @@ if src then
     obj.alpha = src.alpha
 end</code></pre>
 
+<h3>12-7. 発射時の座標に固定する</h3>
+<p>
+弾の発射フレーム (弾アイテムの開始フレーム) は <code>timelineframe - frame</code> で
+求まります。そのフレーム時点の発射元座標を取得すれば、発射元が動いても弾の原点は
+発射位置に固定されます。
+</p>
+<pre><code>local fire = timelineframe - frame
+local src = obj.getobject("routersys", fire)
+if src then
+    obj.x = src.x
+    obj.y = src.y
+end</code></pre>
+
 <p>返り値テーブルのメンバーは以下のとおりです。</p>
 <table border="1">
 <tr><th>メンバー</th><th>説明</th></tr>
-<tr><td>exist</td><td>現在フレームが表示期間内か (boolean)</td></tr>
+<tr><td>exist</td><td>対象フレームが表示期間内か (boolean)</td></tr>
 <tr><td>x / y / z</td><td>描画位置 (ピクセル)</td></tr>
 <tr><td>zoom / sx / sy</td><td>拡大率 (1.0 で等倍)</td></tr>
 <tr><td>rx / ry / rz</td><td>X / Y / Z 軸回転角 (度)</td></tr>
@@ -585,7 +600,7 @@ setmetatable, getmetatable, rawget, rawset, rawequal, rawlen, pcall, xpcall
 <h3>obj 関数</h3>
 <table border="1">
 <tr><th>関数</th><th>説明</th></tr>
-<tr><td>obj.getobject(tag)</td><td>他アイテムの描画情報を取得 (本ページ 12 章)</td></tr>
+<tr><td>obj.getobject(tag [, frame])</td><td>他アイテムの描画情報を取得 (本ページ 12 章)</td></tr>
 <tr><td>obj.getpixel(x, y)</td><td>ピクセル取得</td></tr>
 <tr><td>obj.setpixel(x, y, r, g, b [, a])</td><td>ピクセル書き込み</td></tr>
 <tr><td>obj.getpixeldata()</td><td>ピクセル直接アクセスプロキシ</td></tr>
