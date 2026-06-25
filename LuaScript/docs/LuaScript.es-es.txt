@@ -189,13 +189,16 @@
 
 - Tabla obj - Funciones -
 
-        o obj.getobject(tag)
-                Obtiene la información de dibujo actual de otro objeto que tiene
-                la etiqueta especificada.
+        o obj.getobject(tag [, frame])
+                Obtiene la información de dibujo de otro objeto que tiene la
+                etiqueta especificada.
                 * La etiqueta coincide con el texto introducido en el campo
-                  "Observación (Remark)" del elemento de destino.
+                  "Observación" del elemento de destino.
+                * Si se indica el segundo argumento frame, se obtienen los
+                  valores en ese fotograma de la línea de tiempo. Si se omite,
+                  se usa el fotograma actual.
                 * Si varios elementos comparten la misma etiqueta, se devuelve
-                  con prioridad el elemento visible en el fotograma actual.
+                  con prioridad el elemento visible en el fotograma de destino.
                   Si ninguno es visible, se devuelve el primer elemento que
                   coincida.
                 * Los valores devueltos son las coordenadas, rotación y escala
@@ -203,9 +206,10 @@
                   control de grupo, control de cámara o efectos superiores.
                 * Cada valor usa el mismo sistema de unidades que la tabla obj.
                 tag     : El texto definido en la observación del elemento de destino
+                frame   : El fotograma absoluto de la línea de tiempo (opcional)
                 Retorno : Una tabla de información del objeto. Devuelve nil cuando
                           no existe ningún elemento coincidente.
-                          .exist : Si es visible en el fotograma actual (boolean)
+                          .exist : Si es visible en el fotograma de destino (boolean)
                           .x     : Coordenada base de visualización X
                           .y     : Coordenada base de visualización Y
                           .z     : Coordenada base de visualización Z
@@ -225,6 +229,13 @@
                     if funnel then
                         obj.x = funnel.x
                         obj.y = funnel.y
+                    end
+                Fijar a la posición de disparo (la observación del emisor es "funnel"):
+                    local fire = timelineframe - frame
+                    local src = obj.getobject("funnel", fire)
+                    if src then
+                        obj.x = src.x
+                        obj.y = src.y
                     end
 
         o obj.getpixel(x, y)

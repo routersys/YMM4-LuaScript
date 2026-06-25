@@ -189,17 +189,19 @@
 
 - obj 表 - 函数 -
 
-        ○ obj.getobject(tag)
-                获取具有指定标签的其他对象的当前绘制信息。
-                ※ 标签与目标项目“备注(Remark)”中输入的字符串相匹配。
-                ※ 当多个项目拥有相同标签时，优先返回在当前帧显示中的项目。
+        ○ obj.getobject(tag [, frame])
+                获取具有指定标签的其他对象的绘制信息。
+                ※ 标签与目标项目“备注”中输入的字符串相匹配。
+                ※ 指定第二个参数 frame 时，获取该时间轴帧的数值。省略时获取当前帧。
+                ※ 当多个项目拥有相同标签时，优先返回在目标帧显示中的项目。
                   若没有显示中的项目，则返回第一个匹配的项目。
                 ※ 获取的值是项目自身的坐标、旋转和缩放。
                   不包含组控制、摄像机控制以及上层特效造成的变换。
                 ※ 各数值使用与 obj 表相同的单位体系。
                 tag     : 设置在目标项目备注中的字符串
+                frame   : 要获取的时间轴绝对帧 (可省略)
                 返回值  : 对象信息表。当不存在匹配项目时返回 nil。
-                          .exist : 是否在当前帧显示中 (boolean)
+                          .exist : 是否在目标帧显示中 (boolean)
                           .x     : 显示基准坐标 X
                           .y     : 显示基准坐标 Y
                           .z     : 显示基准坐标 Z
@@ -219,6 +221,13 @@
                     if funnel then
                         obj.x = funnel.x
                         obj.y = funnel.y
+                    end
+                固定为发射时坐标的示例 (发射源备注为 "funnel")：
+                    local fire = timelineframe - frame
+                    local src = obj.getobject("funnel", fire)
+                    if src then
+                        obj.x = src.x
+                        obj.y = src.y
                     end
 
         ○ obj.getpixel(x, y)

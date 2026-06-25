@@ -189,17 +189,19 @@
 
 - obj 表 - 函式 -
 
-        ○ obj.getobject(tag)
-                取得具有指定標籤的其他物件的目前繪製資訊。
-                ※ 標籤與目標項目「備註(Remark)」中輸入的字串相符。
-                ※ 當多個項目擁有相同標籤時，優先回傳在目前影格顯示中的項目。
+        ○ obj.getobject(tag [, frame])
+                取得具有指定標籤的其他物件的繪製資訊。
+                ※ 標籤與目標項目「備註」中輸入的字串相符。
+                ※ 指定第二個參數 frame 時，取得該時間軸影格的數值。省略時取得目前影格。
+                ※ 當多個項目擁有相同標籤時，優先回傳在目標影格顯示中的項目。
                   若沒有顯示中的項目，則回傳第一個相符的項目。
                 ※ 取得的值是項目自身的座標、旋轉與縮放。
                   不包含群組控制、攝影機控制以及上層特效造成的變換。
                 ※ 各數值使用與 obj 表相同的單位體系。
                 tag     : 設定於目標項目備註中的字串
+                frame   : 要取得的時間軸絕對影格 (可省略)
                 回傳值  : 物件資訊表。當不存在相符項目時回傳 nil。
-                          .exist : 是否在目前影格顯示中 (boolean)
+                          .exist : 是否在目標影格顯示中 (boolean)
                           .x     : 顯示基準座標 X
                           .y     : 顯示基準座標 Y
                           .z     : 顯示基準座標 Z
@@ -219,6 +221,13 @@
                     if funnel then
                         obj.x = funnel.x
                         obj.y = funnel.y
+                    end
+                固定為發射時座標的範例 (發射來源備註為 "funnel")：
+                    local fire = timelineframe - frame
+                    local src = obj.getobject("funnel", fire)
+                    if src then
+                        obj.x = src.x
+                        obj.y = src.y
                     end
 
         ○ obj.getpixel(x, y)

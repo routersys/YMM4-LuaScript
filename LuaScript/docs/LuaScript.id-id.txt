@@ -189,23 +189,25 @@
 
 - Tabel obj - Fungsi -
 
-        o obj.getobject(tag)
-                Mengambil informasi gambar terkini dari objek lain yang memiliki
-                tag yang ditentukan.
+        o obj.getobject(tag [, frame])
+                Mengambil informasi gambar dari objek lain yang memiliki tag
+                yang ditentukan.
                 * Tag cocok dengan teks yang dimasukkan pada kolom
-                  "Catatan (Remark)" item target.
-                * Jika beberapa item berbagi tag yang sama, item yang sedang
-                  tampil pada frame saat ini dikembalikan dengan prioritas.
-                  Jika tidak ada yang tampil, item pertama yang cocok
-                  dikembalikan.
+                  "Catatan" item target.
+                * Jika argumen kedua frame diberikan, nilai pada frame tersebut
+                  di lini masa diambil. Jika dihilangkan, frame saat ini dipakai.
+                * Jika beberapa item berbagi tag yang sama, item yang tampil
+                  pada frame target dikembalikan dengan prioritas. Jika tidak
+                  ada yang tampil, item pertama yang cocok dikembalikan.
                 * Nilai yang dikembalikan adalah koordinat, rotasi, dan skala
                   milik item itu sendiri. Transformasi dari kontrol grup,
                   kontrol kamera, atau efek di atasnya TIDAK disertakan.
                 * Setiap nilai menggunakan sistem satuan yang sama dengan tabel obj.
                 tag     : Teks yang diatur pada catatan item target
+                frame   : Frame absolut pada lini masa yang diambil (opsional)
                 Kembali : Tabel informasi objek. Mengembalikan nil jika tidak ada
                           item yang cocok.
-                          .exist : Apakah tampil pada frame saat ini (boolean)
+                          .exist : Apakah tampil pada frame target (boolean)
                           .x     : Koordinat dasar tampilan X
                           .y     : Koordinat dasar tampilan Y
                           .z     : Koordinat dasar tampilan Z
@@ -225,6 +227,13 @@
                     if funnel then
                         obj.x = funnel.x
                         obj.y = funnel.y
+                    end
+                Mengunci ke posisi penembakan (catatan emitor adalah "funnel"):
+                    local fire = timelineframe - frame
+                    local src = obj.getobject("funnel", fire)
+                    if src then
+                        obj.x = src.x
+                        obj.y = src.y
                     end
 
         o obj.getpixel(x, y)

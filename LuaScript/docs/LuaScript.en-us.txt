@@ -192,22 +192,26 @@
 
 - obj Table - Functions -
 
-        o obj.getobject(tag)
-                Gets the current drawing information of another object that has
-                the specified tag.
+        o obj.getobject(tag [, frame])
+                Gets the drawing information of another object that has the
+                specified tag.
                 * The tag matches the string entered in the target item's
                   "Remark" field.
-                * If multiple items share the same tag, the item currently
-                  visible at the present frame is returned with priority.
-                  If none is visible, the first matching item is returned.
+                * When the second argument frame is given, the values at that
+                  timeline frame are returned. When omitted, the current frame
+                  is used.
+                * If multiple items share the same tag, the item visible at the
+                  target frame is returned with priority. If none is visible,
+                  the first matching item is returned.
                 * The returned values are the item's own coordinates, rotation
                   and scale. Transforms from group control, camera control or
                   upper effects are NOT included.
                 * Each value uses the same unit system as the obj table.
                 tag     : The string set in the target item's remark
+                frame   : The absolute timeline frame to sample (optional)
                 Return  : An object information table. Returns nil when no
                           matching item exists.
-                          .exist : Whether it is visible at the current frame (boolean)
+                          .exist : Whether it is visible at the target frame (boolean)
                           .x     : Display base coordinate X
                           .y     : Display base coordinate Y
                           .z     : Display base coordinate Z
@@ -227,6 +231,13 @@
                     if funnel then
                         obj.x = funnel.x
                         obj.y = funnel.y
+                    end
+                Locking to the firing position (emitter remark is "funnel"):
+                    local fire = timelineframe - frame
+                    local src = obj.getobject("funnel", fire)
+                    if src then
+                        obj.x = src.x
+                        obj.y = src.y
                     end
 
         o obj.getpixel(x, y)
