@@ -42,7 +42,11 @@ namespace LuaScript
         public int Index { get; init; }
         public int Num { get; init; }
 
-        public IReadOnlyList<SceneObjectInfo> SceneObjects { get; init; } = [];
+        public SceneObjectResolver? Resolver { get; init; }
+
+        private readonly List<SceneObjectQuery> _objectQueries = [];
+
+        public IReadOnlyList<SceneObjectQuery> ObjectQueries => _objectQueries;
 
         public double RxRad => Rx * Math.PI / 180d;
         public double RyRad => Ry * Math.PI / 180d;
@@ -83,29 +87,16 @@ namespace LuaScript
 
         internal void MarkPixelsDirty() => _isPixelsDirty = true;
 
-        public bool TryGetObject(string tag, out SceneObjectInfo info)
+        public bool ResolveObject(string tag, int frame, out SceneObjectInfo info)
         {
-            SceneObjectInfo? fallback = null;
-            var objects = SceneObjects;
-            for (int i = 0; i < objects.Count; i++)
+            if (Resolver is not null && Resolver.TryResolve(tag, frame, out var resolved))
             {
-                var candidate = objects[i];
-                if (!string.Equals(candidate.Tag, tag, StringComparison.Ordinal))
-                    continue;
-                if (candidate.Exist)
-                {
-                    info = candidate;
-                    return true;
-                }
-                fallback ??= candidate;
-            }
-
-            if (fallback is { } value)
-            {
-                info = value;
+                _objectQueries.Add(new SceneObjectQuery(tag, frame, resolved));
+                info = resolved;
                 return true;
             }
 
+            _objectQueries.Add(new SceneObjectQuery(tag, frame, null));
             info = default;
             return false;
         }

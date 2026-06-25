@@ -407,7 +407,15 @@ namespace LuaScript
                     var tag = args[0];
                     if (tag.Type != DataType.String)
                         return DynValue.Nil;
-                    if (!_activeContext.TryGetObject(tag.String, out var info))
+                    int frame = _activeContext.TimelineFrame;
+                    if (args.Count >= 2)
+                    {
+                        var frameArg = args[1];
+                        if (frameArg.Type != DataType.Number)
+                            return DynValue.Nil;
+                        frame = (int)frameArg.Number;
+                    }
+                    if (!_activeContext.ResolveObject(tag.String, frame, out var info))
                         return DynValue.Nil;
                     return BuildObjectTable(execCtx.GetScript(), info);
                 });
