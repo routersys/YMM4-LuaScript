@@ -5,4 +5,6 @@ namespace LuaScript
     internal sealed class LuaScriptCompilationException(string message, Exception? inner = null) : LuaScriptException(message, inner);
 
     internal sealed class LuaScriptRuntimeException(string message, Exception? inner = null) : LuaScriptException(message, inner);
+
+    internal sealed class LuaScriptTimeoutException(string message, Exception? inner = null) : LuaScriptException(message, inner);
 }

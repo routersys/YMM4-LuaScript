@@ -44,6 +44,15 @@ namespace LuaScript
 
         private readonly LuaScriptEngine _engine = new();
         private readonly SemaphoreSlim _pixelLoaderSemaphore = new(1, 1);
+        private AviUtlScriptContext _context = new();
+
+        private EffectDescription? _frameDesc;
+        private SceneObjectResolver? _frameResolver;
+        private bool _frameResolverBuilt;
+
+        private Guid _lastSceneGuid;
+        private string _lastSceneId = string.Empty;
+        private bool _sceneIdCached;
 
         private GraphicsDevicesAndContext? _ownCtx;
 
@@ -67,7 +76,29 @@ namespace LuaScript
         {
             _ownCtx = new GraphicsDevicesAndContext(devices);
             disposer.Collect(_ownCtx);
+            _context.ResolverProvider = GetFrameResolver;
             return null;
+        }
+
+        private SceneObjectResolver GetFrameResolver()
+        {
+            if (!_frameResolverBuilt)
+            {
+                _frameResolver = BuildSceneObjectResolver(_frameDesc!);
+                _frameResolverBuilt = true;
+            }
+            return _frameResolver!;
+        }
+
+        private string ResolveSceneId(Guid sceneId)
+        {
+            if (!_sceneIdCached || sceneId != _lastSceneGuid)
+            {
+                _lastSceneId = sceneId.ToString();
+                _lastSceneGuid = sceneId;
+                _sceneIdCached = true;
+            }
+            return _lastSceneId;
         }
 
         protected override void setInput(ID2D1Image? input)
@@ -113,10 +144,12 @@ namespace LuaScript
                 desc.TimelineDuration.Time.TotalSeconds,
                 inDesc);
 
-            var resolver = BuildSceneObjectResolver(desc);
+            _frameDesc = desc;
+            _frameResolver = null;
+            _frameResolverBuilt = false;
 
             if (!_isFirst && key == _cachedKey &&
-                QueriesMatch(_cachedQueries, resolver))
+                (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())))
             {
                 effectOutput = _cachedPixelsModified ? _transformEffect?.Output : null;
                 return _cachedOutputDesc ?? inDesc;
@@ -126,7 +159,8 @@ namespace LuaScript
             int imgW = Math.Max(1, (int)Math.Ceiling(bounds.Right - bounds.Left));
             int imgH = Math.Max(1, (int)Math.Ceiling(bounds.Bottom - bounds.Top));
 
-            var ctx = BuildContext(in key, imgW, imgH, resolver);
+            var ctx = _context;
+            PopulateContext(ctx, in key, imgW, imgH);
             ctx.SetPixelLoader(() => LoadInputPixels(bounds, imgW, imgH));
 
             DrawDescription outDesc = inDesc;
@@ -151,6 +185,14 @@ namespace LuaScript
 
                 outDesc = BuildOutputDesc(inDesc, ctx);
             }
+            catch (LuaScriptTimeoutException ex)
+            {
+                effectOutput = null;
+                _context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
+                _isFirst = true;
+                Log.Default.Write(ex.Message, ex);
+                return inDesc;
+            }
             catch (LuaScriptException ex)
             {
                 effectOutput = null;
@@ -165,7 +207,7 @@ namespace LuaScript
 
             _isFirst = false;
             _cachedKey = key;
-            _cachedQueries = [.. ctx.ObjectQueries];
+            _cachedQueries = ctx.ObjectQueries.Count == 0 ? [] : [.. ctx.ObjectQueries];
             _cachedOutputDesc = outDesc;
             _cachedPixelsModified = pixelsModified;
 
@@ -219,7 +261,7 @@ namespace LuaScript
             return true;
         }
 
-        private static AviUtlScriptContext BuildContext(in RenderKey key, int imgW, int imgH, SceneObjectResolver resolver)
+        private void PopulateContext(AviUtlScriptContext ctx, in RenderKey key, int imgW, int imgH)
         {
             var zoom = key.InputDesc.Zoom;
             double zoomAvg = (zoom.X + zoom.Y) / 2d;
@@ -227,51 +269,49 @@ namespace LuaScript
                 ? (zoom.X - zoom.Y) / (zoom.X + zoom.Y)
                 : 0d;
 
-            return new AviUtlScriptContext
-            {
-                ImageWidth = imgW,
-                ImageHeight = imgH,
-                X = key.InputDesc.Draw.X,
-                Y = key.InputDesc.Draw.Y,
-                Z = key.InputDesc.Draw.Z,
-                Ox = key.InputDesc.CenterPoint.X,
-                Oy = key.InputDesc.CenterPoint.Y,
-                Oz = 0d,
-                Sx = zoom.X,
-                Sy = zoom.Y,
-                Zoom = zoomAvg,
-                Aspect = aspect,
-                Alpha = key.InputDesc.Opacity * 255d,
-                Rx = key.InputDesc.Rotation.X,
-                Ry = key.InputDesc.Rotation.Y,
-                Rz = key.InputDesc.Rotation.Z,
-                Track0 = key.Track0,
-                Track1 = key.Track1,
-                Track2 = key.Track2,
-                Track3 = key.Track3,
-                Time = key.Time,
-                Frame = key.Frame,
-                TotalFrame = key.Length,
-                TotalTime = key.Fps > 0 ? key.Length / (double)key.Fps : 0d,
-                Framerate = key.Fps,
-                TimelineFrame = key.TimelineFrame,
-                TimelineTime = key.TimelineTime,
-                SceneWidth = key.SceneWidth,
-                SceneHeight = key.SceneHeight,
-                Layer = key.Layer,
-                Index = key.InputIndex,
-                Num = key.InputCount,
-                GroupIndex = key.GroupIndex,
-                GroupCount = key.GroupCount,
-                TimelineTotalFrame = key.TimelineTotalFrame,
-                TimelineTotalTime = key.TimelineTotalTime,
-                IsSaving = key.Usage == TimelineSourceUsage.Exporting,
-                IsPlaying = key.Usage == TimelineSourceUsage.Playing,
-                IsPaused = key.Usage == TimelineSourceUsage.Paused,
-                SceneId = key.SceneId.ToString(),
-                TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d,
-                Resolver = resolver,
-            };
+            ctx.ClearQueries();
+
+            ctx.ImageWidth = imgW;
+            ctx.ImageHeight = imgH;
+            ctx.X = key.InputDesc.Draw.X;
+            ctx.Y = key.InputDesc.Draw.Y;
+            ctx.Z = key.InputDesc.Draw.Z;
+            ctx.Ox = key.InputDesc.CenterPoint.X;
+            ctx.Oy = key.InputDesc.CenterPoint.Y;
+            ctx.Oz = 0d;
+            ctx.Sx = zoom.X;
+            ctx.Sy = zoom.Y;
+            ctx.Zoom = zoomAvg;
+            ctx.Aspect = aspect;
+            ctx.Alpha = key.InputDesc.Opacity * 255d;
+            ctx.Rx = key.InputDesc.Rotation.X;
+            ctx.Ry = key.InputDesc.Rotation.Y;
+            ctx.Rz = key.InputDesc.Rotation.Z;
+            ctx.Track0 = key.Track0;
+            ctx.Track1 = key.Track1;
+            ctx.Track2 = key.Track2;
+            ctx.Track3 = key.Track3;
+            ctx.Time = key.Time;
+            ctx.Frame = key.Frame;
+            ctx.TotalFrame = key.Length;
+            ctx.TotalTime = key.Fps > 0 ? key.Length / (double)key.Fps : 0d;
+            ctx.Framerate = key.Fps;
+            ctx.TimelineFrame = key.TimelineFrame;
+            ctx.TimelineTime = key.TimelineTime;
+            ctx.SceneWidth = key.SceneWidth;
+            ctx.SceneHeight = key.SceneHeight;
+            ctx.Layer = key.Layer;
+            ctx.Index = key.InputIndex;
+            ctx.Num = key.InputCount;
+            ctx.GroupIndex = key.GroupIndex;
+            ctx.GroupCount = key.GroupCount;
+            ctx.TimelineTotalFrame = key.TimelineTotalFrame;
+            ctx.TimelineTotalTime = key.TimelineTotalTime;
+            ctx.IsSaving = key.Usage == TimelineSourceUsage.Exporting;
+            ctx.IsPlaying = key.Usage == TimelineSourceUsage.Playing;
+            ctx.IsPaused = key.Usage == TimelineSourceUsage.Paused;
+            ctx.SceneId = ResolveSceneId(key.SceneId);
+            ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
         }
 
         private static DrawDescription BuildOutputDesc(DrawDescription inDesc, AviUtlScriptContext ctx)

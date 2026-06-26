@@ -2,12 +2,12 @@ namespace LuaScript
 {
     internal sealed class AviUtlScriptContext
     {
-        public bool IsPlaying { get; init; }
-        public bool IsPaused { get; init; }
-        public string SceneId { get; init; } = string.Empty;
+        public bool IsPlaying { get; set; }
+        public bool IsPaused { get; set; }
+        public string SceneId { get; set; } = string.Empty;
 
-        public int ImageWidth { get; init; }
-        public int ImageHeight { get; init; }
+        public int ImageWidth { get; set; }
+        public int ImageHeight { get; set; }
 
         public double X { get; set; }
         public double Y { get; set; }
@@ -24,25 +24,25 @@ namespace LuaScript
         public double Ry { get; set; }
         public double Rz { get; set; }
 
-        public double Track0 { get; init; }
-        public double Track1 { get; init; }
-        public double Track2 { get; init; }
-        public double Track3 { get; init; }
+        public double Track0 { get; set; }
+        public double Track1 { get; set; }
+        public double Track2 { get; set; }
+        public double Track3 { get; set; }
 
-        public double Time { get; init; }
-        public int Frame { get; init; }
-        public int TotalFrame { get; init; }
-        public double TotalTime { get; init; }
-        public int Framerate { get; init; }
-        public int TimelineFrame { get; init; }
-        public double TimelineTime { get; init; }
-        public int SceneWidth { get; init; }
-        public int SceneHeight { get; init; }
-        public int Layer { get; init; }
-        public int Index { get; init; }
-        public int Num { get; init; }
+        public double Time { get; set; }
+        public int Frame { get; set; }
+        public int TotalFrame { get; set; }
+        public double TotalTime { get; set; }
+        public int Framerate { get; set; }
+        public int TimelineFrame { get; set; }
+        public double TimelineTime { get; set; }
+        public int SceneWidth { get; set; }
+        public int SceneHeight { get; set; }
+        public int Layer { get; set; }
+        public int Index { get; set; }
+        public int Num { get; set; }
 
-        public SceneObjectResolver? Resolver { get; init; }
+        public Func<SceneObjectResolver>? ResolverProvider { get; set; }
 
         private readonly List<SceneObjectQuery> _objectQueries = [];
 
@@ -52,12 +52,12 @@ namespace LuaScript
         public double RyRad => Ry * Math.PI / 180d;
         public double RzRad => Rz * Math.PI / 180d;
 
-        public int GroupIndex { get; init; }
-        public int GroupCount { get; init; }
-        public int TimelineTotalFrame { get; init; }
-        public double TimelineTotalTime { get; init; }
-        public bool IsSaving { get; init; }
-        public double TimeRatio { get; init; }
+        public int GroupIndex { get; set; }
+        public int GroupCount { get; set; }
+        public int TimelineTotalFrame { get; set; }
+        public double TimelineTotalTime { get; set; }
+        public bool IsSaving { get; set; }
+        public double TimeRatio { get; set; }
 
         private Func<byte[]>? _pixelLoader;
         private byte[]? _pixelBuffer;
@@ -67,6 +67,8 @@ namespace LuaScript
         public bool IsPixelsDirty => _isPixelsDirty;
 
         internal int TotalChannels => ImageWidth * ImageHeight * 4;
+
+        internal void ClearQueries() => _objectQueries.Clear();
 
         internal void SetPixelLoader(Func<byte[]> loader)
         {
@@ -89,7 +91,8 @@ namespace LuaScript
 
         public bool ResolveObject(string tag, int frame, out SceneObjectInfo info)
         {
-            if (Resolver is not null && Resolver.TryResolve(tag, frame, out var resolved))
+            var resolver = ResolverProvider?.Invoke();
+            if (resolver is not null && resolver.TryResolve(tag, frame, out var resolved))
             {
                 _objectQueries.Add(new SceneObjectQuery(tag, frame, resolved));
                 info = resolved;

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using MoonSharp.Interpreter;
 using MoonSharp.Interpreter.Debugging;
 using MoonSharp.Interpreter.Loaders;
@@ -10,12 +9,6 @@ namespace LuaScript
         private readonly record struct ExecutionResult(
             LuaScriptException? Exception,
             bool TimedOut);
-
-        private sealed record ExecutionJob(
-            string Code,
-            AviUtlScriptContext Context,
-            CancellationToken Cancellation,
-            TaskCompletionSource<ExecutionResult> Completion);
 
         private sealed class ExecutionThread : IDisposable
         {
@@ -46,9 +39,18 @@ namespace LuaScript
                 }
             }
 
-            private readonly BlockingCollection<ExecutionJob> _queue = new(boundedCapacity: 1);
+            private readonly SemaphoreSlim _workSignal = new(0);
+            private readonly ManualResetEventSlim _doneSignal = new(false);
+            private readonly CancellationTokenSource _cts = new();
             private readonly Thread _thread;
             private readonly CancellationDebugger _debugger = new();
+
+            private string _jobCode = string.Empty;
+            private AviUtlScriptContext? _jobContext;
+            private LuaScriptException? _jobException;
+            private volatile bool _disposeRequested;
+
+            private readonly List<string> _removalBuffer = [];
 
             private Script? _script;
             private DynValue? _compiledChunk;
@@ -67,6 +69,8 @@ namespace LuaScript
 
             internal ExecutionThread()
             {
+                _activeCancellation = _cts.Token;
+                _debugger.UpdateToken(_cts.Token);
                 _thread = new Thread(WorkerLoop)
                 {
                     IsBackground = true,
@@ -77,77 +81,65 @@ namespace LuaScript
 
             internal ExecutionResult TryExecute(string code, AviUtlScriptContext ctx, int timeoutMs)
             {
-                using var cts = new CancellationTokenSource();
-                var tcs = new TaskCompletionSource<ExecutionResult>(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
+                _jobCode = code;
+                _jobContext = ctx;
+                _jobException = null;
+                _doneSignal.Reset();
+                _workSignal.Release();
 
-                if (!_queue.TryAdd(new ExecutionJob(code, ctx, cts.Token, tcs)))
-                    return new ExecutionResult(
-                        new LuaScriptRuntimeException("Script execution queue is full."), false);
+                if (_doneSignal.Wait(timeoutMs))
+                    return new ExecutionResult(_jobException, false);
 
-                if (tcs.Task.Wait(timeoutMs))
-                    return tcs.Task.Result;
-
-                cts.Cancel();
+                _cts.Cancel();
                 return new ExecutionResult(null, TimedOut: true);
             }
 
             private void WorkerLoop()
             {
-                try
+                while (true)
                 {
-                    foreach (var job in _queue.GetConsumingEnumerable())
-                        ProcessJob(job);
+                    _workSignal.Wait();
+                    if (_disposeRequested)
+                        return;
+                    ProcessJob();
+                    _doneSignal.Set();
                 }
-                catch (OperationCanceledException) { }
-                catch (InvalidOperationException) { }
             }
 
-            private void ProcessJob(ExecutionJob job)
+            private void ProcessJob()
             {
-                if (job.Cancellation.IsCancellationRequested)
-                {
-                    job.Completion.TrySetResult(new ExecutionResult(null, TimedOut: true));
-                    return;
-                }
-
-                _activeCancellation = job.Cancellation;
-                _activeContext = job.Context;
-                _debugger.UpdateToken(job.Cancellation);
+                var context = _jobContext!;
+                _activeContext = context;
 
                 try
                 {
                     EnsureScript();
                     EnsureScriptIntegrity();
-                    EnsureCompiled(job.Code);
-                    SetupGlobals(job.Context);
+                    EnsureCompiled(_jobCode);
+                    SetupGlobals(context);
                     _script!.Call(_compiledChunk!);
-                    ReadBackGlobals(job.Context);
-                    job.Completion.TrySetResult(new ExecutionResult(null, false));
+                    ReadBackGlobals(context);
+                    _jobException = null;
                 }
-                catch (OperationCanceledException) when (job.Cancellation.IsCancellationRequested)
+                catch (OperationCanceledException) when (_cts.IsCancellationRequested)
                 {
-                    job.Completion.TrySetResult(new ExecutionResult(null, TimedOut: true));
+                    _jobException = null;
                 }
                 catch (LuaScriptException ex)
                 {
-                    job.Completion.TrySetResult(new ExecutionResult(ex, false));
+                    _jobException = ex;
                 }
                 catch (ScriptRuntimeException ex)
                 {
-                    job.Completion.TrySetResult(new ExecutionResult(
-                        new LuaScriptRuntimeException(ex.DecoratedMessage ?? ex.Message, ex), false));
+                    _jobException = new LuaScriptRuntimeException(ex.DecoratedMessage ?? ex.Message, ex);
                 }
                 catch (Exception ex)
                 {
-                    job.Completion.TrySetResult(new ExecutionResult(
-                        new LuaScriptRuntimeException(ex.Message, ex), false));
+                    _jobException = new LuaScriptRuntimeException(ex.Message, ex);
                 }
                 finally
                 {
-                    _debugger.UpdateToken(default);
                     _activeContext = null;
-                    _activeCancellation = default;
                 }
             }
 
@@ -269,10 +261,10 @@ namespace LuaScript
                         _ymm4TableSnapshot = null;
                     }
 
-                    ResetUserTableKeys(_objTable!, ref _objTableSnapshot);
-                    ResetUserTableKeys(_sceneTable!, ref _sceneTableSnapshot);
-                    ResetUserTableKeys(_animTable!, ref _animTableSnapshot);
-                    ResetUserTableKeys(_ymm4Table!, ref _ymm4TableSnapshot);
+                    ResetUserTableKeys(_objTable!, _objTableSnapshot);
+                    ResetUserTableKeys(_sceneTable!, _sceneTableSnapshot);
+                    ResetUserTableKeys(_animTable!, _animTableSnapshot);
+                    ResetUserTableKeys(_ymm4Table!, _ymm4TableSnapshot);
                 }
 
                 script.Globals["time"] = ctx.Time;
@@ -366,34 +358,36 @@ namespace LuaScript
                 return keys;
             }
 
-            private static void ResetUserTableKeys(Table table, ref HashSet<string>? snapshot)
+            private void ResetUserTableKeys(Table table, HashSet<string>? snapshot)
             {
                 if (snapshot is null) return;
-                var keysToRemove = new List<string>();
+                var buffer = _removalBuffer;
+                buffer.Clear();
                 foreach (var key in table.Keys)
                 {
                     if (key.Type == DataType.String &&
                         !snapshot.Contains(key.String))
                     {
-                        keysToRemove.Add(key.String);
+                        buffer.Add(key.String);
                     }
                 }
-                foreach (var key in keysToRemove)
+                foreach (var key in buffer)
                     table[key] = DynValue.Nil;
             }
 
             private void ResetUserGlobals(Script script)
             {
-                var keysToRemove = new List<string>();
+                var buffer = _removalBuffer;
+                buffer.Clear();
                 foreach (var key in script.Globals.Keys)
                 {
                     if (key.Type == DataType.String &&
                         !_builtinGlobalSnapshot!.Contains(key.String))
                     {
-                        keysToRemove.Add(key.String);
+                        buffer.Add(key.String);
                     }
                 }
-                foreach (var key in keysToRemove)
+                foreach (var key in buffer)
                     script.Globals[key] = DynValue.Nil;
             }
 
@@ -531,18 +525,25 @@ namespace LuaScript
 
             public void Dispose()
             {
-                _queue.CompleteAdding();
+                _disposeRequested = true;
+                _workSignal.Release();
                 _thread.Join();
-                _queue.Dispose();
+                _cts.Cancel();
+                _cts.Dispose();
+                _workSignal.Dispose();
+                _doneSignal.Dispose();
             }
 
             internal void AbandonAsync()
             {
-                _queue.CompleteAdding();
+                _disposeRequested = true;
+                _workSignal.Release();
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     _thread.Join();
-                    _queue.Dispose();
+                    _cts.Dispose();
+                    _workSignal.Dispose();
+                    _doneSignal.Dispose();
                 });
             }
 
@@ -577,7 +578,7 @@ namespace LuaScript
                 var stale = _executionThread;
                 _executionThread = new ExecutionThread();
                 stale.AbandonAsync();
-                throw new LuaScriptRuntimeException(
+                throw new LuaScriptTimeoutException(
                     $"Script execution timed out after {ExecutionTimeoutMilliseconds} ms.");
             }
 
