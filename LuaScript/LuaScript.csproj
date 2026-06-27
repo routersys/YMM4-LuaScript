@@ -102,7 +102,10 @@
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Light.xshd" />
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Black.xshd" />
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Windows.xshd" />
-		<None Include="..\native\**" LinkBase="native" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\native\luajit.exe" Link="native\luajit.exe" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\native\lua51.dll" Link="native\lua51.dll" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\native\worker.lua" Link="native\worker.lua" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="..\native\shim.lua" Link="native\shim.lua" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CI)' != 'true'">
