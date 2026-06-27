@@ -29,5 +29,17 @@ namespace LuaScript.Tests
         {
             Assert.Equal("Native", ScriptDirective.Resolve("--!native\n--!gpu").ToString());
         }
+
+        [Theory]
+        [InlineData("obj.rz = time * 90", "MoonSharp")]
+        [InlineData("local r,g,b,a = obj.getpixel(0,0)", "Native")]
+        [InlineData("obj.setpixel(0,0,255,0,0)", "Native")]
+        [InlineData("local pd = obj.getpixeldata()", "Native")]
+        [InlineData("--!moonsharp\nobj.setpixel(0,0,1,1,1)", "MoonSharp")]
+        [InlineData("--!native\nobj.rz = 1", "Native")]
+        public void ResolveAuto_RoutesPixelScriptsToNative(string script, string expected)
+        {
+            Assert.Equal(expected, ScriptDirective.ResolveAuto(script).ToString());
+        }
     }
 }
