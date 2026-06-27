@@ -344,7 +344,14 @@ obj.alpha = anim.ease_out(t) * 255
  
 ## サードパーティライセンス
  
-本プラグインは、Luaスクリプトの実行エンジンとして [MoonSharp](https://github.com/moonsharp-devs/moonsharp)（3-Clause BSD License）を使用しています。
+本プラグインは以下のサードパーティソフトウェアを同梱・使用しています。各ライセンスの全文は、配布パッケージ（`.ymme`）内の `LICENSE` フォルダーおよびリポジトリの [`.github/LICENSE`](.github/LICENSE) に収録しています。
+ 
+| ソフトウェア | 用途 | ライセンス |
+|---|---|---|
+| [MoonSharp](https://github.com/moonsharp-devs/moonsharp) | 標準のLua実行エンジン（Lua 5.2 互換） | 3-Clause BSD License |
+| [LuaJIT](https://github.com/LuaJIT/LuaJIT) | ピクセル操作向け高速ランタイム（`native/luajit.exe`・`lua51.dll`） | MIT License |
+ 
+### MoonSharp（3-Clause BSD License）
  
 ```
 Copyright (c) 2014-2016, Marco Mastropaolo
@@ -375,6 +382,34 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+ 
+### LuaJIT（MIT License）
+ 
+同梱の高速ランタイム（`native/luajit.exe`・`native/lua51.dll`）は LuaJIT v2.1 です。LuaJIT 本体は MIT License で配布されており、その中に Lua 5.1/5.2（Copyright © 1994-2012 Lua.org, PUC-Rio、MIT License）および dlmalloc（パブリックドメイン）のコードを含みます。以下は LuaJIT 本体の著作権表示です（Lua・dlmalloc を含む全文は `LICENSE/LuaJIT.txt` を参照）。
+ 
+```
+LuaJIT -- a Just-In-Time Compiler for Lua. https://luajit.org/
+
+Copyright (C) 2005-2026 Mike Pall. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
 ```
  
 ---
