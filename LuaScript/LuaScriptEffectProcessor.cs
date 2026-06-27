@@ -1,5 +1,7 @@
+using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LuaScript.Engine;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
@@ -42,9 +44,17 @@ namespace LuaScript
             DrawDescription InputDesc
         );
 
+        private const int NativeTimeoutMilliseconds = 5000;
+
+        private static string NativeDirectory =>
+            Path.Combine(Path.GetDirectoryName(typeof(LuaScriptEffectProcessor).Assembly.Location) ?? AppContext.BaseDirectory, "native");
+
         private readonly LuaScriptEngine _engine = new();
         private readonly SemaphoreSlim _pixelLoaderSemaphore = new(1, 1);
         private AviUtlScriptContext _context = new();
+
+        private LuaJitWorker? _nativeWorker;
+        private double[]? _nativeFields;
 
         private EffectDescription? _frameDesc;
         private SceneObjectResolver? _frameResolver;
@@ -168,19 +178,27 @@ namespace LuaScript
 
             try
             {
-                _engine.Execute(script, ctx);
-
-                if (ctx.IsPixelsDirty)
+                if (ScriptDirective.Resolve(script) == ScriptEngineKind.Native &&
+                    LuaJitWorker.IsAvailable(NativeDirectory))
                 {
-                    EnsureBitmaps(imgW, imgH);
-                    WritePixelsToOutput(ctx.GetPixelBuffer()!, imgW);
-                    UpdateTransformEffect(bounds);
-                    effectOutput = _transformEffect!.Output;
-                    pixelsModified = true;
+                    pixelsModified = ExecuteNative(script, ctx, bounds, imgW, imgH);
                 }
                 else
                 {
-                    effectOutput = null;
+                    _engine.Execute(script, ctx);
+
+                    if (ctx.IsPixelsDirty)
+                    {
+                        EnsureBitmaps(imgW, imgH);
+                        WritePixelsToOutput(ctx.GetPixelBuffer()!, imgW);
+                        UpdateTransformEffect(bounds);
+                        effectOutput = _transformEffect!.Output;
+                        pixelsModified = true;
+                    }
+                    else
+                    {
+                        effectOutput = null;
+                    }
                 }
 
                 outDesc = BuildOutputDesc(inDesc, ctx);
@@ -326,6 +344,39 @@ namespace LuaScript
             };
         }
 
+        private bool ExecuteNative(string script, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
+        {
+            _nativeWorker ??= new LuaJitWorker(NativeDirectory);
+            _nativeFields ??= new double[NativeProtocol.FieldCount];
+
+            NativeFieldMap.ToFields(ctx, _nativeFields);
+            byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
+
+            bool ok = _nativeWorker.Execute(
+                script, _nativeFields, buffer, imgW, imgH, NativeTimeoutMilliseconds, out bool dirty, out string? error);
+
+            if (!ok)
+            {
+                if (error is not null && error.Contains("timed out", StringComparison.Ordinal))
+                    throw new LuaScriptTimeoutException(error);
+                throw new LuaScriptRuntimeException(error ?? "Native script execution failed.");
+            }
+
+            NativeFieldMap.FromFields(_nativeFields, ctx);
+
+            if (dirty)
+            {
+                EnsureBitmaps(imgW, imgH);
+                WritePixelsToOutput(buffer, imgW);
+                UpdateTransformEffect(bounds);
+                effectOutput = _transformEffect!.Output;
+                return true;
+            }
+
+            effectOutput = null;
+            return false;
+        }
+
         private byte[] LoadInputPixels(RawRectF bounds, int width, int height)
         {
             _pixelLoaderSemaphore.Wait();
@@ -438,6 +489,7 @@ namespace LuaScript
             if (disposing)
             {
                 _engine.Dispose();
+                _nativeWorker?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _renderTarget?.Dispose();
                 _stagingBitmap?.Dispose();
