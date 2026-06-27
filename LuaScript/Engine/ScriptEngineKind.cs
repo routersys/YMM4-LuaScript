@@ -12,10 +12,24 @@ namespace LuaScript.Engine
 
     internal static class ScriptDirective
     {
-        public static ScriptEngineKind Resolve(string? script)
+        public static ScriptEngineKind Resolve(string? script) =>
+            TryGetDirective(script, out var kind) ? kind : ScriptEngineKind.MoonSharp;
+
+        public static ScriptEngineKind ResolveAuto(string? script)
         {
+            if (TryGetDirective(script, out var kind))
+                return kind;
+            return UsesPixelApi(script) ? ScriptEngineKind.Native : ScriptEngineKind.MoonSharp;
+        }
+
+        public static bool UsesPixelApi(string? script) =>
+            script is not null && (script.Contains("getpixel", StringComparison.Ordinal) || script.Contains("setpixel", StringComparison.Ordinal));
+
+        private static bool TryGetDirective(string? script, out ScriptEngineKind kind)
+        {
+            kind = ScriptEngineKind.MoonSharp;
             if (string.IsNullOrEmpty(script))
-                return ScriptEngineKind.MoonSharp;
+                return false;
 
             int index = 0;
             int length = script.Length;
@@ -28,13 +42,13 @@ namespace LuaScript.Engine
                 if (lineEnd > lineStart && script[lineEnd - 1] == '\r')
                     lineEnd--;
 
-                if (TryParseDirectiveLine(script, lineStart, lineEnd, out var kind))
-                    return kind;
+                if (TryParseDirectiveLine(script, lineStart, lineEnd, out kind))
+                    return true;
 
                 index++;
             }
 
-            return ScriptEngineKind.MoonSharp;
+            return false;
         }
 
         private static bool TryParseDirectiveLine(string script, int start, int end, out ScriptEngineKind kind)
