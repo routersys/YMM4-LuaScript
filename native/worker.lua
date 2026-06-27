@@ -214,6 +214,7 @@ while true do
 
     if compiledChunk and code == compiledCode then
         loadFields()
+        math.randomseed(f64[31])
         setfenv(compiledChunk, sandbox)
         local ok, err = pcall(compiledChunk)
         if ok then
