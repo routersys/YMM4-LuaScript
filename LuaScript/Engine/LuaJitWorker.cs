@@ -139,6 +139,8 @@ namespace LuaScript.Engine
             psi.ArgumentList.Add(_shimScript);
 
             _process = Process.Start(psi);
+            if (_process is not null)
+                ProcessJobObject.Assign(_process.Handle);
             _alive = _process is not null;
         }
 
