@@ -4,10 +4,13 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Controls;
 using YukkuriMovieMaker.Exo;
 using YukkuriMovieMaker.Player.Video;
+using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Plugin.Effects;
 
 namespace LuaScript
 {
+    [PluginDetails(AuthorName = "routersys", ContentId = "nc487743")]
+
     [VideoEffect(nameof(Texts.LuaScript), [VideoEffectCategories.Filtering], ["lua", "script", "スクリプト", "lua script", "アニメーション効果", "animation"], IsAviUtlSupported = false, ResourceType = typeof(Texts))]
     internal class LuaScriptEffect : VideoEffectBase, IScriptProvider
     {
