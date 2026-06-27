@@ -34,6 +34,7 @@
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlScript.cs" Link="Linked\AviUtlScript.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlRandom.cs" Link="Linked\AviUtlRandom.cs" />
+    <Compile Include="..\LuaScript\Compat\FigureRenderer.cs" Link="Linked\FigureRenderer.cs" />
   </ItemGroup>
 
 </Project>
