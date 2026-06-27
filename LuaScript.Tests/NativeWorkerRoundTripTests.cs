@@ -74,6 +74,41 @@ namespace LuaScript.Tests
             Assert.Equal(expected, pixels);
         }
 
+        [Fact]
+        public void PixelDataProxy_MatchesExpectedGrayscale()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            void SetBgra(int i, byte b, byte g, byte r, byte a)
+            {
+                pixels[i * 4 + 0] = b; pixels[i * 4 + 1] = g; pixels[i * 4 + 2] = r; pixels[i * 4 + 3] = a;
+            }
+            SetBgra(0, 10, 20, 30, 255);
+            SetBgra(1, 0, 0, 0, 0);
+            SetBgra(2, 50, 100, 200, 128);
+            SetBgra(3, 255, 255, 255, 255);
+
+            var expected = (byte[])pixels.Clone();
+            for (int i = 0; i < w * h; i++)
+                Grayscale(expected, i);
+
+            var fields = Fields(w, h, 0d);
+            const string script =
+                "local pd = obj.getpixeldata() local w,h = pd.width, pd.height " +
+                "for y=0,h-1 do for x=0,w-1 do local base=(y*w+x)*4 " +
+                "local r=pd:get(base+1) local g=pd:get(base+2) local b=pd:get(base+3) " +
+                "local gray=r*0.299+g*0.587+b*0.114 " +
+                "pd:set(base+1,gray) pd:set(base+2,gray) pd:set(base+3,gray) end end";
+
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, out bool dirty, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(expected, pixels);
+        }
+
         private static void Grayscale(byte[] px, int i)
         {
             double b = px[i * 4 + 0], g = px[i * 4 + 1], r = px[i * 4 + 2], a = px[i * 4 + 3];
