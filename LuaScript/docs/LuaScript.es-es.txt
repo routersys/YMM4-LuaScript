@@ -319,6 +319,26 @@
                 Devuelve: Un entero dentro de st ~ ed
                 Ejemplo: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        o obj.load(target, ...)
+                Reemplaza el búfer del objeto con contenido generado.
+                En esta versión solo se admite el target "figure".
+                obj.load("figure", name, color, size [, line [, aspect]])
+                        Genera una forma y reemplaza el búfer del objeto con ella
+                        (la salida se redimensiona a la forma y se centra).
+                        name   : Nombre de la forma. Uno de 円 / 四角形 / 三角形 /
+                                 五角形 / 六角形 / 星形 (también se aceptan los alias
+                                 en inglés circle, rect, triangle, pentagon, hexagon, star).
+                        color  : Color de relleno 0xRRGGBB.
+                        size   : Tamaño base en píxeles.
+                        line   : Grosor del contorno (opcional). Omitido o 0 rellena la
+                                 forma; un valor igual o mayor que el tamaño también la rellena.
+                        aspect : Distorsión -1.0 ~ 1.0 (opcional). Positivo reduce el
+                                 ancho, negativo reduce el alto.
+                Ejemplo: obj.load("figure", "円", 0xff3366, 200)
+                * Solo se implementa obj.load("figure", ...). Otros targets
+                  (archivos de imagen, "text", "tempbuffer", "movie", etc.) no hacen nada.
+                * Los scripts de dibujo se ejecutan en el motor MoonSharp.
+
 
 
 - ymm4 Table -
@@ -495,11 +515,16 @@
                 Función de número aleatorio entero determinista compatible con AviUtl.
                 Consulte "Tabla obj - Funciones" para más detalles.
 
+        o Dibujo de figuras
+                obj.load("figure", ...) genera una forma básica (círculo, rectángulo,
+                triángulo, pentágono, hexágono, estrella) y reemplaza el búfer del
+                objeto con ella. Consulte "Tabla obj - Funciones" para más detalles.
+
         Lo siguiente requiere integración con la canalización de renderizado y, por
         tanto, queda fuera del alcance de esta capa. Los scripts que lo llamen no se
         comportarán como se espera.
-                x Carga y dibujo de imágenes, figuras, texto y vídeo
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, etc.)
+                x Dibujo y composición (obj.draw / obj.drawpoly), targets de obj.load
+                  distintos de "figure" (archivos de imagen, "text", "movie", etc.) y obj.setfont
                 x Efectos de filtro y operaciones de búfer
                   (obj.effect / obj.copybuffer / obj.setoption, etc.)
                 x Carga de módulos mediante require y acceso a archivos como io
@@ -507,7 +532,7 @@
 
 - Funciones no admitidas / Limitaciones -
 
-        x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), etc. de AviUtl2 no son compatibles.
+        x obj.effect(), obj.draw(), obj.drawpoly(), etc. de AviUtl2 no son compatibles (solo se admite obj.load("figure", ...); consulte "Compatibilidad parcial con scripts de AviUtl").
         x obj.rand1(), obj.setfont(), obj.mes(), etc. de AviUtl2 no son compatibles.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
         x Las funciones como scene.set() y scene.get() de la tabla scene de AviUtl2 no son compatibles.

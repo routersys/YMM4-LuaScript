@@ -321,6 +321,26 @@
                 Returns : An integer within st ~ ed
                 Example: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        o obj.load(target, ...)
+                Replaces the object buffer with generated content.
+                Only the "figure" target is supported in this version.
+                obj.load("figure", name, color, size [, line [, aspect]])
+                        Generates a shape and replaces the object buffer with it
+                        (the output is resized to the shape and centered).
+                        name   : Shape name. One of 円 / 四角形 / 三角形 / 五角形 /
+                                 六角形 / 星形 (English aliases circle, rect,
+                                 triangle, pentagon, hexagon, star are also accepted).
+                        color  : Fill color 0xRRGGBB.
+                        size   : Bounding size in pixels.
+                        line   : Outline width (optional). Omitted or 0 fills the
+                                 shape; a value at or above the size also fills it.
+                        aspect : Distortion -1.0 ~ 1.0 (optional). Positive shrinks
+                                 the width, negative shrinks the height.
+                Example: obj.load("figure", "円", 0xff3366, 200)
+                * Only obj.load("figure", ...) is implemented. Other targets
+                  (image files, "text", "tempbuffer", "movie", etc.) do nothing.
+                * Drawing scripts run on the MoonSharp engine.
+
 
 
 - ymm4 Table -
@@ -495,10 +515,15 @@
                 A deterministic integer random function compatible with AviUtl.
                 See "obj Table - Functions" for details.
 
+        o Figure drawing
+                obj.load("figure", ...) generates a basic shape (circle, rectangle,
+                triangle, pentagon, hexagon, star) and replaces the object buffer
+                with it. See "obj Table - Functions" for details.
+
         The following require integration with the rendering pipeline and are out of
         scope for this layer. Scripts that call them will not behave as intended.
-                x Loading and drawing of images, figures, text and video
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, etc.)
+                x Drawing and compositing (obj.draw / obj.drawpoly), obj.load targets
+                  other than "figure" (image files, "text", "movie", etc.) and obj.setfont
                 x Filter effects and buffer operations
                   (obj.effect / obj.copybuffer / obj.setoption, etc.)
                 x Module loading via require, and file access such as io
@@ -506,7 +531,7 @@
 
 - Unsupported Features / Limitations -
 
-        x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), etc. from AviUtl2 are not supported.
+        x obj.effect(), obj.draw(), obj.drawpoly(), etc. from AviUtl2 are not supported (only obj.load("figure", ...) is supported; see "AviUtl Script Compatibility (Partial)").
         x obj.rand1(), obj.setfont(), obj.mes(), etc. from AviUtl2 are not supported.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), etc. from AviUtl2 are not supported.
         x Functions such as scene.set() and scene.get() in the AviUtl2 scene table are not supported.

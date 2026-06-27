@@ -317,6 +317,26 @@
                 Hasil   : Bilangan bulat dalam st ~ ed
                 Contoh: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        o obj.load(target, ...)
+                Mengganti buffer objek dengan konten yang dihasilkan.
+                Pada versi ini hanya target "figure" yang didukung.
+                obj.load("figure", name, color, size [, line [, aspect]])
+                        Menghasilkan sebuah bentuk dan mengganti buffer objek dengannya
+                        (output diubah ukurannya sesuai bentuk dan dipusatkan).
+                        name   : Nama bentuk. Salah satu dari 円 / 四角形 / 三角形 /
+                                 五角形 / 六角形 / 星形 (alias Inggris circle, rect,
+                                 triangle, pentagon, hexagon, star juga diterima).
+                        color  : Warna isi 0xRRGGBB.
+                        size   : Ukuran dasar dalam piksel.
+                        line   : Lebar garis tepi (opsional). Dihilangkan atau 0 mengisi
+                                 bentuk; nilai sama atau lebih besar dari ukuran juga mengisinya.
+                        aspect : Distorsi -1.0 ~ 1.0 (opsional). Positif mengecilkan
+                                 lebar, negatif mengecilkan tinggi.
+                Contoh: obj.load("figure", "円", 0xff3366, 200)
+                * Hanya obj.load("figure", ...) yang diimplementasikan. Target lain
+                  (berkas gambar, "text", "tempbuffer", "movie", dll.) tidak melakukan apa pun.
+                * Skrip penggambaran dijalankan pada mesin MoonSharp.
+
 
 
 - ymm4 Table -
@@ -492,11 +512,16 @@
                 Fungsi bilangan acak bulat deterministik yang kompatibel dengan AviUtl.
                 Lihat "Tabel obj - Fungsi" untuk detailnya.
 
+        o Penggambaran figur
+                obj.load("figure", ...) menghasilkan bentuk dasar (lingkaran, persegi,
+                segitiga, segilima, segienam, bintang) dan mengganti buffer objek
+                dengannya. Lihat "Tabel obj - Fungsi" untuk detailnya.
+
         Berikut ini memerlukan integrasi dengan pipeline render sehingga berada di
         luar cakupan lapisan ini. Skrip yang memanggilnya tidak akan berperilaku
         seperti yang diharapkan.
-                x Pemuatan dan penggambaran gambar, figur, teks, dan video
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, dll.)
+                x Penggambaran dan komposisi (obj.draw / obj.drawpoly), target obj.load
+                  selain "figure" (berkas gambar, "text", "movie", dll.) dan obj.setfont
                 x Efek filter dan operasi buffer
                   (obj.effect / obj.copybuffer / obj.setoption, dll.)
                 x Pemuatan modul melalui require, dan akses file seperti io
@@ -504,7 +529,7 @@
 
 - Fitur yang Tidak Didukung / Batasan -
 
-        x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), dll. dari AviUtl2 tidak didukung.
+        x obj.effect(), obj.draw(), obj.drawpoly(), dll. dari AviUtl2 tidak didukung (hanya obj.load("figure", ...) yang didukung; lihat "Kompatibilitas Parsial Skrip AviUtl").
         x obj.rand1(), obj.setfont(), obj.mes(), dll. dari AviUtl2 tidak didukung.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
         x Fungsi seperti scene.set() dan scene.get() dalam tabel scene AviUtl2 tidak didukung.

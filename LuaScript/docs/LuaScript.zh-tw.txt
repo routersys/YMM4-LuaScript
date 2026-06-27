@@ -310,6 +310,24 @@
                 回傳值  : st ～ ed 的整數
                 範例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        ○ obj.load(目標, ...)
+                將物件緩衝區替換為產生的內容。本版本僅支援 "figure"(圖形)。
+                obj.load("figure", 名稱, 顏色, 大小 [, 線寬 [, 長寬比]])
+                        產生圖形並替換物件緩衝區
+                        (輸出依圖形大小產生並置中)。
+                        名稱    : 圖形名。円 / 四角形 / 三角形 / 五角形 / 六角形 /
+                                  星形 之一(亦可用英文 circle, rect, triangle,
+                                  pentagon, hexagon, star)。
+                        顏色    : 填滿色 0xRRGGBB。
+                        大小    : 圖形基準大小(像素)。
+                        線寬    : 輪廓寬度(可省略)。省略或 0 為填滿;
+                                  指定大於等於大小的值時亦為填滿。
+                        長寬比  : 變形 -1.0 ～ 1.0(可省略)。正值縮小寬度，負值縮小高度。
+                範例：obj.load("figure", "円", 0xff3366, 200)
+                * 僅實作了 obj.load("figure", ...)。影像檔、"text"、"tempbuffer"、
+                  "movie" 等目標不執行任何動作。
+                * 繪製類腳本在 MoonSharp 引擎上執行。
+
 
 
 - ymm4 表 -
@@ -477,10 +495,14 @@
         ○ obj.rand(st, ed [, seed [, frame]])
                 與 AviUtl 相容的確定性整數亂數。詳情請參閱「obj 表 - 函式」。
 
+        ○ 圖形繪製
+                obj.load("figure", ...) 產生圓、四角形、三角形、五角形、六角形、星形，
+                並替換物件緩衝區。詳情請參閱「obj 表 - 函式」。
+
         以下功能需要與本體的繪製管線整合，因此不在此相容層的範圍內。
         呼叫它們的腳本不會如預期運作。
-                × 影像、圖形、文字、影片的載入與繪製
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont 等)
+                × 繪製與合成(obj.draw / obj.drawpoly)、obj.load 的 "figure" 以外目標
+                  (影像檔、"text"、"movie" 等)，以及 obj.setfont
                 × 濾鏡效果與緩衝區操作
                   (obj.effect / obj.copybuffer / obj.setoption 等)
                 × 透過 require 載入模組，以及 io 等檔案存取
@@ -488,7 +510,7 @@
 
 - 不支援項目·限制事項 -
 
-        × 不支援 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly()、obj.load() 等。
+        × 不支援 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly() 等(obj.load 僅支援 "figure"，參閱「AviUtl 腳本的部分相容」)。
         × 不支援 AviUtl2 的 obj.rand1()、obj.setfont()、obj.mes() 等。
         × 不支援 AviUtl2 的 obj.setoption()、obj.getoption()、obj.getvalue()、obj.setanchor() 等。
         × 不支援 AviUtl2 scene 表中的 scene.set()、scene.get() 等函式。

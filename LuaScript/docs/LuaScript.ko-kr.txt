@@ -312,6 +312,25 @@
                 반환값  : st ～ ed의 정수
                 예: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        ○ obj.load(대상, ...)
+                오브젝트 버퍼를 생성한 내용으로 교체합니다.
+                이 버전에서는 "figure"(도형)만 지원합니다.
+                obj.load("figure", 이름, 색, 크기 [, 라인 [, 종횡비]])
+                        도형을 생성하여 오브젝트 버퍼를 교체합니다
+                        (출력은 도형 크기에 맞춰 생성되고 중심에 배치됩니다).
+                        이름    : 도형 이름. 円 / 四角形 / 三角形 / 五角形 / 六角形 /
+                                  星形 중 하나(영어 circle, rect, triangle,
+                                  pentagon, hexagon, star 도 사용 가능).
+                        색      : 채움 색 0xRRGGBB.
+                        크기    : 도형의 기준 크기(픽셀).
+                        라인    : 외곽선 두께(생략 가능). 생략 또는 0이면 채움.
+                                  크기 이상의 값을 지정한 경우에도 채움이 됩니다.
+                        종횡비  : 왜곡 -1.0 ～ 1.0(생략 가능). 양수는 너비, 음수는 높이를 줄입니다.
+                예: obj.load("figure", "円", 0xff3366, 200)
+                ※ 구현된 것은 obj.load("figure", ...) 뿐입니다. 이미지 파일,
+                  "text"・"tempbuffer"・"movie" 등의 대상은 아무것도 하지 않습니다.
+                ※ 그리기 계열 스크립트는 MoonSharp 엔진에서 실행됩니다.
+
 
 
 - ymm4 테이블 -
@@ -484,10 +503,15 @@
                 AviUtl 호환의 결정론적 정수 난수입니다. 자세한 내용은
                 "obj 테이블 - 함수"를 참조하세요.
 
+        ○ 도형 그리기
+                obj.load("figure", ...) 로 원·사각형·삼각형·오각형·육각형·별형을
+                생성하여 오브젝트 버퍼를 교체합니다. 자세한 내용은
+                "obj 테이블 - 함수"를 참조하세요.
+
         다음 기능은 본체의 렌더링 파이프라인과의 통합이 필요하므로 이 호환
         계층의 범위 밖입니다. 이를 호출하는 스크립트는 의도대로 동작하지 않습니다.
-                × 이미지·도형·텍스트·동영상의 로드 및 그리기
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont 등)
+                × 그리기·합성(obj.draw / obj.drawpoly), obj.load의 "figure" 이외 대상
+                  (이미지 파일·"text"・"movie" 등), 그리고 obj.setfont
                 × 필터 효과 및 버퍼 조작
                   (obj.effect / obj.copybuffer / obj.setoption 등)
                 × require에 의한 모듈 로드 및 io 등의 파일 접근
@@ -495,7 +519,7 @@
 
 - 미지원·제한 사항 -
 
-        × AviUtl2의 obj.effect(), obj.draw(), obj.drawpoly(), obj.load() 등은 지원하지 않습니다.
+        × AviUtl2의 obj.effect(), obj.draw(), obj.drawpoly() 등은 지원하지 않습니다(obj.load은 "figure"만 지원. "AviUtl 스크립트 부분 호환" 참조).
         × AviUtl2의 obj.rand1(), obj.setfont(), obj.mes() 등은 지원하지 않습니다.
         × AviUtl2의 obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 등은 지원하지 않습니다.
         × AviUtl2의 scene 테이블의 scene.set(), scene.get() 등의 함수는 지원하지 않습니다.

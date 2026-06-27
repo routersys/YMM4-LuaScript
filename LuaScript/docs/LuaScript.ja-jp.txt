@@ -316,6 +316,25 @@
                 戻り値  : st ～ ed の整数
                 例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
+        ○obj.load(対象, ...)
+                オブジェクトのバッファを生成した内容に置き換えます。
+                本バージョンでは "figure"(図形)のみ対応します。
+                obj.load("figure", 名前, 色, サイズ [, ライン [, アスペクト]])
+                        図形を生成してオブジェクトのバッファを置き換えます
+                        (出力は図形サイズに合わせて生成され、中心に配置されます)。
+                        名前      : 図形名。円 / 四角形 / 三角形 / 五角形 / 六角形 /
+                                    星形 のいずれか(英語名 circle, rect, triangle,
+                                    pentagon, hexagon, star も使用可)。
+                        色        : 塗り色 0xRRGGBB。
+                        サイズ    : 図形の基準サイズ(ピクセル)。
+                        ライン    : 輪郭の太さ(省略可)。省略または 0 で塗りつぶし。
+                                    サイズ以上の値を指定した場合も塗りつぶしになります。
+                        アスペクト: 歪曲 -1.0 ～ 1.0(省略可)。正で横幅、負で縦幅が縮みます。
+                例：obj.load("figure", "円", 0xff3366, 200)
+                ※ 実装されているのは obj.load("figure", ...) のみです。画像ファイルや
+                  "text"・"tempbuffer"・"movie" 等の対象は何も行いません。
+                ※ 描画系スクリプトは従来エンジン(MoonSharp)で実行されます。
+
 
 
 - ymm4 テーブル -
@@ -488,10 +507,15 @@
                 AviUtl 互換の決定論的な整数乱数です。詳細は「obj テーブル - 関数」を
                 参照してください。
 
+        ○図形描画
+                obj.load("figure", ...) で円・四角形・三角形・五角形・六角形・星形を
+                生成し、オブジェクトのバッファを置き換えます。詳細は「obj テーブル -
+                関数」を参照してください。
+
         次の機能は本体の描画パイプラインへの統合を要するため、この互換層では対象外です。
         これらを呼び出すスクリプトは意図どおりには動作しません。
-                ×画像・図形・テキスト・動画の読み込みと描画
-                  (obj.load / obj.draw / obj.drawpoly / obj.setfont など)
+                ×描画・合成(obj.draw / obj.drawpoly)、obj.load の "figure" 以外の対象
+                  (画像ファイル・"text"・"movie" 等)、および obj.setfont
                 ×フィルタ効果やバッファ操作
                   (obj.effect / obj.copybuffer / obj.setoption など)
                 ×require によるモジュール読み込み、io などのファイルアクセス
@@ -499,7 +523,7 @@
 
 - 非対応・制限事項 -
 
-        ×AviUtl2 の obj.effect(), obj.draw(), obj.drawpoly(), obj.load() 等には対応していません。
+        ×AviUtl2 の obj.effect(), obj.draw(), obj.drawpoly() 等には対応していません(obj.load は "figure" のみ対応。「AviUtl スクリプトの部分互換」を参照)。
         ×AviUtl2 の obj.rand1(), obj.setfont(), obj.mes() 等には対応していません。
         ×AviUtl2 の obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 等には対応していません。
         ×AviUtl2 の scene テーブルの scene.set(), scene.get() 等の関数には対応していません。
