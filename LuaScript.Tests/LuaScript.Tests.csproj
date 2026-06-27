@@ -20,13 +20,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="native\**" CopyToOutputDirectory="PreserveNewest" LinkBase="native" />
+    <None Include="..\native\**" CopyToOutputDirectory="PreserveNewest" LinkBase="native" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Include="..\LuaScript\Compat\MoonSharpBit32.cs" Link="Linked\MoonSharpBit32.cs" />
     <Compile Include="..\LuaScript\Compat\Bit32.cs" Link="Linked\Bit32.cs" />
     <Compile Include="..\LuaScript\Engine\ScriptEngineKind.cs" Link="Linked\ScriptEngineKind.cs" />
+    <Compile Include="..\LuaScript\Engine\NativeProtocol.cs" Link="Linked\NativeProtocol.cs" />
+    <Compile Include="..\LuaScript\Engine\LuaJitWorker.cs" Link="Linked\LuaJitWorker.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
   </ItemGroup>
 
