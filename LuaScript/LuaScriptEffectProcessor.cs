@@ -1,6 +1,7 @@
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LuaScript.Compat;
 using LuaScript.Engine;
 using Vortice;
 using Vortice.DCommon;
@@ -77,6 +78,9 @@ namespace LuaScript
         private RawRectF _cachedBounds;
 
         private bool _isFirst = true;
+        private string _sourceScript = string.Empty;
+        private string _runnableScript = string.Empty;
+        private bool _runnableCached;
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
         private SceneObjectQuery[] _cachedQueries = [];
@@ -110,6 +114,17 @@ namespace LuaScript
                 _sceneIdCached = true;
             }
             return _lastSceneId;
+        }
+
+        private string GetRunnableScript(string source)
+        {
+            if (_runnableCached && string.Equals(source, _sourceScript, StringComparison.Ordinal))
+                return _runnableScript;
+
+            _runnableScript = AviUtlScript.Transform(source);
+            _sourceScript = source;
+            _runnableCached = true;
+            return _runnableScript;
         }
 
         protected override void setInput(ID2D1Image? input)
@@ -179,18 +194,19 @@ namespace LuaScript
 
             try
             {
-                bool wantNative = ScriptDirective.ResolveAuto(script) == ScriptEngineKind.Native;
+                string runnable = GetRunnableScript(script);
+                bool wantNative = ScriptDirective.ResolveAuto(runnable) == ScriptEngineKind.Native;
                 bool nativeReady = wantNative && LuaJitWorker.IsAvailable(NativeDirectory);
                 if (wantNative && !nativeReady)
                     WarnNativeUnavailableOnce();
 
                 if (nativeReady)
                 {
-                    pixelsModified = ExecuteNative(script, ctx, bounds, imgW, imgH);
+                    pixelsModified = ExecuteNative(runnable, ctx, bounds, imgW, imgH);
                 }
                 else
                 {
-                    _engine.Execute(script, ctx);
+                    _engine.Execute(runnable, ctx);
 
                     if (ctx.IsPixelsDirty)
                     {
