@@ -55,6 +55,7 @@ namespace LuaScript
 
         private LuaJitWorker? _nativeWorker;
         private double[]? _nativeFields;
+        private bool _nativeWarned;
 
         private EffectDescription? _frameDesc;
         private SceneObjectResolver? _frameResolver;
@@ -178,8 +179,12 @@ namespace LuaScript
 
             try
             {
-                if (ScriptDirective.Resolve(script) == ScriptEngineKind.Native &&
-                    LuaJitWorker.IsAvailable(NativeDirectory))
+                bool wantNative = ScriptDirective.ResolveAuto(script) == ScriptEngineKind.Native;
+                bool nativeReady = wantNative && LuaJitWorker.IsAvailable(NativeDirectory);
+                if (wantNative && !nativeReady)
+                    WarnNativeUnavailableOnce();
+
+                if (nativeReady)
                 {
                     pixelsModified = ExecuteNative(script, ctx, bounds, imgW, imgH);
                 }
@@ -342,6 +347,13 @@ namespace LuaScript
                 Opacity = Math.Clamp(ctx.Alpha / 255d, 0d, 1d),
                 Rotation = new Vector3((float)ctx.Rx, (float)ctx.Ry, (float)ctx.Rz),
             };
+        }
+
+        private void WarnNativeUnavailableOnce()
+        {
+            if (_nativeWarned) return;
+            _nativeWarned = true;
+            Log.Default.Write($"LuaScript: native runtime not found at '{NativeDirectory}'. Falling back to MoonSharp (slow). Deploy the 'native' folder next to the plugin.");
         }
 
         private bool ExecuteNative(string script, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
