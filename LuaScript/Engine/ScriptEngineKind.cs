@@ -19,11 +19,21 @@ namespace LuaScript.Engine
         {
             if (TryGetDirective(script, out var kind))
                 return kind;
+            if (UsesDrawingApi(script))
+                return ScriptEngineKind.MoonSharp;
             return UsesPixelApi(script) ? ScriptEngineKind.Native : ScriptEngineKind.MoonSharp;
         }
 
         public static bool UsesPixelApi(string? script) =>
             script is not null && (script.Contains("getpixel", StringComparison.Ordinal) || script.Contains("setpixel", StringComparison.Ordinal));
+
+        public static bool UsesDrawingApi(string? script) =>
+            script is not null && (
+                script.Contains("obj.load", StringComparison.Ordinal) ||
+                script.Contains("obj.draw", StringComparison.Ordinal) ||
+                script.Contains("obj.effect", StringComparison.Ordinal) ||
+                script.Contains("obj.setoption", StringComparison.Ordinal) ||
+                script.Contains("obj.copybuffer", StringComparison.Ordinal));
 
         private static bool TryGetDirective(string? script, out ScriptEngineKind kind)
         {

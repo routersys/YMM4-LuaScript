@@ -463,6 +463,46 @@ namespace LuaScript
                     double frame = args.Count > 3 ? args[3].CastToNumber() ?? frameDefault : frameDefault;
                     return DynValue.NewNumber(AviUtlRandom.Next(a, b, seed, frame));
                 });
+
+                obj["load"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count < 4)
+                        return DynValue.Void;
+                    if (args[0].Type != DataType.String || args[0].String != "figure")
+                        return DynValue.Void;
+
+                    string name = args[1].Type == DataType.String ? args[1].String : string.Empty;
+                    int color = (int)(args[2].CastToNumber() ?? 0d);
+                    double size = args[3].CastToNumber() ?? 0d;
+                    double line = args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d;
+                    double aspect = args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d;
+
+                    LoadFigure(name, color, size, line, aspect);
+                    return DynValue.Void;
+                });
+            }
+
+            private void LoadFigure(string name, int color, double size, double line, double aspect)
+            {
+                int boundingSize = Math.Max(1, (int)Math.Round(size));
+                double width = aspect >= 0d ? boundingSize * (1d - aspect) : boundingSize;
+                double height = aspect <= 0d ? boundingSize * (1d + aspect) : boundingSize;
+                int w = Math.Max(1, (int)Math.Round(width));
+                int h = Math.Max(1, (int)Math.Round(height));
+
+                var buffer = FigureRenderer.Render(name, w, h, color, line);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+
+                var obj = _objTable!;
+                obj["w"] = w;
+                obj["h"] = h;
+                obj["hw"] = w / 2d;
+                obj["hh"] = h / 2d;
+                obj["cx"] = w / 2d;
+                obj["cy"] = h / 2d;
+                obj["cz"] = 0d;
+                obj["diagonal"] = Math.Sqrt((double)w * w + (double)h * h);
             }
 
             private static DynValue BuildObjectTable(Script script, SceneObjectInfo info)

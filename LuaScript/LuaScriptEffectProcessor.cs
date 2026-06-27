@@ -210,9 +210,14 @@ namespace LuaScript
 
                     if (ctx.IsPixelsDirty)
                     {
-                        EnsureBitmaps(imgW, imgH);
-                        WritePixelsToOutput(ctx.GetPixelBuffer()!, imgW);
-                        UpdateTransformEffect(bounds);
+                        int bufW = ctx.ImageWidth;
+                        int bufH = ctx.ImageHeight;
+                        EnsureBitmaps(bufW, bufH);
+                        WritePixelsToOutput(ctx.GetPixelBuffer()!, bufW);
+                        if (ctx.BufferReplaced)
+                            UpdateTransformEffect(-bufW / 2f, -bufH / 2f);
+                        else
+                            UpdateTransformEffect(bounds.Left, bounds.Top);
                         effectOutput = _transformEffect!.Output;
                         pixelsModified = true;
                     }
@@ -398,7 +403,7 @@ namespace LuaScript
             {
                 EnsureBitmaps(imgW, imgH);
                 WritePixelsToOutput(buffer, imgW);
-                UpdateTransformEffect(bounds);
+                UpdateTransformEffect(bounds.Left, bounds.Top);
                 effectOutput = _transformEffect!.Output;
                 return true;
             }
@@ -462,7 +467,7 @@ namespace LuaScript
                 _outputBitmap!.CopyFromMemory(new nint(ptr), width * 4);
         }
 
-        private void UpdateTransformEffect(RawRectF bounds)
+        private void UpdateTransformEffect(float left, float top)
         {
             if (_transformEffect is null)
             {
@@ -471,10 +476,10 @@ namespace LuaScript
                 _cachedBounds = default;
             }
 
-            if (_cachedBounds.Left != bounds.Left || _cachedBounds.Top != bounds.Top)
+            if (_cachedBounds.Left != left || _cachedBounds.Top != top)
             {
-                _transformEffect.TransformMatrix = Matrix3x2.CreateTranslation(bounds.Left, bounds.Top);
-                _cachedBounds = bounds;
+                _transformEffect.TransformMatrix = Matrix3x2.CreateTranslation(left, top);
+                _cachedBounds = new RawRectF(left, top, left, top);
             }
         }
 

@@ -63,8 +63,10 @@ namespace LuaScript
         private byte[]? _pixelBuffer;
         private bool _pixelBufferLoaded;
         private bool _isPixelsDirty;
+        private bool _bufferReplaced;
 
         public bool IsPixelsDirty => _isPixelsDirty;
+        public bool BufferReplaced => _bufferReplaced;
 
         internal int TotalChannels => ImageWidth * ImageHeight * 4;
 
@@ -76,6 +78,17 @@ namespace LuaScript
             _pixelBuffer = null;
             _pixelBufferLoaded = false;
             _isPixelsDirty = false;
+            _bufferReplaced = false;
+        }
+
+        internal void ReplaceBuffer(byte[] buffer, int width, int height)
+        {
+            _pixelBuffer = buffer;
+            _pixelBufferLoaded = true;
+            _isPixelsDirty = true;
+            _bufferReplaced = true;
+            ImageWidth = width;
+            ImageHeight = height;
         }
 
         internal void EnsurePixelBuffer()
