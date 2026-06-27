@@ -88,6 +88,54 @@ function obj.setpixel(x, y, r, g, b, a)
     p[3] = math.floor(clamp(a, 0, 255))
 end
 
+function obj.getpixeldata()
+    local total = width * height * 4
+    local buf = pixels
+    local pd = { width = width, height = height }
+    function pd:get(index)
+        local zb = index - 1
+        if zb < 0 or zb >= total then return 0 end
+        local pi = math.floor(zb / 4)
+        local ch = zb - pi * 4
+        local p = buf + pi * 4
+        local a = p[3]
+        if ch == 3 then return a end
+        if a <= 0 then return 0 end
+        local sc = 255 / a
+        if ch == 0 then return clamp(p[2] * sc, 0, 255) end
+        if ch == 1 then return clamp(p[1] * sc, 0, 255) end
+        return clamp(p[0] * sc, 0, 255)
+    end
+    function pd:set(index, value)
+        local zb = index - 1
+        if zb < 0 or zb >= total then return end
+        dirty = true
+        local pi = math.floor(zb / 4)
+        local ch = zb - pi * 4
+        local p = buf + pi * 4
+        local clamped = clamp(value, 0, 255)
+        if ch == 3 then
+            local oldA = p[3]
+            local newA = clamped
+            if oldA > 0 and newA > 0 then
+                local f = newA / oldA
+                p[0] = math.floor(clamp(p[0] * f, 0, 255))
+                p[1] = math.floor(clamp(p[1] * f, 0, 255))
+                p[2] = math.floor(clamp(p[2] * f, 0, 255))
+            elseif newA <= 0 then
+                p[0] = 0; p[1] = 0; p[2] = 0
+            end
+            p[3] = math.floor(newA)
+        else
+            local a = p[3]
+            local pm = clamped * (a / 255)
+            local bo = (ch == 0) and 2 or ((ch == 1) and 1 or 0)
+            p[bo] = math.floor(clamp(pm, 0, 255))
+        end
+    end
+    return pd
+end
+
 function obj.putpixeldata() end
 function obj.getobject() return nil end
 
