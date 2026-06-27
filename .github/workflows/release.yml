@@ -70,6 +70,7 @@ jobs:
 
           New-Item -ItemType Directory -Path "$stageRoot/docs" -Force | Out-Null
           New-Item -ItemType Directory -Path "$stageRoot/native" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$stageRoot/LICENSE" -Force | Out-Null
 
           Copy-Item "$outDir/LuaScript.dll"           "$stageRoot/"
           Copy-Item "$outDir/MoonSharp.Interpreter.dll" "$stageRoot/"
@@ -87,6 +88,7 @@ jobs:
           }
 
           Copy-Item "LuaScript/docs/LuaScript.*.txt" "$stageRoot/docs/"
+          Copy-Item ".github/LICENSE/*.txt"          "$stageRoot/LICENSE/"
           Copy-Item ".github/Plugin_Readme.txt"      "$stageRoot/Readme.txt"
 
           Compress-Archive -Path "stage/*" -DestinationPath $pkgName -CompressionLevel Optimal
