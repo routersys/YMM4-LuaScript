@@ -196,6 +196,37 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void GetObject_CachesRepeatedQueryAndResetsEachRun()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            int calls = 0;
+            double x = 10d;
+            Func<string, int, SceneObjectInfo?> resolver = (tag, frame) =>
+            {
+                calls++;
+                return tag == "a" ? new SceneObjectInfo("a", true, x, 0, 0, 1, 0, 255, 0) : null;
+            };
+
+            const string script =
+                "local a = obj.getobject(\"a\") " +
+                "local b = obj.getobject(\"a\") " +
+                "obj.x = a.x + b.x";
+
+            bool ok = _worker.Execute(script, Fields(2, 2, 0d), pixels, 2, 2, 5000, resolver, out _, out string? error);
+            Assert.True(ok, error);
+            Assert.Equal(1, calls);
+            var fields = Fields(2, 2, 0d);
+
+            x = 20d;
+            ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, out _, out error);
+            Assert.True(ok, error);
+            Assert.Equal(2, calls);
+            Assert.Equal(40d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
         public void GetObject_ReturnsNil_WhenUnresolved()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

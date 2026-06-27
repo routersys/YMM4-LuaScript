@@ -146,9 +146,27 @@ end
 
 function obj.putpixeldata() end
 
+local cacheTag, cacheFrame, cacheFound
+local cacheExist, cacheX, cacheY, cacheZ, cacheZoom, cacheRz, cacheAlpha, cacheLayer
+
+local function buildObject()
+    return {
+        exist = cacheExist,
+        x = cacheX, y = cacheY, z = cacheZ,
+        zoom = cacheZoom, sx = cacheZoom, sy = cacheZoom,
+        rx = 0, ry = 0, rz = cacheRz,
+        rxr = 0, ryr = 0, rzr = cacheRz * math.pi / 180,
+        alpha = cacheAlpha, layer = cacheLayer,
+    }
+end
+
 function obj.getobject(tag, frame)
     if type(tag) ~= "string" then return nil end
     if frame then frame = math.floor(frame) else frame = math.floor(obj.timelineframe or 0) end
+    if tag == cacheTag and frame == cacheFrame then
+        if cacheFound then return buildObject() end
+        return nil
+    end
     local len = #tag
     if len > CB_TAG_MAX then len = CB_TAG_MAX end
     ffi.copy(base + CB_TAG_OFFSET, tag, len)
@@ -157,17 +175,17 @@ function obj.getobject(tag, frame)
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
-    if i32[OFF_CB_FOUND] == 0 then return nil end
-    local rz = cbResult[5]
-    local zoom = cbResult[4]
-    return {
-        exist = cbResult[0] ~= 0,
-        x = cbResult[1], y = cbResult[2], z = cbResult[3],
-        zoom = zoom, sx = zoom, sy = zoom,
-        rx = 0, ry = 0, rz = rz,
-        rxr = 0, ryr = 0, rzr = rz * math.pi / 180,
-        alpha = cbResult[6], layer = cbResult[7],
-    }
+    cacheTag = tag
+    cacheFrame = frame
+    if i32[OFF_CB_FOUND] == 0 then
+        cacheFound = false
+        return nil
+    end
+    cacheFound = true
+    cacheExist = cbResult[0] ~= 0
+    cacheX = cbResult[1]; cacheY = cbResult[2]; cacheZ = cbResult[3]
+    cacheZoom = cbResult[4]; cacheRz = cbResult[5]; cacheAlpha = cbResult[6]; cacheLayer = cbResult[7]
+    return buildObject()
 end
 
 local sandbox = {
@@ -245,6 +263,7 @@ while true do
 
     if compiledChunk and code == compiledCode then
         loadFields()
+        cacheTag = nil
         math.randomseed(f64[31])
         setfenv(compiledChunk, sandbox)
         local ok, err = pcall(compiledChunk)
@@ -252,13 +271,14 @@ while true do
             storeFields()
             i32[OFF_PIXELSDIRTY] = dirty and 1 or 0
             i32[OFF_STATUS] = 1
+            k32.SetEvent(doneEvent)
         else
             local msg = tostring(err)
             ffi.copy(base + ERROR_OFFSET, msg, math.min(#msg, 4096))
             i32[OFF_ERRORLEN] = math.min(#msg, 4096)
             i32[OFF_STATUS] = 2
+            k32.SetEvent(doneEvent)
         end
-        k32.SetEvent(doneEvent)
     end
 end
 

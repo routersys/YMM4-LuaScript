@@ -23,6 +23,11 @@ namespace LuaScript.Engine
         private int _height;
         private bool _alive;
 
+        private readonly byte[] _callbackTag = new byte[NativeProtocol.CallbackTagMax];
+        private readonly byte[] _lastCallbackTag = new byte[NativeProtocol.CallbackTagMax];
+        private int _lastCallbackTagLength = -1;
+        private string _lastCallbackTagText = string.Empty;
+
         public LuaJitWorker(string nativeDir)
         {
             _nativeDir = nativeDir;
@@ -114,9 +119,8 @@ namespace LuaScript.Engine
         {
             int frame = view.ReadInt32(NativeProtocol.OffCallbackFrame);
             int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
-            var tagBytes = new byte[tagLen];
-            view.ReadArray(NativeProtocol.CallbackTagOffset, tagBytes, 0, tagLen);
-            string tag = Encoding.UTF8.GetString(tagBytes);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string tag = ResolveTag(tagLen);
 
             SceneObjectInfo? info;
             try { info = resolveObject(tag, frame); }
@@ -139,6 +143,18 @@ namespace LuaScript.Engine
             {
                 view.Write(NativeProtocol.OffCallbackFound, 0);
             }
+        }
+
+        private string ResolveTag(int tagLen)
+        {
+            if (tagLen == _lastCallbackTagLength &&
+                _callbackTag.AsSpan(0, tagLen).SequenceEqual(_lastCallbackTag.AsSpan(0, tagLen)))
+                return _lastCallbackTagText;
+
+            _lastCallbackTagText = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+            _callbackTag.AsSpan(0, tagLen).CopyTo(_lastCallbackTag);
+            _lastCallbackTagLength = tagLen;
+            return _lastCallbackTagText;
         }
 
         private void EnsureWorker(int width, int height)
