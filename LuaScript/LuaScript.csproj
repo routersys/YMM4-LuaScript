@@ -102,10 +102,11 @@
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Light.xshd" />
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Black.xshd" />
 		<Resource Include="Resources\SyntaxDefinitions\Lua-Windows.xshd" />
+		<None Include="..\native\**" LinkBase="native" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CI)' != 'true'">
-		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;" />
+		<Exec Command="mkdir &quot;$(YMM4DirPath)user\plugin\$(ProjectName)&quot; &gt; NUL 2&gt;&amp;1&#xD;&#xA;copy &quot;$(TargetPath)&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\&quot;&#xD;&#xA;xcopy /E /I /Y &quot;$(TargetDir)native&quot; &quot;$(YMM4DirPath)user\plugin\$(ProjectName)\native&quot;" />
 	</Target>
 
 </Project>
