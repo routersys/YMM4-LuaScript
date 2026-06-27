@@ -69,9 +69,14 @@ jobs:
           $pkgName   = "LuaScript_$version.ymme"
 
           New-Item -ItemType Directory -Path "$stageRoot/docs" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$stageRoot/native" -Force | Out-Null
 
           Copy-Item "$outDir/LuaScript.dll"           "$stageRoot/"
           Copy-Item "$outDir/MoonSharp.Interpreter.dll" "$stageRoot/"
+          Copy-Item "$outDir/native/luajit.exe" "$stageRoot/native/"
+          Copy-Item "$outDir/native/lua51.dll" "$stageRoot/native/"
+          Copy-Item "$outDir/native/worker.lua" "$stageRoot/native/"
+          Copy-Item "$outDir/native/shim.lua" "$stageRoot/native/"
 
           foreach ($lang in @("ar-sa", "en-us", "es-es", "id-id", "ko-kr", "zh-cn", "zh-tw")) {
             $src = "$outDir/$lang"
