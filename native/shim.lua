@@ -307,6 +307,26 @@ function anim.rand(...)
     return min + r * (max - min)
 end
 
+function aviutl_rand(a, b, seed, frame)
+    local ps = ffi.new("double[1]", seed)
+    local ws = ffi.cast("uint32_t*", ps)
+    local s = tou(bit.bxor(ws[0], ws[1]))
+    local pf = ffi.new("double[1]", frame)
+    local wf = ffi.cast("uint32_t*", pf)
+    local f = tou(bit.bxor(wf[0], wf[1]))
+    local h = tou(umul32(s, 374761393) + umul32(f, 668265263))
+    h = umul32(tou(bit.bxor(h, bit.rshift(h, 13))), 1274126177)
+    h = tou(bit.bxor(h, bit.rshift(h, 16)))
+    local r = h / 4294967295.0
+    local lo = floor(math.min(a, b))
+    local hi = floor(math.max(a, b))
+    local span = hi - lo + 1
+    if span <= 1 then return lo end
+    local v = lo + floor(r * span)
+    if v > hi then return hi end
+    return v
+end
+
 local function noise_hash(x, y, z)
     local n = tou(umul32(tou(x), 374761393) + umul32(tou(y), 668265263) + umul32(tou(z), 1013904223))
     n = umul32(tou(bit.bxor(n, bit.rshift(n, 13))), 1274126177)

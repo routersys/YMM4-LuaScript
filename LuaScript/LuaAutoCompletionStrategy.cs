@@ -42,7 +42,7 @@ namespace LuaScript
                 "obj.time", "obj.totaltime", "obj.t", "obj.frame", "obj.totalframe",
                 "obj.framerate", "obj.layer", "obj.index", "obj.num",
                 "obj.getpixel", "obj.setpixel",
-                "obj.getpixeldata"
+                "obj.getpixeldata", "obj.rand"
             ]),
             ("math", [
                 "math.abs", "math.ceil", "math.cos", "math.exp", "math.floor",

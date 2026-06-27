@@ -146,6 +146,10 @@ end
 
 function obj.putpixeldata() end
 
+function obj.rand(a, b, seed, frame)
+    return aviutl_rand(a or 0, b or 0, seed or 0, frame or obj.frame or 0)
+end
+
 local cacheTag, cacheFrame, cacheFound
 local cacheExist, cacheX, cacheY, cacheZ, cacheZoom, cacheRz, cacheAlpha, cacheLayer
 

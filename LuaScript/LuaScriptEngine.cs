@@ -1,3 +1,4 @@
+using LuaScript.Compat;
 using MoonSharp.Interpreter;
 using MoonSharp.Interpreter.Debugging;
 using MoonSharp.Interpreter.Loaders;
@@ -451,6 +452,17 @@ namespace LuaScript
                 });
 
                 obj["putpixeldata"] = DynValue.NewCallback((_, _) => DynValue.Void);
+
+                obj["rand"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    double frameDefault = _activeContext?.Frame ?? 0d;
+                    double a = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                    double b = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                    double seed = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                    double frame = args.Count > 3 ? args[3].CastToNumber() ?? frameDefault : frameDefault;
+                    return DynValue.NewNumber(AviUtlRandom.Next(a, b, seed, frame));
+                });
             }
 
             private static DynValue BuildObjectTable(Script script, SceneObjectInfo info)
