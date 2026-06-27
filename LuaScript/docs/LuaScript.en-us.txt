@@ -307,6 +307,20 @@
                   but in this plugin changes via setpixel/set are automatically applied,
                   so calling this function is unnecessary.
 
+        o obj.rand(st, ed [, seed [, frame]])
+                Returns a deterministic integer random value within the range st ~ ed.
+                * With the same seed and frame, it always returns the same value.
+                * When seed is omitted it is treated as 0; when frame is omitted the
+                  current frame (obj.frame) is used.
+                * Returns the same value on both the MoonSharp engine and the LuaJIT
+                  runtime. For an engine-independent floating-point random value, use anim.rand.
+                st      : Lower bound of the range (truncated to an integer)
+                ed      : Upper bound of the range (truncated to an integer)
+                seed    : Random seed (optional, default 0)
+                frame   : Frame used for variation (optional, default obj.frame)
+                Returns : An integer within st ~ ed
+                Example: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 Table -
@@ -447,10 +461,53 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- AviUtl Script Compatibility (Partial) -
+
+        A compatibility layer lets the transform, opacity and random portions of
+        AviUtl animation effect scripts (the *.anm family) run without rewriting.
+        When a script contains no AviUtl-specific notation, this layer does not
+        intervene at all, and existing scripts behave exactly as before.
+
+        o Script header directives
+                Parameter declarations written as comments are interpreted, and the
+                variables that the script body references are defined before execution.
+                --dialog:label,local var=default;...
+                        Expands the declaration part of each item
+                        (such as local var=default) to the top of the body.
+                        In AviUtl these are edited in a dialog; here the default
+                        values are used.
+                --color:0xRRGGBB
+                        Defines the variable color with the specified color.
+                --check0:label,default
+                        Defines obj.check0 (0 to 3) with the default value.
+                --param:<Lua statement>
+                        Expands the written Lua statement to the top of the body.
+                --track0: to --track3:
+                        Trackbar values are referenced via obj.track0 to obj.track3
+                        as before. The label, range and default written in the header
+                        are not reflected in the UI.
+
+        o Multiple sections with @
+                When a single script defines multiple effects with @name, only the
+                first section is executed.
+
+        o obj.rand(st, ed [, seed [, frame]])
+                A deterministic integer random function compatible with AviUtl.
+                See "obj Table - Functions" for details.
+
+        The following require integration with the rendering pipeline and are out of
+        scope for this layer. Scripts that call them will not behave as intended.
+                x Loading and drawing of images, figures, text and video
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, etc.)
+                x Filter effects and buffer operations
+                  (obj.effect / obj.copybuffer / obj.setoption, etc.)
+                x Module loading via require, and file access such as io
+
+
 - Unsupported Features / Limitations -
 
         x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), etc. from AviUtl2 are not supported.
-        x obj.rand(), obj.rand1(), obj.setfont(), obj.mes(), etc. from AviUtl2 are not supported.
+        x obj.rand1(), obj.setfont(), obj.mes(), etc. from AviUtl2 are not supported.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), etc. from AviUtl2 are not supported.
         x Functions such as scene.set() and scene.get() in the AviUtl2 scene table are not supported.
           (Only scene.width and scene.height can be read)
@@ -459,5 +516,7 @@
           but 3D rendering support is limited.
         x If the script timeout (5 seconds) is exceeded, execution is forcibly terminated.
           Care must be taken in implementation to prevent infinite loops.
-        x AviUtl2 header directives such as --track@ and --check@ are not supported.
-          Only Track0 ~ Track3 can be used as parameters.
+        x AviUtl2 header directives are only partially supported. The default values of
+          --dialog / --color / --check / --param are interpreted (see "AviUtl Script
+          Compatibility (Partial)"), but the label, range and default of --track@ are
+          not reflected in the UI; values are used via Track0 ~ Track3.

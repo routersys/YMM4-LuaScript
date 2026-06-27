@@ -303,6 +303,19 @@
                   このプラグインでは setpixel/set による変更が自動的に反映されるため、
                   本関数を呼び出す必要はありません。
 
+        ○obj.rand(st, ed [, seed [, frame]])
+                指定範囲 st ～ ed の整数を返す決定論的な乱数です。
+                ※ seed と frame が同じであれば常に同じ値を返します。
+                ※ seed 省略時は 0、frame 省略時は現在のフレーム(obj.frame)を使用します。
+                ※ 従来エンジン(MoonSharp)と高速ランタイム(LuaJIT)で同じ値を返します。
+                  エンジンに依存しない小数の乱数が必要な場合は anim.rand を使用してください。
+                st      : 範囲の下限 (小数は切り捨てて整数化)
+                ed      : 範囲の上限 (小数は切り捨てて整数化)
+                seed    : 乱数シード (省略可, デフォルト 0)
+                frame   : 変化に用いるフレーム (省略可, デフォルト obj.frame)
+                戻り値  : st ～ ed の整数
+                例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 テーブル -
@@ -443,10 +456,51 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- AviUtl スクリプトの部分互換 -
+
+        AviUtl のアニメーション効果スクリプト(*.anm 系)のうち、座標・拡縮・回転・
+        不透明度の変形と乱数を用いる範囲を、追加の記述変更なしで実行できる互換層です。
+        スクリプトに AviUtl 固有の記法が含まれない場合、この互換層は一切介入しません
+        (従来のスクリプトの挙動は変わりません)。
+
+        ○スクリプトヘッダの解釈
+                コメント形式のパラメータ宣言を解釈し、スクリプト本体が参照する変数を
+                実行前に定義します。
+                --dialog:項目名,local 変数=既定値;…
+                        各項目の宣言部(local 変数=既定値 など)を本体の先頭へ展開します。
+                        AviUtl では対話ダイアログで編集する値ですが、ここでは既定値で
+                        動作します。
+                --color:0xRRGGBB
+                        変数 color を指定色で定義します。
+                --check0:項目名,既定値
+                        obj.check0 (0～3) を既定値で定義します。
+                --param:任意のLua文
+                        記述した Lua 文をそのまま本体の先頭へ展開します。
+                --track0: ～ --track3:
+                        トラックバーの値は従来どおり obj.track0 ～ obj.track3 から
+                        参照します。ヘッダーのラベル・範囲・既定値は UI へ反映しません。
+
+        ○@ による複数セクション
+                1 つのスクリプトに @名前 で複数の効果が定義されている場合、先頭の
+                セクションのみを実行します。
+
+        ○obj.rand(st, ed [, seed [, frame]])
+                AviUtl 互換の決定論的な整数乱数です。詳細は「obj テーブル - 関数」を
+                参照してください。
+
+        次の機能は本体の描画パイプラインへの統合を要するため、この互換層では対象外です。
+        これらを呼び出すスクリプトは意図どおりには動作しません。
+                ×画像・図形・テキスト・動画の読み込みと描画
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont など)
+                ×フィルタ効果やバッファ操作
+                  (obj.effect / obj.copybuffer / obj.setoption など)
+                ×require によるモジュール読み込み、io などのファイルアクセス
+
+
 - 非対応・制限事項 -
 
         ×AviUtl2 の obj.effect(), obj.draw(), obj.drawpoly(), obj.load() 等には対応していません。
-        ×AviUtl2 の obj.rand(), obj.rand1(), obj.setfont(), obj.mes() 等には対応していません。
+        ×AviUtl2 の obj.rand1(), obj.setfont(), obj.mes() 等には対応していません。
         ×AviUtl2 の obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 等には対応していません。
         ×AviUtl2 の scene テーブルの scene.set(), scene.get() 等の関数には対応していません。
           (scene.width と scene.height の読み取りのみ対応)
@@ -455,5 +509,7 @@
           3D 描画のサポートは限定的です。
         ×スクリプトのタイムアウト(5秒)を超えた場合、実行は強制終了されます。
           無限ループが発生しないよう実装上の注意が必要です。
-        ×AviUtl2 の --track@, --check@ 等のヘッダーディレクティブには対応していません。
-          パラメータは Track0 ～ Track3 のみ使用できます。
+        ×AviUtl2 のヘッダーディレクティブは部分的にのみ対応します。
+          --dialog / --color / --check / --param の既定値は解釈されますが
+          (「AviUtl スクリプトの部分互換」を参照)、--track@ のラベル・範囲・
+          既定値は UI へ反映されず、値は Track0 ～ Track3 を使用します。

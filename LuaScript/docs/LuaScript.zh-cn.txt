@@ -297,6 +297,19 @@
                   但本插件中 setpixel/set 的修改会自动反映，
                   因此无需调用此函数。
 
+        ○ obj.rand(st, ed [, seed [, frame]])
+                返回指定范围 st ～ ed 内整数的确定性随机数。
+                * seed 与 frame 相同时始终返回相同的值。
+                * 省略 seed 时按 0 处理，省略 frame 时使用当前帧 (obj.frame)。
+                * 在传统引擎 (MoonSharp) 与高速运行时 (LuaJIT) 上返回相同的值。
+                  若需要不依赖引擎的小数随机数，请使用 anim.rand。
+                st      : 范围下限（小数向下取整为整数）
+                ed      : 范围上限（小数向下取整为整数）
+                seed    : 随机种子（可省略，默认 0）
+                frame   : 用于变化的帧（可省略，默认 obj.frame）
+                返回值  : st ～ ed 的整数
+                示例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 表 -
@@ -437,10 +450,46 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- AviUtl 脚本的部分兼容 -
+
+        提供兼容层，使 AviUtl 动画效果脚本(*.anm 系列)中涉及坐标、缩放、旋转、
+        不透明度的变形以及随机数的部分，无需额外修改即可运行。当脚本中不包含
+        AviUtl 专有写法时，此兼容层完全不介入(传统脚本的行为不变)。
+
+        ○ 脚本头部指令的解释
+                解释注释形式的参数声明，在执行前定义脚本主体所引用的变量。
+                --dialog:项目名,local 变量=默认值;…
+                        将各项目的声明部分(如 local 变量=默认值)展开到主体开头。
+                        在 AviUtl 中这些是通过对话框编辑的值，此处以默认值运行。
+                --color:0xRRGGBB
+                        以指定颜色定义变量 color。
+                --check0:项目名,默认值
+                        以默认值定义 obj.check0 (0～3)。
+                --param:任意 Lua 语句
+                        将所写的 Lua 语句原样展开到主体开头。
+                --track0: ～ --track3:
+                        轨道条的值仍通过 obj.track0 ～ obj.track3 引用。头部的标签、
+                        范围与默认值不会反映到 UI。
+
+        ○ 通过 @ 的多区段
+                当一个脚本以 @名称 定义了多个效果时，仅执行第一个区段。
+
+        ○ obj.rand(st, ed [, seed [, frame]])
+                与 AviUtl 兼容的确定性整数随机数。详情请参阅“obj 表 - 函数”。
+
+        以下功能需要与本体的绘制管线集成，因此不在此兼容层的范围内。
+        调用它们的脚本不会按预期运行。
+                × 图像、图形、文本、视频的加载与绘制
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont 等)
+                × 滤镜效果与缓冲区操作
+                  (obj.effect / obj.copybuffer / obj.setoption 等)
+                × 通过 require 加载模块，以及 io 等文件访问
+
+
 - 不支持项目·限制事项 -
 
         × 不支持 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly()、obj.load() 等。
-        × 不支持 AviUtl2 的 obj.rand()、obj.rand1()、obj.setfont()、obj.mes() 等。
+        × 不支持 AviUtl2 的 obj.rand1()、obj.setfont()、obj.mes() 等。
         × 不支持 AviUtl2 的 obj.setoption()、obj.getoption()、obj.getvalue()、obj.setanchor() 等。
         × 不支持 AviUtl2 scene 表中的 scene.set()、scene.get() 等函数。
           （仅支持读取 scene.width 和 scene.height）
@@ -449,5 +498,6 @@
           但 3D 绘制支持有限。
         × 超过脚本超时时间（5 秒）时，执行将被强制终止。
           实现时需注意避免出现无限循环。
-        × 不支持 AviUtl2 的 --track@、--check@ 等头部指令。
-          参数仅可使用 Track0 ～ Track3。
+        × AviUtl2 的头部指令仅部分支持。--dialog / --color / --check / --param 的
+          默认值会被解释（参阅“AviUtl 脚本的部分兼容”），但 --track@ 的标签、范围
+          与默认值不会反映到 UI，值通过 Track0 ～ Track3 使用。

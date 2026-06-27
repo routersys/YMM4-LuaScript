@@ -297,6 +297,19 @@
                   但本外掛中 setpixel/set 的修改會自動反映，
                   因此無需呼叫此函式。
 
+        ○ obj.rand(st, ed [, seed [, frame]])
+                回傳指定範圍 st ～ ed 內整數的確定性亂數。
+                * seed 與 frame 相同時始終回傳相同的值。
+                * 省略 seed 時以 0 處理，省略 frame 時使用目前影格 (obj.frame)。
+                * 在傳統引擎 (MoonSharp) 與高速執行階段 (LuaJIT) 上回傳相同的值。
+                  若需要不依賴引擎的小數亂數，請使用 anim.rand。
+                st      : 範圍下限（小數無條件捨去為整數）
+                ed      : 範圍上限（小數無條件捨去為整數）
+                seed    : 亂數種子（可省略，預設 0）
+                frame   : 用於變化的影格（可省略，預設 obj.frame）
+                回傳值  : st ～ ed 的整數
+                範例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 表 -
@@ -437,10 +450,46 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- AviUtl 腳本的部分相容 -
+
+        提供相容層，使 AviUtl 動畫效果腳本(*.anm 系列)中涉及座標、縮放、旋轉、
+        不透明度的變形以及亂數的部分，無需額外修改即可執行。當腳本中不包含
+        AviUtl 專有寫法時，此相容層完全不介入(傳統腳本的行為不變)。
+
+        ○ 腳本標頭指令的解釋
+                解釋註解形式的參數宣告，在執行前定義腳本主體所參考的變數。
+                --dialog:項目名,local 變數=預設值;…
+                        將各項目的宣告部分(如 local 變數=預設值)展開至主體開頭。
+                        在 AviUtl 中這些是透過對話框編輯的值，此處以預設值執行。
+                --color:0xRRGGBB
+                        以指定顏色定義變數 color。
+                --check0:項目名,預設值
+                        以預設值定義 obj.check0 (0～3)。
+                --param:任意 Lua 陳述式
+                        將所寫的 Lua 陳述式原樣展開至主體開頭。
+                --track0: ～ --track3:
+                        軌道列的值仍透過 obj.track0 ～ obj.track3 參考。標頭的標籤、
+                        範圍與預設值不會反映至 UI。
+
+        ○ 透過 @ 的多區段
+                當一個腳本以 @名稱 定義了多個效果時，僅執行第一個區段。
+
+        ○ obj.rand(st, ed [, seed [, frame]])
+                與 AviUtl 相容的確定性整數亂數。詳情請參閱「obj 表 - 函式」。
+
+        以下功能需要與本體的繪製管線整合，因此不在此相容層的範圍內。
+        呼叫它們的腳本不會如預期運作。
+                × 影像、圖形、文字、影片的載入與繪製
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont 等)
+                × 濾鏡效果與緩衝區操作
+                  (obj.effect / obj.copybuffer / obj.setoption 等)
+                × 透過 require 載入模組，以及 io 等檔案存取
+
+
 - 不支援項目·限制事項 -
 
         × 不支援 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly()、obj.load() 等。
-        × 不支援 AviUtl2 的 obj.rand()、obj.rand1()、obj.setfont()、obj.mes() 等。
+        × 不支援 AviUtl2 的 obj.rand1()、obj.setfont()、obj.mes() 等。
         × 不支援 AviUtl2 的 obj.setoption()、obj.getoption()、obj.getvalue()、obj.setanchor() 等。
         × 不支援 AviUtl2 scene 表中的 scene.set()、scene.get() 等函式。
           （僅支援讀取 scene.width 和 scene.height）
@@ -449,5 +498,6 @@
           但 3D 繪製支援有限。
         × 超過腳本逾時時間（5 秒）時，執行將被強制終止。
           實作時需注意避免出現無限迴圈。
-        × 不支援 AviUtl2 的 --track@、--check@ 等標頭指令。
-          參數僅可使用 Track0 ～ Track3。
+        × AviUtl2 的標頭指令僅部分支援。--dialog / --color / --check / --param 的
+          預設值會被解釋（參閱「AviUtl 腳本的部分相容」），但 --track@ 的標籤、範圍
+          與預設值不會反映至 UI，值透過 Track0 ～ Track3 使用。

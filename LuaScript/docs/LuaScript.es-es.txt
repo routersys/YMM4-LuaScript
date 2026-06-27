@@ -305,6 +305,20 @@
                   pero en este plugin los cambios mediante setpixel/set se aplican automáticamente,
                   por lo que no es necesario llamar a esta función.
 
+        o obj.rand(st, ed [, seed [, frame]])
+                Devuelve un valor aleatorio entero determinista dentro del rango st ~ ed.
+                * Con el mismo seed y frame, siempre devuelve el mismo valor.
+                * Si se omite seed se trata como 0; si se omite frame se usa el
+                  fotograma actual (obj.frame).
+                * Devuelve el mismo valor en el motor MoonSharp y en el runtime LuaJIT.
+                  Para un valor aleatorio decimal independiente del motor, use anim.rand.
+                st      : Límite inferior del rango (truncado a entero)
+                ed      : Límite superior del rango (truncado a entero)
+                seed    : Semilla aleatoria (opcional, predeterminado 0)
+                frame   : Fotograma usado para la variación (opcional, predeterminado obj.frame)
+                Devuelve: Un entero dentro de st ~ ed
+                Ejemplo: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 Table -
@@ -445,10 +459,56 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- Compatibilidad parcial con scripts de AviUtl -
+
+        Una capa de compatibilidad permite ejecutar, sin reescritura, las partes de
+        los scripts de efecto de animación de AviUtl (la familia *.anm) relativas a
+        transformación, opacidad y números aleatorios. Cuando un script no contiene
+        notación específica de AviUtl, esta capa no interviene en absoluto (los
+        scripts existentes se comportan exactamente igual que antes).
+
+        o Directivas de encabezado del script
+                Las declaraciones de parámetros escritas como comentarios se
+                interpretan, y las variables que el cuerpo del script referencia se
+                definen antes de la ejecución.
+                --dialog:etiqueta,local var=predeterminado;...
+                        Expande la parte de declaración de cada elemento
+                        (como local var=predeterminado) al inicio del cuerpo.
+                        En AviUtl se editan en un cuadro de diálogo; aquí se usan
+                        los valores predeterminados.
+                --color:0xRRGGBB
+                        Define la variable color con el color especificado.
+                --check0:etiqueta,predeterminado
+                        Define obj.check0 (0 a 3) con el valor predeterminado.
+                --param:<sentencia Lua>
+                        Expande la sentencia Lua escrita al inicio del cuerpo.
+                --track0: a --track3:
+                        Los valores de las barras de seguimiento se referencian
+                        mediante obj.track0 a obj.track3 como antes. La etiqueta, el
+                        rango y el valor predeterminado del encabezado no se reflejan en la UI.
+
+        o Múltiples secciones con @
+                Cuando un único script define varios efectos con @nombre, solo se
+                ejecuta la primera sección.
+
+        o obj.rand(st, ed [, seed [, frame]])
+                Función de número aleatorio entero determinista compatible con AviUtl.
+                Consulte "Tabla obj - Funciones" para más detalles.
+
+        Lo siguiente requiere integración con la canalización de renderizado y, por
+        tanto, queda fuera del alcance de esta capa. Los scripts que lo llamen no se
+        comportarán como se espera.
+                x Carga y dibujo de imágenes, figuras, texto y vídeo
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, etc.)
+                x Efectos de filtro y operaciones de búfer
+                  (obj.effect / obj.copybuffer / obj.setoption, etc.)
+                x Carga de módulos mediante require y acceso a archivos como io
+
+
 - Funciones no admitidas / Limitaciones -
 
         x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), etc. de AviUtl2 no son compatibles.
-        x obj.rand(), obj.rand1(), obj.setfont(), obj.mes(), etc. de AviUtl2 no son compatibles.
+        x obj.rand1(), obj.setfont(), obj.mes(), etc. de AviUtl2 no son compatibles.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
         x Las funciones como scene.set() y scene.get() de la tabla scene de AviUtl2 no son compatibles.
           (Solo se pueden leer scene.width y scene.height)
@@ -457,5 +517,7 @@
           pero el soporte de renderizado 3D es limitado.
         x Si se supera el tiempo de espera del script (5 segundos), la ejecución se termina forzosamente.
           Se debe tener cuidado en la implementación para evitar bucles infinitos.
-        x Las directivas de encabezado de AviUtl2 como --track@ y --check@ no son compatibles.
-          Solo Track0 ~ Track3 pueden usarse como parámetros.
+        x Las directivas de encabezado de AviUtl2 solo son compatibles parcialmente. Los valores
+          predeterminados de --dialog / --color / --check / --param se interpretan (consulte
+          "Compatibilidad parcial con scripts de AviUtl"), pero la etiqueta, el rango y el valor
+          predeterminado de --track@ no se reflejan en la UI; los valores se usan vía Track0 ~ Track3.

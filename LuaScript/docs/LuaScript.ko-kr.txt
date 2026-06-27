@@ -299,6 +299,19 @@
                   이 플러그인에서는 setpixel/set에 의한 변경이 자동으로 반영되므로,
                   이 함수를 호출할 필요가 없습니다.
 
+        ○ obj.rand(st, ed [, seed [, frame]])
+                지정 범위 st ～ ed의 정수를 반환하는 결정론적 난수입니다.
+                ※ seed와 frame이 같으면 항상 같은 값을 반환합니다.
+                ※ seed 생략 시 0으로, frame 생략 시 현재 프레임(obj.frame)을 사용합니다.
+                ※ 기존 엔진(MoonSharp)과 고속 런타임(LuaJIT)에서 같은 값을 반환합니다.
+                  엔진에 의존하지 않는 소수 난수가 필요하면 anim.rand를 사용하세요.
+                st      : 범위 하한 (소수는 버림하여 정수화)
+                ed      : 범위 상한 (소수는 버림하여 정수화)
+                seed    : 난수 시드 (생략 가능, 기본값 0)
+                frame   : 변화에 사용하는 프레임 (생략 가능, 기본값 obj.frame)
+                반환값  : st ～ ed의 정수
+                예: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 테이블 -
@@ -439,10 +452,51 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- AviUtl 스크립트 부분 호환 -
+
+        AviUtl 애니메이션 효과 스크립트(*.anm 계열) 중 좌표·확대축소·회전·
+        불투명도의 변형과 난수를 사용하는 범위를, 추가 수정 없이 실행할 수 있는
+        호환 계층입니다. 스크립트에 AviUtl 고유 표기가 포함되지 않은 경우 이
+        호환 계층은 전혀 개입하지 않습니다(기존 스크립트의 동작은 변하지 않습니다).
+
+        ○ 스크립트 헤더 디렉티브 해석
+                주석 형식의 파라미터 선언을 해석하여, 스크립트 본문이 참조하는
+                변수를 실행 전에 정의합니다.
+                --dialog:항목명,local 변수=기본값;…
+                        각 항목의 선언부(local 변수=기본값 등)를 본문 앞에 펼칩니다.
+                        AviUtl에서는 대화 상자에서 편집하는 값이지만, 여기서는
+                        기본값으로 동작합니다.
+                --color:0xRRGGBB
+                        변수 color를 지정한 색으로 정의합니다.
+                --check0:항목명,기본값
+                        obj.check0 (0～3)을 기본값으로 정의합니다.
+                --param:임의의 Lua 문
+                        작성한 Lua 문을 그대로 본문 앞에 펼칩니다.
+                --track0: ～ --track3:
+                        트랙바 값은 기존과 같이 obj.track0 ～ obj.track3에서
+                        참조합니다. 헤더의 라벨·범위·기본값은 UI에 반영되지 않습니다.
+
+        ○ @를 통한 복수 섹션
+                하나의 스크립트에 @이름으로 여러 효과가 정의된 경우, 첫 번째
+                섹션만 실행합니다.
+
+        ○ obj.rand(st, ed [, seed [, frame]])
+                AviUtl 호환의 결정론적 정수 난수입니다. 자세한 내용은
+                "obj 테이블 - 함수"를 참조하세요.
+
+        다음 기능은 본체의 렌더링 파이프라인과의 통합이 필요하므로 이 호환
+        계층의 범위 밖입니다. 이를 호출하는 스크립트는 의도대로 동작하지 않습니다.
+                × 이미지·도형·텍스트·동영상의 로드 및 그리기
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont 등)
+                × 필터 효과 및 버퍼 조작
+                  (obj.effect / obj.copybuffer / obj.setoption 등)
+                × require에 의한 모듈 로드 및 io 등의 파일 접근
+
+
 - 미지원·제한 사항 -
 
         × AviUtl2의 obj.effect(), obj.draw(), obj.drawpoly(), obj.load() 등은 지원하지 않습니다.
-        × AviUtl2의 obj.rand(), obj.rand1(), obj.setfont(), obj.mes() 등은 지원하지 않습니다.
+        × AviUtl2의 obj.rand1(), obj.setfont(), obj.mes() 등은 지원하지 않습니다.
         × AviUtl2의 obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 등은 지원하지 않습니다.
         × AviUtl2의 scene 테이블의 scene.set(), scene.get() 등의 함수는 지원하지 않습니다.
           (scene.width와 scene.height의 읽기만 지원)
@@ -451,5 +505,6 @@
           3D 렌더링 지원은 제한적입니다.
         × 스크립트 타임아웃(5초)을 초과하면 실행이 강제 종료됩니다.
           무한 루프가 발생하지 않도록 구현 시 주의가 필요합니다.
-        × AviUtl2의 --track@, --check@ 등의 헤더 디렉티브는 지원하지 않습니다.
-          파라미터는 Track0 ～ Track3만 사용할 수 있습니다.
+        × AviUtl2의 헤더 디렉티브는 부분적으로만 지원합니다. --dialog / --color /
+          --check / --param의 기본값은 해석되지만("AviUtl 스크립트 부분 호환" 참조),
+          --track@의 라벨·범위·기본값은 UI에 반영되지 않으며 값은 Track0 ～ Track3을 사용합니다.

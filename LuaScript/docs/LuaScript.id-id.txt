@@ -303,6 +303,20 @@
                   tetapi dalam plugin ini perubahan melalui setpixel/set diterapkan secara otomatis,
                   sehingga tidak perlu memanggil fungsi ini.
 
+        o obj.rand(st, ed [, seed [, frame]])
+                Mengembalikan nilai acak bilangan bulat deterministik dalam rentang st ~ ed.
+                * Dengan seed dan frame yang sama, selalu mengembalikan nilai yang sama.
+                * Jika seed dihilangkan dianggap 0; jika frame dihilangkan digunakan
+                  frame saat ini (obj.frame).
+                * Mengembalikan nilai yang sama pada mesin MoonSharp maupun runtime LuaJIT.
+                  Untuk nilai acak desimal yang independen dari mesin, gunakan anim.rand.
+                st      : Batas bawah rentang (dipotong menjadi bilangan bulat)
+                ed      : Batas atas rentang (dipotong menjadi bilangan bulat)
+                seed    : Seed acak (opsional, default 0)
+                frame   : Frame yang digunakan untuk variasi (opsional, default obj.frame)
+                Hasil   : Bilangan bulat dalam st ~ ed
+                Contoh: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
+
 
 
 - ymm4 Table -
@@ -443,10 +457,55 @@
                 obj.zoom = obj.zoom * (1 + obj.track0 / 100)
 
 
+- Kompatibilitas Parsial Skrip AviUtl -
+
+        Lapisan kompatibilitas memungkinkan bagian transformasi, opasitas, dan
+        bilangan acak dari skrip efek animasi AviUtl (keluarga *.anm) dijalankan
+        tanpa penulisan ulang. Ketika sebuah skrip tidak mengandung notasi khusus
+        AviUtl, lapisan ini tidak ikut campur sama sekali (skrip yang ada berperilaku
+        persis seperti sebelumnya).
+
+        o Direktif header skrip
+                Deklarasi parameter yang ditulis sebagai komentar diinterpretasikan,
+                dan variabel yang dirujuk oleh badan skrip didefinisikan sebelum eksekusi.
+                --dialog:label,local var=default;...
+                        Memperluas bagian deklarasi setiap item
+                        (seperti local var=default) ke awal badan skrip.
+                        Di AviUtl nilai ini diedit dalam dialog; di sini digunakan
+                        nilai default.
+                --color:0xRRGGBB
+                        Mendefinisikan variabel color dengan warna yang ditentukan.
+                --check0:label,default
+                        Mendefinisikan obj.check0 (0 sampai 3) dengan nilai default.
+                --param:<pernyataan Lua>
+                        Memperluas pernyataan Lua yang ditulis ke awal badan skrip.
+                --track0: sampai --track3:
+                        Nilai trackbar dirujuk melalui obj.track0 sampai obj.track3
+                        seperti sebelumnya. Label, rentang, dan default pada header
+                        tidak tercermin di UI.
+
+        o Beberapa bagian dengan @
+                Ketika satu skrip mendefinisikan beberapa efek dengan @nama, hanya
+                bagian pertama yang dijalankan.
+
+        o obj.rand(st, ed [, seed [, frame]])
+                Fungsi bilangan acak bulat deterministik yang kompatibel dengan AviUtl.
+                Lihat "Tabel obj - Fungsi" untuk detailnya.
+
+        Berikut ini memerlukan integrasi dengan pipeline render sehingga berada di
+        luar cakupan lapisan ini. Skrip yang memanggilnya tidak akan berperilaku
+        seperti yang diharapkan.
+                x Pemuatan dan penggambaran gambar, figur, teks, dan video
+                  (obj.load / obj.draw / obj.drawpoly / obj.setfont, dll.)
+                x Efek filter dan operasi buffer
+                  (obj.effect / obj.copybuffer / obj.setoption, dll.)
+                x Pemuatan modul melalui require, dan akses file seperti io
+
+
 - Fitur yang Tidak Didukung / Batasan -
 
         x obj.effect(), obj.draw(), obj.drawpoly(), obj.load(), dll. dari AviUtl2 tidak didukung.
-        x obj.rand(), obj.rand1(), obj.setfont(), obj.mes(), dll. dari AviUtl2 tidak didukung.
+        x obj.rand1(), obj.setfont(), obj.mes(), dll. dari AviUtl2 tidak didukung.
         x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
         x Fungsi seperti scene.set() dan scene.get() dalam tabel scene AviUtl2 tidak didukung.
           (Hanya scene.width dan scene.height yang dapat dibaca)
@@ -455,5 +514,7 @@
           tetapi dukungan render 3D terbatas.
         x Jika batas waktu skrip (5 detik) terlampaui, eksekusi dihentikan paksa.
           Perhatian harus diberikan dalam implementasi untuk mencegah loop tak terbatas.
-        x Direktif header AviUtl2 seperti --track@ dan --check@ tidak didukung.
-          Hanya Track0 ~ Track3 yang dapat digunakan sebagai parameter.
+        x Direktif header AviUtl2 hanya didukung sebagian. Nilai default dari
+          --dialog / --color / --check / --param diinterpretasikan (lihat "Kompatibilitas
+          Parsial Skrip AviUtl"), tetapi label, rentang, dan default dari --track@ tidak
+          tercermin di UI; nilai digunakan melalui Track0 ~ Track3.
