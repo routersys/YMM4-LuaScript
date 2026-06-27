@@ -10,6 +10,7 @@ namespace LuaScript.Engine
         public const int StatusIdle = 0;
         public const int StatusOk = 1;
         public const int StatusError = 2;
+        public const int StatusCallback = 3;
 
         public const int OffMagic = 0;
         public const int OffCommand = 4;
@@ -19,6 +20,9 @@ namespace LuaScript.Engine
         public const int OffScriptLen = 20;
         public const int OffPixelsDirty = 24;
         public const int OffErrorLen = 28;
+        public const int OffCallbackFrame = 32;
+        public const int OffCallbackTagLen = 36;
+        public const int OffCallbackFound = 40;
 
         public const int HeaderSize = 64;
 
@@ -31,7 +35,21 @@ namespace LuaScript.Engine
         public const int ErrorOffset = ScriptOffset + ScriptMax;
         public const int ErrorMax = 4 * 1024;
 
-        public const int PixelOffset = ErrorOffset + ErrorMax;
+        public const int CallbackTagOffset = ErrorOffset + ErrorMax;
+        public const int CallbackTagMax = 256;
+        public const int CallbackResultOffset = CallbackTagOffset + CallbackTagMax;
+        public const int CallbackResultCount = 8;
+
+        public const int CbExist = 0;
+        public const int CbX = 1;
+        public const int CbY = 2;
+        public const int CbZ = 3;
+        public const int CbZoom = 4;
+        public const int CbRz = 5;
+        public const int CbAlpha = 6;
+        public const int CbLayer = 7;
+
+        public const int PixelOffset = CallbackResultOffset + CallbackResultCount * 8;
 
         public const int W = 0;
         public const int H = 1;

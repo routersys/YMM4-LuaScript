@@ -41,6 +41,7 @@ namespace LuaScript.Engine
             int width,
             int height,
             int timeoutMs,
+            Func<string, int, SceneObjectInfo?> resolveObject,
             out bool pixelsDirty,
             out string? error)
         {
@@ -70,14 +71,26 @@ namespace LuaScript.Engine
 
             _workEvent!.Set();
 
-            if (!_doneEvent!.WaitOne(timeoutMs))
+            var stopwatch = Stopwatch.StartNew();
+            int status;
+            while (true)
             {
-                KillWorker();
-                error = "native script execution timed out";
-                return false;
+                long remaining = timeoutMs - stopwatch.ElapsedMilliseconds;
+                if (remaining <= 0 || !_doneEvent!.WaitOne((int)remaining))
+                {
+                    KillWorker();
+                    error = "native script execution timed out";
+                    return false;
+                }
+
+                status = view.ReadInt32(NativeProtocol.OffStatus);
+                if (status != NativeProtocol.StatusCallback)
+                    break;
+
+                ResolveCallback(view, resolveObject);
+                _workEvent.Set();
             }
 
-            int status = view.ReadInt32(NativeProtocol.OffStatus);
             if (status == NativeProtocol.StatusError)
             {
                 int len = view.ReadInt32(NativeProtocol.OffErrorLen);
@@ -95,6 +108,37 @@ namespace LuaScript.Engine
                 view.ReadArray(NativeProtocol.PixelOffset, pixels, 0, pixels.Length);
 
             return true;
+        }
+
+        private void ResolveCallback(MemoryMappedViewAccessor view, Func<string, int, SceneObjectInfo?> resolveObject)
+        {
+            int frame = view.ReadInt32(NativeProtocol.OffCallbackFrame);
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            var tagBytes = new byte[tagLen];
+            view.ReadArray(NativeProtocol.CallbackTagOffset, tagBytes, 0, tagLen);
+            string tag = Encoding.UTF8.GetString(tagBytes);
+
+            SceneObjectInfo? info;
+            try { info = resolveObject(tag, frame); }
+            catch { info = null; }
+
+            if (info is { } value)
+            {
+                long result = NativeProtocol.CallbackResultOffset;
+                view.Write(result + NativeProtocol.CbExist * 8, value.Exist ? 1d : 0d);
+                view.Write(result + NativeProtocol.CbX * 8, value.X);
+                view.Write(result + NativeProtocol.CbY * 8, value.Y);
+                view.Write(result + NativeProtocol.CbZ * 8, value.Z);
+                view.Write(result + NativeProtocol.CbZoom * 8, value.Zoom);
+                view.Write(result + NativeProtocol.CbRz * 8, value.Rz);
+                view.Write(result + NativeProtocol.CbAlpha * 8, value.Alpha);
+                view.Write(result + NativeProtocol.CbLayer * 8, (double)value.Layer);
+                view.Write(NativeProtocol.OffCallbackFound, 1);
+            }
+            else
+            {
+                view.Write(NativeProtocol.OffCallbackFound, 0);
+            }
         }
 
         private void EnsureWorker(int width, int height)

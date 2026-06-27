@@ -43,11 +43,18 @@ local OFF_HEIGHT = 4
 local OFF_SCRIPTLEN = 5
 local OFF_PIXELSDIRTY = 6
 local OFF_ERRORLEN = 7
+local OFF_CB_FRAME = 8
+local OFF_CB_TAGLEN = 9
+local OFF_CB_FOUND = 10
 local SCRIPT_OFFSET = 64 + 64 * 8
 local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
-local PIXEL_OFFSET = ERROR_OFFSET + 4 * 1024
+local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
+local CB_TAG_MAX = 256
+local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
+local PIXEL_OFFSET = CB_RESULT_OFFSET + 8 * 8
 local FIRST_WRITABLE = 8
 local LAST_WRITABLE = 25
+local STATUS_CALLBACK = 3
 
 assert(loadfile(shimPath))()
 
@@ -59,6 +66,7 @@ end
 
 local width, height = 0, 0
 local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
+local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
 local dirty = false
 
 local obj = {}
@@ -137,7 +145,30 @@ function obj.getpixeldata()
 end
 
 function obj.putpixeldata() end
-function obj.getobject() return nil end
+
+function obj.getobject(tag, frame)
+    if type(tag) ~= "string" then return nil end
+    if frame then frame = math.floor(frame) else frame = math.floor(obj.timelineframe or 0) end
+    local len = #tag
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, tag, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_FRAME] = frame
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    if i32[OFF_CB_FOUND] == 0 then return nil end
+    local rz = cbResult[5]
+    local zoom = cbResult[4]
+    return {
+        exist = cbResult[0] ~= 0,
+        x = cbResult[1], y = cbResult[2], z = cbResult[3],
+        zoom = zoom, sx = zoom, sy = zoom,
+        rx = 0, ry = 0, rz = rz,
+        rxr = 0, ryr = 0, rzr = rz * math.pi / 180,
+        alpha = cbResult[6], layer = cbResult[7],
+    }
+end
 
 local sandbox = {
     obj = obj, scene = scene, ymm4 = ymm4,

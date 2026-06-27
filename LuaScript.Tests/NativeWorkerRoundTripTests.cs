@@ -8,6 +8,8 @@ namespace LuaScript.Tests
     {
         private static string NativeDir => Path.Combine(AppContext.BaseDirectory, "native");
 
+        private static readonly Func<string, int, SceneObjectInfo?> NoResolver = (_, _) => null;
+
         private readonly LuaJitWorker _worker = new(NativeDir);
 
         public void Dispose() => _worker.Dispose();
@@ -32,7 +34,7 @@ namespace LuaScript.Tests
 
             bool ok = _worker.Execute(
                 "obj.rz = obj.time * 90\nobj.alpha = 128",
-                fields, pixels, 4, 4, 5000, out bool dirty, out string? error);
+                fields, pixels, 4, 4, 5000, NoResolver, out bool dirty, out string? error);
 
             Assert.True(ok, error);
             Assert.False(dirty);
@@ -67,7 +69,7 @@ namespace LuaScript.Tests
                 "local gray = r*0.299 + g*0.587 + b*0.114 " +
                 "obj.setpixel(x,y,gray,gray,gray,a) end end";
 
-            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, out bool dirty, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, out bool dirty, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -102,7 +104,7 @@ namespace LuaScript.Tests
                 "local gray=r*0.299+g*0.587+b*0.114 " +
                 "pd:set(base+1,gray) pd:set(base+2,gray) pd:set(base+3,gray) end end";
 
-            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, out bool dirty, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, out bool dirty, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -138,7 +140,7 @@ namespace LuaScript.Tests
             for (int k = 1; k <= 5; k++)
             {
                 var fields = Fields(2, 2, k);
-                bool ok = _worker.Execute("obj.x = obj.time * 10", fields, pixels, 2, 2, 5000, out _, out string? error);
+                bool ok = _worker.Execute("obj.x = obj.time * 10", fields, pixels, 2, 2, 5000, NoResolver, out _, out string? error);
                 Assert.True(ok, error);
                 Assert.Equal(k * 10d, fields[NativeProtocol.X]);
             }
@@ -153,14 +155,61 @@ namespace LuaScript.Tests
             var fields = Fields(2, 2, 0d);
 
             bool timedOut = _worker.Execute(
-                "local x=0 while true do x=x+1 end", fields, pixels, 2, 2, 1500, out _, out string? error);
+                "local x=0 while true do x=x+1 end", fields, pixels, 2, 2, 1500, NoResolver, out _, out string? error);
             Assert.False(timedOut);
             Assert.Contains("timed out", error);
 
             var fields2 = Fields(2, 2, 3d);
-            bool ok = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, out _, out error);
+            bool ok = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(3d, fields2[NativeProtocol.X]);
+        }
+
+        [Fact]
+        public void GetObject_ResolvesThroughCallback()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            var resolved = new SceneObjectInfo("a", true, 12d, 34d, 56d, 2d, 90d, 200d, 7);
+            Func<string, int, SceneObjectInfo?> resolver = (tag, frame) =>
+                tag == "a" && frame == 5 ? resolved : null;
+
+            const string script =
+                "local o = obj.getobject(\"a\", 5) " +
+                "obj.x = o.x obj.y = o.y obj.z = o.z " +
+                "obj.zoom = o.zoom obj.rz = o.rz obj.alpha = o.alpha " +
+                "obj.sx = o.sy obj.rzr = o.rzr";
+
+            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(12d, fields[NativeProtocol.X]);
+            Assert.Equal(34d, fields[NativeProtocol.Y]);
+            Assert.Equal(56d, fields[NativeProtocol.Z]);
+            Assert.Equal(2d, fields[NativeProtocol.Zoom]);
+            Assert.Equal(90d, fields[NativeProtocol.Rz]);
+            Assert.Equal(200d, fields[NativeProtocol.Alpha]);
+            Assert.Equal(2d, fields[NativeProtocol.Sx]);
+            Assert.Equal(90d * Math.PI / 180d, fields[NativeProtocol.Rzr]);
+        }
+
+        [Fact]
+        public void GetObject_ReturnsNil_WhenUnresolved()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+
+            const string script =
+                "local o = obj.getobject(\"missing\") obj.x = o == nil and 1 or 0";
+
+            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, NoResolver, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1d, fields[NativeProtocol.X]);
         }
 
         [Fact]
@@ -171,12 +220,12 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool ok = _worker.Execute("obj.x = missing.value", fields, pixels, 2, 2, 5000, out _, out string? error);
+            bool ok = _worker.Execute("obj.x = missing.value", fields, pixels, 2, 2, 5000, NoResolver, out _, out string? error);
             Assert.False(ok);
             Assert.False(string.IsNullOrEmpty(error));
 
             var fields2 = Fields(2, 2, 7d);
-            bool ok2 = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, out _, out error);
+            bool ok2 = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, out _, out error);
             Assert.True(ok2, error);
             Assert.Equal(7d, fields2[NativeProtocol.X]);
         }
