@@ -63,6 +63,7 @@ namespace LuaScript
         private LuaJitWorker? _nativeWorker;
         private double[]? _nativeFields;
         private bool _nativeWarned;
+        private bool _effectChainWarned;
 
         private EffectDescription? _frameDesc;
         private SceneObjectResolver? _frameResolver;
@@ -91,7 +92,9 @@ namespace LuaScript
         private RenderKey _cachedKey;
         private SceneObjectQuery[] _cachedQueries = [];
         private DrawDescription? _cachedOutputDesc;
-        private bool _cachedPixelsModified;
+        private ID2D1Image? _cachedEffectOutput;
+
+        private VideoEffectChain? _effectChain;
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
@@ -189,7 +192,7 @@ namespace LuaScript
             if (!_isFirst && key == _cachedKey &&
                 (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())))
             {
-                effectOutput = _cachedPixelsModified ? _transformEffect?.Output : null;
+                effectOutput = _cachedEffectOutput;
                 return _cachedOutputDesc ?? inDesc;
             }
 
@@ -202,7 +205,6 @@ namespace LuaScript
             ctx.SetPixelLoader(() => LoadInputPixels(bounds, imgW, imgH));
 
             DrawDescription outDesc = inDesc;
-            bool pixelsModified = false;
 
             try
             {
@@ -214,7 +216,7 @@ namespace LuaScript
 
                 if (nativeReady)
                 {
-                    pixelsModified = ExecuteNative(runnable, ctx, bounds, imgW, imgH);
+                    ExecuteNative(runnable, ctx, bounds, imgW, imgH);
                 }
                 else
                 {
@@ -231,7 +233,6 @@ namespace LuaScript
                         else
                             UpdateTransformEffect(bounds.Left, bounds.Top);
                         effectOutput = _transformEffect!.Output;
-                        pixelsModified = true;
                     }
                     else
                     {
@@ -240,6 +241,20 @@ namespace LuaScript
                 }
 
                 outDesc = BuildOutputDesc(inDesc, ctx);
+
+                if (ctx.EffectRequests.Count > 0)
+                {
+                    var source = effectOutput ?? input;
+                    try
+                    {
+                        effectOutput = ApplyEffectChain(source, ctx.EffectRequests, desc, ref outDesc);
+                    }
+                    catch (Exception ex)
+                    {
+                        effectOutput = source;
+                        WarnEffectChainFailureOnce(ex);
+                    }
+                }
             }
             catch (LuaScriptTimeoutException ex)
             {
@@ -265,9 +280,15 @@ namespace LuaScript
             _cachedKey = key;
             _cachedQueries = ctx.ObjectQueries.Count == 0 ? [] : [.. ctx.ObjectQueries];
             _cachedOutputDesc = outDesc;
-            _cachedPixelsModified = pixelsModified;
+            _cachedEffectOutput = effectOutput;
 
             return outDesc;
+        }
+
+        private ID2D1Image ApplyEffectChain(ID2D1Image source, IReadOnlyList<AviUtlEffectRequest> requests, EffectDescription desc, ref DrawDescription drawDescription)
+        {
+            _effectChain ??= new VideoEffectChain(_ownCtx!);
+            return _effectChain.Apply(source, requests, desc, ref drawDescription);
         }
 
         private static SceneObjectResolver BuildSceneObjectResolver(EffectDescription desc)
@@ -326,6 +347,7 @@ namespace LuaScript
                 : 0d;
 
             ctx.ClearQueries();
+            ctx.ClearEffects();
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
@@ -398,6 +420,13 @@ namespace LuaScript
             if (_nativeWarned) return;
             _nativeWarned = true;
             Log.Default.Write($"LuaScript: native runtime not found at '{NativeDirectory}'. Falling back to MoonSharp (slow). Deploy the 'native' folder next to the plugin.");
+        }
+
+        private void WarnEffectChainFailureOnce(Exception ex)
+        {
+            if (_effectChainWarned) return;
+            _effectChainWarned = true;
+            Log.Default.Write("LuaScript: obj.effect chain failed and was skipped for this frame. The source image is passed through unchanged.", ex);
         }
 
         private bool ExecuteNative(string script, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
@@ -548,6 +577,7 @@ namespace LuaScript
             {
                 _engine.Dispose();
                 _nativeWorker?.Dispose();
+                _effectChain?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _renderTarget?.Dispose();
                 _stagingBitmap?.Dispose();
