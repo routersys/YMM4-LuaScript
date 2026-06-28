@@ -28,6 +28,12 @@ namespace LuaScript
             double Track1,
             double Track2,
             double Track3,
+            bool Check0,
+            bool Check1,
+            bool Check2,
+            bool Check3,
+            bool HasColor,
+            int Color,
             string Script,
             TimelineSourceUsage Usage,
             Guid SceneId,
@@ -150,16 +156,22 @@ namespace LuaScript
             var time = desc.ItemPosition.Time.TotalSeconds;
             var script = item.Script ?? string.Empty;
 
-            var t0 = item.Track0.GetValue(frame, length, fps);
-            var t1 = item.Track1.GetValue(frame, length, fps);
-            var t2 = item.Track2.GetValue(frame, length, fps);
-            var t3 = item.Track3.GetValue(frame, length, fps);
+            var layout = item.Layout;
+            var t0 = ClampTrack(item.Track0.GetValue(frame, length, fps), layout, 0);
+            var t1 = ClampTrack(item.Track1.GetValue(frame, length, fps), layout, 1);
+            var t2 = ClampTrack(item.Track2.GetValue(frame, length, fps), layout, 2);
+            var t3 = ClampTrack(item.Track3.GetValue(frame, length, fps), layout, 3);
+
+            bool c0 = item.Check0, c1 = item.Check1, c2 = item.Check2, c3 = item.Check3;
+            bool hasColor = layout.HasColor;
+            int colorRgb = hasColor ? (item.Color.R << 16) | (item.Color.G << 8) | item.Color.B : 0;
 
             var inDesc = desc.DrawDescription;
 
             var key = new RenderKey(
                 frame, time, length, fps,
                 t0, t1, t2, t3,
+                c0, c1, c2, c3, hasColor, colorRgb,
                 script, desc.Usage, desc.SceneId,
                 desc.TimelinePosition.Frame,
                 desc.TimelinePosition.Time.TotalSeconds,
@@ -335,6 +347,12 @@ namespace LuaScript
             ctx.Track1 = key.Track1;
             ctx.Track2 = key.Track2;
             ctx.Track3 = key.Track3;
+            ctx.Check0 = key.Check0;
+            ctx.Check1 = key.Check1;
+            ctx.Check2 = key.Check2;
+            ctx.Check3 = key.Check3;
+            ctx.HasColor = key.HasColor;
+            ctx.ColorValue = key.Color;
             ctx.Time = key.Time;
             ctx.Frame = key.Frame;
             ctx.TotalFrame = key.Length;
@@ -356,6 +374,11 @@ namespace LuaScript
             ctx.IsPaused = key.Usage == TimelineSourceUsage.Paused;
             ctx.SceneId = ResolveSceneId(key.SceneId);
             ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
+        }
+
+        private static double ClampTrack(double value, AviUtlParameterLayout layout, int index)
+        {
+            return layout.GetTrack(index) is { } p ? Math.Clamp(value, p.Min, p.Max) : value;
         }
 
         private static DrawDescription BuildOutputDesc(DrawDescription inDesc, AviUtlScriptContext ctx)
