@@ -313,6 +313,26 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void GetValue_ReturnsObjFields()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            fields[NativeProtocol.Track0] = 42d;
+
+            bool ok = _worker.Execute(
+                "obj.x = obj.getvalue('track0') obj.y = obj.getvalue('alpha') obj.z = obj.getvalue('unknown')",
+                fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(42d, fields[NativeProtocol.X]);
+            Assert.Equal(255d, fields[NativeProtocol.Y]);
+            Assert.Equal(0d, fields[NativeProtocol.Z]);
+        }
+
+        [Fact]
         public void CopyBuffer_TmpSaveRestore_RoundTripsPixels()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

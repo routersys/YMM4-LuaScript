@@ -579,6 +579,15 @@ namespace LuaScript
                         RefreshObjDimensions();
                     return DynValue.Void;
                 });
+
+                obj["getvalue"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.NewNumber(0d);
+                    var value = _objTable!.Get(args[0].String);
+                    return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
+                });
             }
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)

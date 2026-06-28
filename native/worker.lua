@@ -282,6 +282,13 @@ function obj.drawpoly(...)
     k32.WaitForSingleObject(workEvent, INFINITE)
 end
 
+function obj.getvalue(target)
+    if type(target) ~= "string" then return 0 end
+    local v = obj[target]
+    if type(v) == "number" then return v end
+    return 0
+end
+
 function obj.copybuffer(dst, src)
     if type(dst) ~= "string" or type(src) ~= "string" then return end
     local sk, skey = bufferKind(src)
