@@ -27,12 +27,15 @@
     <Compile Include="..\LuaScript\Compat\MoonSharpBit32.cs" Link="Linked\MoonSharpBit32.cs" />
     <Compile Include="..\LuaScript\Compat\Bit32.cs" Link="Linked\Bit32.cs" />
     <Compile Include="..\LuaScript\Engine\ScriptEngineKind.cs" Link="Linked\ScriptEngineKind.cs" />
+    <Compile Include="..\LuaScript\Engine\ScriptDirective.cs" Link="Linked\ScriptDirective.cs" />
     <Compile Include="..\LuaScript\Engine\NativeProtocol.cs" Link="Linked\NativeProtocol.cs" />
     <Compile Include="..\LuaScript\Engine\ProcessJobObject.cs" Link="Linked\ProcessJobObject.cs" />
     <Compile Include="..\LuaScript\Engine\LuaJitWorker.cs" Link="Linked\LuaJitWorker.cs" />
     <Compile Include="..\LuaScript\SceneObjectInfo.cs" Link="Linked\SceneObjectInfo.cs" />
+    <Compile Include="..\LuaScript\SceneObjectQuery.cs" Link="Linked\SceneObjectQuery.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlScript.cs" Link="Linked\AviUtlScript.cs" />
+    <Compile Include="..\LuaScript\Compat\ScriptParserHelper.cs" Link="Linked\ScriptParserHelper.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlParameterLayout.cs" Link="Linked\AviUtlParameterLayout.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlRandom.cs" Link="Linked\AviUtlRandom.cs" />
     <Compile Include="..\LuaScript\Compat\FigureRenderer.cs" Link="Linked\FigureRenderer.cs" />

@@ -10,9 +10,4 @@ namespace LuaScript
         double Rz,
         double Alpha,
         int Layer);
-
-    internal readonly record struct SceneObjectQuery(
-        string Tag,
-        int Frame,
-        SceneObjectInfo? Result);
 }
