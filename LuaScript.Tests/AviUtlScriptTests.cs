@@ -66,19 +66,17 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void Color_InjectsColorVariable()
+        public void Color_IsNotInjected_SurfacedAsUiParameter()
         {
             const string source = "--color:0x010203\nresult = color";
-            double result = RunNumber(AviUtlScript.Transform(source));
-            Assert.Equal(0x010203, result);
+            Assert.Equal(source, AviUtlScript.Transform(source));
         }
 
         [Fact]
-        public void Check_InjectsObjectField()
+        public void Check_IsNotInjected_SurfacedAsUiParameter()
         {
             const string source = "--check0:Enable,1\nresult = obj.check0";
-            double result = RunNumber(AviUtlScript.Transform(source));
-            Assert.Equal(1d, result);
+            Assert.Equal(source, AviUtlScript.Transform(source));
         }
 
         [Fact]
