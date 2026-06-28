@@ -69,6 +69,13 @@
 <data name="Track2" xml:space="preserve"><value>트랙2</value></data>
 <data name="Track3" xml:space="preserve"><value>트랙3</value></data>
 <data name="TrackDesc" xml:space="preserve"><value>슬라이더 값 (AviUtl 호환: track0~3)</value></data>
+<data name="Check0" xml:space="preserve"><value>체크0</value></data>
+<data name="Check1" xml:space="preserve"><value>체크1</value></data>
+<data name="Check2" xml:space="preserve"><value>체크2</value></data>
+<data name="Check3" xml:space="preserve"><value>체크3</value></data>
+<data name="CheckDesc" xml:space="preserve"><value>체크박스 값 (AviUtl 호환: check0~3)</value></data>
+<data name="Color" xml:space="preserve"><value>색</value></data>
+<data name="ColorDesc" xml:space="preserve"><value>색 (AviUtl 호환: --color)</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>가져오기</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>내보내기</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>지우기</value></data>

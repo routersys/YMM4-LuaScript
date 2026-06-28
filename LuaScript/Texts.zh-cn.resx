@@ -69,6 +69,13 @@
 <data name="Track2" xml:space="preserve"><value>轨道2</value></data>
 <data name="Track3" xml:space="preserve"><value>轨道3</value></data>
 <data name="TrackDesc" xml:space="preserve"><value>滑块值(AviUtl兼容: track0~3)</value></data>
+<data name="Check0" xml:space="preserve"><value>复选框0</value></data>
+<data name="Check1" xml:space="preserve"><value>复选框1</value></data>
+<data name="Check2" xml:space="preserve"><value>复选框2</value></data>
+<data name="Check3" xml:space="preserve"><value>复选框3</value></data>
+<data name="CheckDesc" xml:space="preserve"><value>复选框值(AviUtl兼容: check0~3)</value></data>
+<data name="Color" xml:space="preserve"><value>颜色</value></data>
+<data name="ColorDesc" xml:space="preserve"><value>颜色(AviUtl兼容: --color)</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>导入</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>导出</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>清除</value></data>

@@ -69,6 +69,13 @@
 <data name="Track2" xml:space="preserve"><value>トラック2</value></data>
 <data name="Track3" xml:space="preserve"><value>トラック3</value></data>
 <data name="TrackDesc" xml:space="preserve"><value>スライダー値 (AviUtl準拠 track0〜3 に対応)</value></data>
+<data name="Check0" xml:space="preserve"><value>チェック0</value></data>
+<data name="Check1" xml:space="preserve"><value>チェック1</value></data>
+<data name="Check2" xml:space="preserve"><value>チェック2</value></data>
+<data name="Check3" xml:space="preserve"><value>チェック3</value></data>
+<data name="CheckDesc" xml:space="preserve"><value>チェックボックス値 (AviUtl準拠 check0〜3 に対応)</value></data>
+<data name="Color" xml:space="preserve"><value>色</value></data>
+<data name="ColorDesc" xml:space="preserve"><value>色 (AviUtl準拠 --color に対応)</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>インポート</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>エクスポート</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>クリア</value></data>

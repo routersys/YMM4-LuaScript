@@ -9,6 +9,13 @@ Track1,,トラック1,Track 1,轨道1,軌道1,트랙1,Pista 1,مسار 1,Jalur 1
 Track2,,トラック2,Track 2,轨道2,軌道2,트랙2,Pista 2,مسار 2,Jalur 2
 Track3,,トラック3,Track 3,轨道3,軌道3,트랙3,Pista 3,مسار 3,Jalur 3
 TrackDesc,,スライダー値 (AviUtl準拠 track0〜3 に対応),Slider value (AviUtl compatible: track0–3),滑块值(AviUtl兼容: track0~3),滑塊值(AviUtl兼容: track0~3),슬라이더 값 (AviUtl 호환: track0~3),Valor del deslizador (compatible AviUtl: track0-3),قيمة المنزلق (متوافق مع AviUtl: track0-3),Nilai slider (kompatibel AviUtl: track0-3)
+Check0,,チェック0,Check 0,复选框0,核取方塊0,체크0,Casilla 0,خانة 0,Centang 0
+Check1,,チェック1,Check 1,复选框1,核取方塊1,체크1,Casilla 1,خانة 1,Centang 1
+Check2,,チェック2,Check 2,复选框2,核取方塊2,체크2,Casilla 2,خانة 2,Centang 2
+Check3,,チェック3,Check 3,复选框3,核取方塊3,체크3,Casilla 3,خانة 3,Centang 3
+CheckDesc,,チェックボックス値 (AviUtl準拠 check0〜3 に対応),Checkbox value (AviUtl compatible: check0–3),复选框值(AviUtl兼容: check0~3),核取方塊值(AviUtl兼容: check0~3),체크박스 값 (AviUtl 호환: check0~3),Valor de casilla (compatible AviUtl: check0-3),قيمة خانة الاختيار (متوافق مع AviUtl: check0-3),Nilai kotak centang (kompatibel AviUtl: check0-3)
+Color,,色,Color,颜色,顏色,색,Color,اللون,Warna
+ColorDesc,,色 (AviUtl準拠 --color に対応),Color (AviUtl compatible: --color),颜色(AviUtl兼容: --color),顏色(AviUtl兼容: --color),색 (AviUtl 호환: --color),Color (compatible AviUtl: --color),اللون (متوافق مع AviUtl: --color),Warna (kompatibel AviUtl: --color)
 ToolBarImport,,インポート,Import,导入,導入,가져오기,Importar,استيراد,Impor
 ToolBarExport,,エクスポート,Export,导出,導出,내보내기,Exportar,تصدير,Ekspor
 ToolBarClear,,クリア,Clear,清除,清除,지우기,Limpiar,مسح,Hapus
