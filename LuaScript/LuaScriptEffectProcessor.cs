@@ -432,7 +432,10 @@ namespace LuaScript
             bool ok = _nativeWorker.Execute(
                 script, _nativeFields, buffer, imgW, imgH, NativeTimeoutMilliseconds,
                 (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
-                out bool dirty, out string? error);
+                NativeLoadFigure,
+                (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
+                out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
+                out int resultW, out int resultH, out string? error);
 
             if (!ok)
             {
@@ -445,13 +448,38 @@ namespace LuaScript
 
             if (dirty)
             {
-                _pixelManager!.WritePixelsToOutput(buffer, imgW, imgH);
-                effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
+                int outW = bufferReplaced ? resultW : imgW;
+                int outH = bufferReplaced ? resultH : imgH;
+                byte[] outPixels = buffer;
+
+                if (bufferReplaced && newPixels != null)
+                {
+                    outPixels = newPixels;
+                    ctx.ReplaceBuffer(outPixels, outW, outH);
+                }
+
+                _pixelManager!.WritePixelsToOutput(outPixels, outW, outH);
+                if (bufferReplaced)
+                    effectOutput = _pixelManager.GetTransformOutput(-outW / 2f, -outH / 2f);
+                else
+                    effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
                 return true;
             }
 
             effectOutput = null;
             return false;
+        }
+
+        private static (byte[] buffer, int w, int h) NativeLoadFigure(string name, int color, double size, double lineWidth, double aspect)
+        {
+            aspect = Math.Clamp(aspect, -1d, 1d);
+            int boundingSize = Math.Max(1, (int)Math.Round(size));
+            double w = aspect >= 0d ? boundingSize * (1d - aspect) : boundingSize;
+            double h = aspect <= 0d ? boundingSize * (1d + aspect) : boundingSize;
+            int fw = Math.Max(1, (int)Math.Round(w));
+            int fh = Math.Max(1, (int)Math.Round(h));
+            var buffer = FigureRenderer.Render(name, fw, fh, color, lineWidth);
+            return (buffer, fw, fh);
         }
 
         private byte[] LoadInputPixels(RawRectF bounds, int width, int height)

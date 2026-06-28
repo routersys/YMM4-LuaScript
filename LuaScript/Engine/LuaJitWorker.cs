@@ -27,6 +27,7 @@ namespace LuaScript.Engine
         private readonly byte[] _lastCallbackTag = new byte[NativeProtocol.CallbackTagMax];
         private int _lastCallbackTagLength = -1;
         private string _lastCallbackTagText = string.Empty;
+        private byte[]? _resultBuffer;
 
         public LuaJitWorker(string nativeDir)
         {
@@ -47,10 +48,20 @@ namespace LuaScript.Engine
             int height,
             int timeoutMs,
             Func<string, int, SceneObjectInfo?> resolveObject,
+            Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
+            Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             out bool pixelsDirty,
+            out bool bufferReplaced,
+            out byte[]? newPixels,
+            out int resultWidth,
+            out int resultHeight,
             out string? error)
         {
             pixelsDirty = false;
+            bufferReplaced = false;
+            newPixels = null;
+            resultWidth = width;
+            resultHeight = height;
             error = null;
 
             byte[] scriptBytes = Encoding.UTF8.GetBytes(script);
@@ -92,7 +103,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                ResolveCallback(view, resolveObject);
+                DispatchCallback(view, resolveObject, loadFigure, addEffect);
                 _workEvent.Set();
             }
 
@@ -108,14 +119,52 @@ namespace LuaScript.Engine
             for (int i = NativeProtocol.FirstWritableField; i <= NativeProtocol.LastWritableField; i++)
                 fields[i] = view.ReadDouble(NativeProtocol.FieldsOffset + i * 8);
 
+            resultWidth = view.ReadInt32(NativeProtocol.OffWidth);
+            resultHeight = view.ReadInt32(NativeProtocol.OffHeight);
+            bufferReplaced = resultWidth != width || resultHeight != height;
+
             pixelsDirty = view.ReadInt32(NativeProtocol.OffPixelsDirty) != 0;
             if (pixelsDirty)
-                view.ReadArray(NativeProtocol.PixelOffset, pixels, 0, pixels.Length);
+            {
+                if (bufferReplaced)
+                {
+                    int pixelSize = resultWidth * resultHeight * 4;
+                    if (_resultBuffer == null || _resultBuffer.Length < pixelSize)
+                        _resultBuffer = new byte[pixelSize];
+                    view.ReadArray(NativeProtocol.PixelOffset, _resultBuffer, 0, pixelSize);
+                    newPixels = _resultBuffer;
+                }
+                else
+                {
+                    view.ReadArray(NativeProtocol.PixelOffset, pixels, 0, pixels.Length);
+                }
+            }
 
             return true;
         }
 
-        private void ResolveCallback(MemoryMappedViewAccessor view, Func<string, int, SceneObjectInfo?> resolveObject)
+        private void DispatchCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, int, SceneObjectInfo?> resolveObject,
+            Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
+            Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect)
+        {
+            int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
+            switch (kind)
+            {
+                case NativeProtocol.CbKindGetObject:
+                    ResolveGetObjectCallback(view, resolveObject);
+                    break;
+                case NativeProtocol.CbKindLoadFigure:
+                    ResolveLoadFigureCallback(view, loadFigure);
+                    break;
+                case NativeProtocol.CbKindEffect:
+                    ResolveEffectCallback(view, addEffect);
+                    break;
+            }
+        }
+
+        private void ResolveGetObjectCallback(MemoryMappedViewAccessor view, Func<string, int, SceneObjectInfo?> resolveObject)
         {
             int frame = view.ReadInt32(NativeProtocol.OffCallbackFrame);
             int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
@@ -143,6 +192,70 @@ namespace LuaScript.Engine
             {
                 view.Write(NativeProtocol.OffCallbackFound, 0);
             }
+        }
+
+        private void ResolveLoadFigureCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string name = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            int color = (int)view.ReadDouble(rOff + 0 * 8);
+            double size = view.ReadDouble(rOff + 1 * 8);
+            double lineWidth = view.ReadDouble(rOff + 2 * 8);
+            double aspect = view.ReadDouble(rOff + 3 * 8);
+
+            (byte[] buffer, int w, int h) result;
+            try { result = loadFigure(name, color, size, lineWidth, aspect); }
+            catch { result = (new byte[4], 1, 1); }
+
+            int pixelSize = result.w * result.h * 4;
+            long capacity = view.Capacity - NativeProtocol.PixelOffset;
+            if (pixelSize > capacity)
+            {
+                result = (new byte[4], 1, 1);
+                pixelSize = 4;
+            }
+
+            view.Write(NativeProtocol.OffLoadResultWidth, result.w);
+            view.Write(NativeProtocol.OffLoadResultHeight, result.h);
+            view.WriteArray(NativeProtocol.PixelOffset, result.buffer, 0, pixelSize);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveEffectCallback(MemoryMappedViewAccessor view, Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+
+            var segments = Encoding.UTF8.GetString(_callbackTag, 0, tagLen).Split('\0');
+            if (segments.Length == 0)
+                return;
+
+            string effectName = segments[0];
+            var arguments = new List<KeyValuePair<string, object>>();
+            for (int i = 1; i + 1 < segments.Length; i += 2)
+            {
+                string key = segments[i];
+                string raw = segments[i + 1];
+                object value;
+                if (raw.Length > 0 && raw[0] == 'n')
+                    value = double.TryParse(raw.AsSpan(1), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0d;
+                else if (raw.Length > 0 && raw[0] == 'b')
+                    value = raw.Length > 1 && raw[1] == '1';
+                else if (raw.Length > 0 && raw[0] == 's')
+                    value = raw.Substring(1);
+                else
+                    value = raw;
+                arguments.Add(new KeyValuePair<string, object>(key, value));
+            }
+
+            try { addEffect(effectName, arguments); }
+            catch { }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private string ResolveTag(int tagLen)

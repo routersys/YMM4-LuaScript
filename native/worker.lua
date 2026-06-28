@@ -46,15 +46,21 @@ local OFF_ERRORLEN = 7
 local OFF_CB_FRAME = 8
 local OFF_CB_TAGLEN = 9
 local OFF_CB_FOUND = 10
+local OFF_CB_KIND = 11
+local OFF_LOAD_RESULT_W = 12
+local OFF_LOAD_RESULT_H = 13
 local SCRIPT_OFFSET = 64 + 64 * 8
 local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
 local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
-local CB_TAG_MAX = 256
+local CB_TAG_MAX = 4096
 local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
 local PIXEL_OFFSET = CB_RESULT_OFFSET + 8 * 8
 local FIRST_WRITABLE = 8
 local LAST_WRITABLE = 25
 local STATUS_CALLBACK = 3
+local CB_KIND_GETOBJECT = 0
+local CB_KIND_LOADFIGURE = 1
+local CB_KIND_EFFECT = 2
 
 assert(loadfile(shimPath))()
 
@@ -150,6 +156,77 @@ function obj.rand(a, b, seed, frame)
     return aviutl_rand(a or 0, b or 0, seed or 0, frame or obj.frame or 0)
 end
 
+function obj.load(kind, name, color, size, lineWidth, aspect)
+    if kind ~= "figure" then return end
+    name = name or ""
+    color = color or 0
+    size = size or 100
+    lineWidth = lineWidth or 0
+    aspect = aspect or 0
+    local nameBytes = tostring(name)
+    local len = #nameBytes
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, nameBytes, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADFIGURE
+    cbResult[0] = color
+    cbResult[1] = size
+    cbResult[2] = lineWidth
+    cbResult[3] = aspect
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    local newW = i32[OFF_LOAD_RESULT_W]
+    local newH = i32[OFF_LOAD_RESULT_H]
+    if newW > 0 and newH > 0 then
+        width = newW
+        height = newH
+        i32[OFF_WIDTH] = newW
+        i32[OFF_HEIGHT] = newH
+        dirty = true
+        obj.w = newW; obj.h = newH
+        obj.hw = newW / 2; obj.hh = newH / 2
+        obj.cx = newW / 2; obj.cy = newH / 2
+        obj.cz = 0
+        obj.diagonal = math.sqrt(newW * newW + newH * newH)
+    end
+end
+
+function obj.effect(name, ...)
+    if type(name) ~= "string" then return end
+    local args = { ... }
+    local n = select("#", ...)
+    local parts = { name }
+    local pos = #name + 1
+    for i = 1, n - 1, 2 do
+        local k = tostring(args[i])
+        local v = args[i + 1]
+        local encoded
+        local vt = type(v)
+        if vt == "number" then
+            encoded = "n" .. string.format("%.17g", v)
+        elseif vt == "boolean" then
+            encoded = v and "b1" or "b0"
+        else
+            encoded = "s" .. tostring(v)
+        end
+        local needed = 2 + #k + #encoded
+        if pos + needed > CB_TAG_MAX then break end
+        parts[#parts + 1] = k
+        parts[#parts + 1] = encoded
+        pos = pos + needed
+    end
+    local payload = table.concat(parts, "\0")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_EFFECT
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
 local cacheTag, cacheFrame, cacheFound
 local cacheExist, cacheX, cacheY, cacheZ, cacheZoom, cacheRz, cacheAlpha, cacheLayer
 
@@ -176,6 +253,7 @@ function obj.getobject(tag, frame)
     ffi.copy(base + CB_TAG_OFFSET, tag, len)
     i32[OFF_CB_TAGLEN] = len
     i32[OFF_CB_FRAME] = frame
+    i32[OFF_CB_KIND] = CB_KIND_GETOBJECT
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)

@@ -23,6 +23,9 @@ namespace LuaScript.Engine
         public const int OffCallbackFrame = 32;
         public const int OffCallbackTagLen = 36;
         public const int OffCallbackFound = 40;
+        public const int OffCallbackKind = 44;
+        public const int OffLoadResultWidth = 48;
+        public const int OffLoadResultHeight = 52;
 
         public const int HeaderSize = 64;
 
@@ -36,9 +39,13 @@ namespace LuaScript.Engine
         public const int ErrorMax = 4 * 1024;
 
         public const int CallbackTagOffset = ErrorOffset + ErrorMax;
-        public const int CallbackTagMax = 256;
+        public const int CallbackTagMax = 4096;
         public const int CallbackResultOffset = CallbackTagOffset + CallbackTagMax;
         public const int CallbackResultCount = 8;
+
+        public const int CbKindGetObject = 0;
+        public const int CbKindLoadFigure = 1;
+        public const int CbKindEffect = 2;
 
         public const int CbExist = 0;
         public const int CbX = 1;
@@ -113,7 +120,9 @@ namespace LuaScript.Engine
         public const int FirstWritableField = X;
         public const int LastWritableField = Rzr;
 
+        public const int MaxPixelBufferSize = 3840 * 2160 * 4;
+
         public static long BufferSize(int width, int height) =>
-            PixelOffset + (long)width * height * 4;
+            PixelOffset + Math.Max((long)width * height * 4, MaxPixelBufferSize);
     }
 }

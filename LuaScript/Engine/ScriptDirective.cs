@@ -21,9 +21,7 @@ namespace LuaScript.Engine
 
         public static bool UsesDrawingApi(string? script) =>
             script is not null && (
-                script.Contains("obj.load", StringComparison.Ordinal) ||
                 script.Contains("obj.draw", StringComparison.Ordinal) ||
-                script.Contains("obj.effect", StringComparison.Ordinal) ||
                 script.Contains("obj.setoption", StringComparison.Ordinal) ||
                 script.Contains("obj.copybuffer", StringComparison.Ordinal));
 
