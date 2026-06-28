@@ -66,6 +66,14 @@ namespace LuaScript
 
         internal void ClearEffects() => _effectRequests.Clear();
 
+        private readonly List<DrawCommand> _drawCommands = [];
+
+        public IReadOnlyList<DrawCommand> DrawCommands => _drawCommands;
+
+        internal void AddDraw(DrawCommand command) => _drawCommands.Add(command);
+
+        internal void ClearDraws() => _drawCommands.Clear();
+
         public double RxRad => Rx * Math.PI / 180d;
         public double RyRad => Ry * Math.PI / 180d;
         public double RzRad => Rz * Math.PI / 180d;

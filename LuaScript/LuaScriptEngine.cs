@@ -514,6 +514,23 @@ namespace LuaScript
                     _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
                     return DynValue.Void;
                 });
+
+                obj["draw"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null)
+                        return DynValue.Void;
+
+                    double ox = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                    double oy = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                    double oz = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                    double zoom = args.Count > 3 ? args[3].CastToNumber() ?? 1d : 1d;
+                    double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
+                    double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
+
+                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect));
+                    return DynValue.Void;
+                });
             }
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)

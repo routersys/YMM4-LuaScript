@@ -88,6 +88,7 @@ namespace LuaScript
         private ID2D1Image? _cachedEffectOutput;
 
         private VideoEffectChain? _effectChain;
+        private DrawCompositor? _drawCompositor;
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
@@ -232,6 +233,17 @@ namespace LuaScript
                     }
                 }
 
+                if (ctx.DrawCommands.Count > 0)
+                {
+                    ctx.EnsurePixelBuffer();
+                    var drawBuffer = ctx.GetPixelBuffer();
+                    if (drawBuffer is not null)
+                    {
+                        _drawCompositor ??= new DrawCompositor(_ownCtx);
+                        effectOutput = _drawCompositor.Compose(drawBuffer, ctx.ImageWidth, ctx.ImageHeight, ctx.DrawCommands);
+                    }
+                }
+
                 outDesc = BuildOutputDesc(inDesc, ctx);
 
                 if (ctx.EffectRequests.Count > 0)
@@ -340,6 +352,7 @@ namespace LuaScript
 
             ctx.ClearQueries();
             ctx.ClearEffects();
+            ctx.ClearDraws();
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
@@ -502,6 +515,7 @@ namespace LuaScript
                 _engine.Dispose();
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
+                _drawCompositor?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _pixelManager?.Dispose();
                 _pixelManager = null;
