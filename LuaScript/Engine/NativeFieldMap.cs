@@ -38,6 +38,11 @@ namespace LuaScript.Engine
             f[NativeProtocol.Track1] = ctx.Track1;
             f[NativeProtocol.Track2] = ctx.Track2;
             f[NativeProtocol.Track3] = ctx.Track3;
+            f[NativeProtocol.Check0] = ctx.Check0 ? 1d : 0d;
+            f[NativeProtocol.Check1] = ctx.Check1 ? 1d : 0d;
+            f[NativeProtocol.Check2] = ctx.Check2 ? 1d : 0d;
+            f[NativeProtocol.Check3] = ctx.Check3 ? 1d : 0d;
+            f[NativeProtocol.Color] = ctx.HasColor ? ctx.ColorValue : -1d;
             f[NativeProtocol.Time] = ctx.Time;
             f[NativeProtocol.Frame] = ctx.Frame;
             f[NativeProtocol.TotalFrame] = ctx.TotalFrame;

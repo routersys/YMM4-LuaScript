@@ -104,6 +104,11 @@ namespace LuaScript.Engine
         public const int IsPaused = 50;
         public const int TimelineFrame = 51;
         public const int TimelineTime = 52;
+        public const int Check0 = 53;
+        public const int Check1 = 54;
+        public const int Check2 = 55;
+        public const int Check3 = 56;
+        public const int Color = 57;
 
         public const int FirstWritableField = X;
         public const int LastWritableField = Rzr;

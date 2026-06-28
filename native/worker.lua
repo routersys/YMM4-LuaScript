@@ -227,6 +227,8 @@ local function loadFields()
     ymm4.is_saving = f64[48] ~= 0; ymm4.is_playing = f64[49] ~= 0; ymm4.is_paused = f64[50] ~= 0
     ymm4.group_ratio = (f64[44] ~= 0) and (f64[43] / f64[44]) or 0
     obj.timelineframe = f64[51]; obj.timelinetime = f64[52]
+    obj.check0 = f64[53] ~= 0; obj.check1 = f64[54] ~= 0; obj.check2 = f64[55] ~= 0; obj.check3 = f64[56] ~= 0
+    sandbox.color = (f64[57] >= 0) and f64[57] or nil
 end
 
 local function storeFields()
