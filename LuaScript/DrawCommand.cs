@@ -6,5 +6,6 @@ namespace LuaScript
         double Oz,
         double Zoom,
         double Alpha,
-        double Aspect);
+        double Aspect,
+        double[]? Poly = null);
 }

@@ -531,6 +531,42 @@ namespace LuaScript
                     _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect));
                     return DynValue.Void;
                 });
+
+                obj["drawpoly"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count < 12)
+                        return DynValue.Void;
+
+                    var poly = new double[DrawPolyMath.Length];
+                    for (int i = 0; i < 12; i++)
+                        poly[i] = args[i].CastToNumber() ?? 0d;
+
+                    if (args.Count >= 20)
+                    {
+                        for (int i = 0; i < 8; i++)
+                            poly[12 + i] = args[12 + i].CastToNumber() ?? 0d;
+                    }
+                    else
+                    {
+                        double w = _activeContext.ImageWidth;
+                        double h = _activeContext.ImageHeight;
+                        poly[12] = 0d; poly[13] = 0d;
+                        poly[14] = w; poly[15] = 0d;
+                        poly[16] = w; poly[17] = h;
+                        poly[18] = 0d; poly[19] = h;
+                    }
+
+                    poly[20] = args.Count switch
+                    {
+                        13 => args[12].CastToNumber() ?? 1d,
+                        >= 21 => args[20].CastToNumber() ?? 1d,
+                        _ => 1d,
+                    };
+
+                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly));
+                    return DynValue.Void;
+                });
             }
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)

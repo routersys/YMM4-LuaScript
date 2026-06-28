@@ -47,6 +47,7 @@ namespace LuaScript.Engine
         public const int CbKindLoadFigure = 1;
         public const int CbKindEffect = 2;
         public const int CbKindDraw = 3;
+        public const int CbKindDrawPoly = 4;
 
         public const int CbExist = 0;
         public const int CbX = 1;

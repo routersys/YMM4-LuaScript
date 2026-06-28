@@ -36,6 +36,15 @@ namespace LuaScript
             for (int i = 0; i < commands.Count; i++)
             {
                 var cmd = commands[i];
+                if (cmd.Poly is { } poly)
+                {
+                    DrawPolyMath.Bounds(poly, out double pMinX, out double pMinY, out double pMaxX, out double pMaxY);
+                    minX = Math.Min(minX, pMinX);
+                    maxX = Math.Max(maxX, pMaxX);
+                    minY = Math.Min(minY, pMinY);
+                    maxY = Math.Max(maxY, pMaxY);
+                    continue;
+                }
                 double aspect = Math.Clamp(cmd.Aspect, -1d, 1d);
                 double zx = cmd.Zoom * (1d + aspect);
                 double zy = cmd.Zoom * (1d - aspect);
@@ -61,9 +70,19 @@ namespace LuaScript
             dc.Target = _target;
             dc.BeginDraw();
             dc.Clear(null);
+            var toTarget = Matrix3x2.CreateTranslation(-originX, -originY);
             for (int i = 0; i < commands.Count; i++)
             {
                 var cmd = commands[i];
+                if (cmd.Poly is { } poly)
+                {
+                    if (!DrawPolyMath.TrySolveAffine(poly, out var affine))
+                        continue;
+                    rt.Transform = affine * toTarget;
+                    rt.DrawBitmap(_source, (float)Math.Clamp(poly[20], 0d, 1d), BitmapInterpolationMode.Linear);
+                    continue;
+                }
+
                 double aspect = Math.Clamp(cmd.Aspect, -1d, 1d);
                 float zx = (float)(cmd.Zoom * (1d + aspect));
                 float zy = (float)(cmd.Zoom * (1d - aspect));

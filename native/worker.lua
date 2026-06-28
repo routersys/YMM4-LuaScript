@@ -62,6 +62,7 @@ local CB_KIND_GETOBJECT = 0
 local CB_KIND_LOADFIGURE = 1
 local CB_KIND_EFFECT = 2
 local CB_KIND_DRAW = 3
+local CB_KIND_DRAWPOLY = 4
 
 assert(loadfile(shimPath))()
 
@@ -74,6 +75,7 @@ end
 local width, height = 0, 0
 local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
 local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
+local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
 local dirty = false
 
 local obj = {}
@@ -236,6 +238,32 @@ function obj.draw(ox, oy, oz, zoom, alpha, aspect)
     cbResult[4] = alpha or 1
     cbResult[5] = aspect or 0
     i32[OFF_CB_KIND] = CB_KIND_DRAW
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.drawpoly(...)
+    local n = select("#", ...)
+    if n < 12 then return end
+    local a = { ... }
+    for i = 0, 11 do cbTagD[i] = a[i + 1] or 0 end
+    if n >= 20 then
+        for i = 0, 7 do cbTagD[12 + i] = a[13 + i] or 0 end
+    else
+        cbTagD[12] = 0; cbTagD[13] = 0
+        cbTagD[14] = width; cbTagD[15] = 0
+        cbTagD[16] = width; cbTagD[17] = height
+        cbTagD[18] = 0; cbTagD[19] = height
+    end
+    local alpha = 1
+    if n == 13 then
+        alpha = a[13] or 1
+    elseif n >= 21 then
+        alpha = a[21] or 1
+    end
+    cbTagD[20] = alpha
+    i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)

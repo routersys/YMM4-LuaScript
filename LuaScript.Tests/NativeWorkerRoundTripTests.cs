@@ -268,6 +268,51 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void DrawPoly_RecordsDefaultUvAndAlpha()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.drawpoly(0,0,0, 10,0,0, 10,10,0, 0,10,0)",
+                fields, pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Single(commands);
+            var poly = commands[0].Poly;
+            Assert.NotNull(poly);
+            Assert.Equal(new double[] { 0, 0, 0, 10, 0, 0, 10, 10, 0, 0, 10, 0, 0, 0, 4, 0, 4, 4, 0, 4, 1 }, poly);
+        }
+
+        [Fact]
+        public void DrawPoly_RecordsExplicitUvAndAlpha()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.drawpoly(0,0,0, 8,0,0, 8,8,0, 0,8,0, 1,1, 3,1, 3,3, 1,3, 0.5)",
+                fields, pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Single(commands);
+            var poly = commands[0].Poly;
+            Assert.NotNull(poly);
+            Assert.Equal(new double[] { 0, 0, 0, 8, 0, 0, 8, 8, 0, 0, 8, 0, 1, 1, 3, 1, 3, 3, 1, 3, 0.5 }, poly);
+            Assert.Equal(0.5d, commands[0].Alpha);
+        }
+
+        [Fact]
         public void RuntimeError_IsReported_AndWorkerSurvives()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

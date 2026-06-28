@@ -166,6 +166,9 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindDraw:
                     ResolveDrawCallback(view, addDraw);
                     break;
+                case NativeProtocol.CbKindDrawPoly:
+                    ResolveDrawPolyCallback(view, addDraw);
+                    break;
             }
         }
 
@@ -180,6 +183,17 @@ namespace LuaScript.Engine
             double aspect = view.ReadDouble(rOff + 5 * 8);
 
             try { addDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect)); }
+            catch { }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private static void ResolveDrawPolyCallback(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
+        {
+            var poly = new double[DrawPolyMath.Length];
+            for (int i = 0; i < DrawPolyMath.Length; i++)
+                poly[i] = view.ReadDouble(NativeProtocol.CallbackTagOffset + i * 8);
+
+            try { addDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly)); }
             catch { }
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
