@@ -74,12 +74,16 @@ namespace LuaScript
             for (int i = 0; i < commands.Count; i++)
             {
                 var cmd = commands[i];
+                var interpolation = cmd.Antialias != 0d
+                    ? BitmapInterpolationMode.Linear
+                    : BitmapInterpolationMode.NearestNeighbor;
+
                 if (cmd.Poly is { } poly)
                 {
                     if (!DrawPolyMath.TrySolveAffine(poly, out var affine))
                         continue;
                     rt.Transform = affine * toTarget;
-                    rt.DrawBitmap(_source, (float)Math.Clamp(poly[20], 0d, 1d), BitmapInterpolationMode.Linear);
+                    rt.DrawBitmap(_source, (float)Math.Clamp(poly[20], 0d, 1d), interpolation);
                     continue;
                 }
 
@@ -94,7 +98,7 @@ namespace LuaScript
                     Matrix3x2.CreateTranslation((float)(cmd.Ox - originX), (float)(cmd.Oy - originY));
 
                 rt.Transform = matrix;
-                rt.DrawBitmap(_source, opacity, BitmapInterpolationMode.Linear);
+                rt.DrawBitmap(_source, opacity, interpolation);
             }
             rt.Transform = Matrix3x2.Identity;
             dc.EndDraw();

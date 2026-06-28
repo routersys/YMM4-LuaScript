@@ -78,6 +78,8 @@ local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
 local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
 local pixelCapacity = mapSize - PIXEL_OFFSET
 local buffers = {}
+local options = {}
+local pixeloptions = {}
 local dirty = false
 
 local function bufferKind(id)
@@ -250,6 +252,7 @@ function obj.draw(ox, oy, oz, zoom, alpha, aspect)
     cbResult[3] = zoom or 1
     cbResult[4] = alpha or 1
     cbResult[5] = aspect or 0
+    cbResult[6] = options.antialias or 1
     i32[OFF_CB_KIND] = CB_KIND_DRAW
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
@@ -276,6 +279,7 @@ function obj.drawpoly(...)
         alpha = a[21] or 1
     end
     cbTagD[20] = alpha
+    cbTagD[21] = options.antialias or 1
     i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
@@ -287,6 +291,25 @@ function obj.getvalue(target)
     local v = obj[target]
     if type(v) == "number" then return v end
     return 0
+end
+
+function obj.setoption(name, value)
+    if type(name) ~= "string" then return end
+    if value == nil then value = true end
+    options[name] = value
+end
+
+function obj.getoption(name)
+    if type(name) ~= "string" then return 0 end
+    local v = options[name]
+    if v == nil then return 0 end
+    return v
+end
+
+function obj.pixeloption(name, value)
+    if type(name) ~= "string" then return end
+    if value == nil then value = true end
+    pixeloptions[name] = value
 end
 
 function obj.copybuffer(dst, src)
@@ -442,6 +465,8 @@ while true do
     if compiledChunk and code == compiledCode then
         loadFields()
         cacheTag = nil
+        for k in pairs(options) do options[k] = nil end
+        for k in pairs(pixeloptions) do pixeloptions[k] = nil end
         math.randomseed(f64[31])
         setfenv(compiledChunk, sandbox)
         local ok, err = pcall(compiledChunk)

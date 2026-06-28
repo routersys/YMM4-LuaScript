@@ -53,6 +53,9 @@ namespace LuaScript
 
             private readonly List<string> _removalBuffer = [];
 
+            private readonly Dictionary<string, DynValue> _options = new(StringComparer.Ordinal);
+            private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
+
             private Script? _script;
             private DynValue? _compiledChunk;
             private string _lastCompiledCode = string.Empty;
@@ -202,6 +205,9 @@ namespace LuaScript
             {
                 var script = _script!;
                 bool isFirstSetup = _objTable is null;
+
+                _options.Clear();
+                _pixelOptions.Clear();
 
                 if (isFirstSetup)
                 {
@@ -528,7 +534,7 @@ namespace LuaScript
                     double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
                     double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
 
-                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect));
+                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias()));
                     return DynValue.Void;
                 });
 
@@ -564,7 +570,7 @@ namespace LuaScript
                         _ => 1d,
                     };
 
-                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly));
+                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias()));
                     return DynValue.Void;
                 });
 
@@ -588,7 +594,38 @@ namespace LuaScript
                     var value = _objTable!.Get(args[0].String);
                     return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
                 });
+
+                obj["setoption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.Void;
+                    _options[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                    return DynValue.Void;
+                });
+
+                obj["getoption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.NewNumber(0d);
+                    return _options.TryGetValue(args[0].String, out var value) ? value : DynValue.NewNumber(0d);
+                });
+
+                obj["pixeloption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.Void;
+                    _pixelOptions[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                    return DynValue.Void;
+                });
             }
+
+            private double CurrentAntialias() =>
+                _options.TryGetValue("antialias", out var value) && value.Type == DataType.Number
+                    ? value.Number
+                    : 1d;
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)
             {

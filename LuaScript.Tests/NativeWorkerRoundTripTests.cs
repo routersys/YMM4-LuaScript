@@ -313,6 +313,44 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void SetOption_GetOption_RoundTrips()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+
+            bool ok = _worker.Execute(
+                "obj.setoption('antialias', 0) obj.x = obj.getoption('antialias') obj.y = obj.getoption('unset')",
+                fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0d, fields[NativeProtocol.X]);
+            Assert.Equal(0d, fields[NativeProtocol.Y]);
+        }
+
+        [Fact]
+        public void Draw_CarriesAntialiasFromOption()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.draw() obj.setoption('antialias', 0) obj.draw()",
+                Fields(2, 2, 0d), pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(2, commands.Count);
+            Assert.Equal(1d, commands[0].Antialias);
+            Assert.Equal(0d, commands[1].Antialias);
+        }
+
+        [Fact]
         public void GetValue_ReturnsObjFields()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
