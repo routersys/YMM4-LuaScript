@@ -313,6 +313,12 @@ namespace LuaScript
                 _objTable!["track1"] = ctx.Track1;
                 _objTable!["track2"] = ctx.Track2;
                 _objTable!["track3"] = ctx.Track3;
+                _objTable!["check0"] = ctx.Check0;
+                _objTable!["check1"] = ctx.Check1;
+                _objTable!["check2"] = ctx.Check2;
+                _objTable!["check3"] = ctx.Check3;
+                if (ctx.HasColor)
+                    script.Globals["color"] = ctx.ColorValue;
                 _objTable!["time"] = ctx.Time;
                 _objTable!["frame"] = ctx.Frame;
                 _objTable!["totalframe"] = ctx.TotalFrame;

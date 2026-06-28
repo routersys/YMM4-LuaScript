@@ -29,6 +29,14 @@ namespace LuaScript
         public double Track2 { get; set; }
         public double Track3 { get; set; }
 
+        public bool Check0 { get; set; }
+        public bool Check1 { get; set; }
+        public bool Check2 { get; set; }
+        public bool Check3 { get; set; }
+
+        public bool HasColor { get; set; }
+        public double ColorValue { get; set; }
+
         public double Time { get; set; }
         public int Frame { get; set; }
         public int TotalFrame { get; set; }
