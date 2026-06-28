@@ -26,7 +26,7 @@ namespace LuaScript.Compat
 
             for (int i = 0; i < lines.Length; i++)
             {
-                if (!IsSectionHeader(lines[i]))
+                if (!ScriptParserHelper.IsSectionHeader(lines[i]))
                     continue;
 
                 hasSection = true;
@@ -34,7 +34,7 @@ namespace LuaScript.Compat
                 sectionEnd = lines.Length;
                 for (int j = sectionStart; j < lines.Length; j++)
                 {
-                    if (IsSectionHeader(lines[j]))
+                    if (ScriptParserHelper.IsSectionHeader(lines[j]))
                     {
                         sectionEnd = j;
                         break;
@@ -59,15 +59,9 @@ namespace LuaScript.Compat
             return builder.ToString();
         }
 
-        private static bool IsSectionHeader(string line)
-        {
-            int i = SkipSpaces(line, 0);
-            return i < line.Length && line[i] == '@';
-        }
-
         private static void AppendDeclarations(string line, List<string> prelude)
         {
-            int i = SkipSpaces(line, 0);
+            int i = ScriptParserHelper.SkipSpaces(line, 0);
             if (i + 1 >= line.Length || line[i] != '-' || line[i + 1] != '-')
                 return;
             i += 2;
@@ -75,7 +69,7 @@ namespace LuaScript.Compat
                 return;
 
             int nameStart = i;
-            while (i < line.Length && IsNameChar(line[i]))
+            while (i < line.Length && ScriptParserHelper.IsNameChar(line[i]))
                 i++;
             if (i >= line.Length || line[i] != ':')
                 return;
@@ -125,15 +119,5 @@ namespace LuaScript.Compat
             if (trimmed.Length != 0)
                 prelude.Add(trimmed);
         }
-
-        private static int SkipSpaces(string text, int index)
-        {
-            while (index < text.Length && (text[index] == ' ' || text[index] == '\t'))
-                index++;
-            return index;
-        }
-
-        private static bool IsNameChar(char c) =>
-            (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     }
 }

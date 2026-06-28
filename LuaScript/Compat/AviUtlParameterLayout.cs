@@ -49,13 +49,13 @@ namespace LuaScript.Compat
             int sectionEnd = lines.Length;
             for (int i = 0; i < lines.Length; i++)
             {
-                if (!IsSectionHeader(lines[i]))
+                if (!ScriptParserHelper.IsSectionHeader(lines[i]))
                     continue;
                 sectionStart = i + 1;
                 sectionEnd = lines.Length;
                 for (int j = sectionStart; j < lines.Length; j++)
                 {
-                    if (IsSectionHeader(lines[j]))
+                    if (ScriptParserHelper.IsSectionHeader(lines[j]))
                     {
                         sectionEnd = j;
                         break;
@@ -72,7 +72,7 @@ namespace LuaScript.Compat
 
         private void ParseLine(string line)
         {
-            int i = SkipSpaces(line, 0);
+            int i = ScriptParserHelper.SkipSpaces(line, 0);
             if (i + 1 >= line.Length || line[i] != '-' || line[i + 1] != '-')
                 return;
             i += 2;
@@ -80,7 +80,7 @@ namespace LuaScript.Compat
                 return;
 
             int nameStart = i;
-            while (i < line.Length && IsNameChar(line[i]))
+            while (i < line.Length && ScriptParserHelper.IsNameChar(line[i]))
                 i++;
             if (i >= line.Length || line[i] != ':')
                 return;
@@ -174,27 +174,11 @@ namespace LuaScript.Compat
 
         private static string FirstToken(string content)
         {
-            int start = SkipSpaces(content, 0);
+            int start = ScriptParserHelper.SkipSpaces(content, 0);
             int i = start;
             while (i < content.Length && content[i] != ',' && content[i] != ' ' && content[i] != '\t')
                 i++;
             return content.Substring(start, i - start);
         }
-
-        private static bool IsSectionHeader(string line)
-        {
-            int i = SkipSpaces(line, 0);
-            return i < line.Length && line[i] == '@';
-        }
-
-        private static int SkipSpaces(string text, int index)
-        {
-            while (index < text.Length && (text[index] == ' ' || text[index] == '\t'))
-                index++;
-            return index;
-        }
-
-        private static bool IsNameChar(char c) =>
-            (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
     }
 }
