@@ -75,14 +75,7 @@ namespace LuaScript
 
         private GraphicsDevicesAndContext? _ownCtx;
 
-        private ID2D1Bitmap1? _renderTarget;
-        private ID2D1Bitmap1? _stagingBitmap;
-        private ID2D1Bitmap1? _outputBitmap;
-        private AffineTransform2D? _transformEffect;
-        private byte[]? _pixelBuffer;
-        private int _bitmapWidth;
-        private int _bitmapHeight;
-        private RawRectF _cachedBounds;
+        private PixelBufferManager? _pixelManager;
 
         private bool _isFirst = true;
         private string _sourceScript = string.Empty;
@@ -100,6 +93,7 @@ namespace LuaScript
         {
             _ownCtx = new GraphicsDevicesAndContext(devices);
             disposer.Collect(_ownCtx);
+            _pixelManager = new PixelBufferManager(_ownCtx);
             _context.ResolverProvider = GetFrameResolver;
             return null;
         }
@@ -226,13 +220,11 @@ namespace LuaScript
                     {
                         int bufW = ctx.ImageWidth;
                         int bufH = ctx.ImageHeight;
-                        EnsureBitmaps(bufW, bufH);
-                        WritePixelsToOutput(ctx.GetPixelBuffer()!, bufW);
+                        _pixelManager!.WritePixelsToOutput(ctx.GetPixelBuffer()!, bufW, bufH);
                         if (ctx.BufferReplaced)
-                            UpdateTransformEffect(-bufW / 2f, -bufH / 2f);
+                            effectOutput = _pixelManager.GetTransformOutput(-bufW / 2f, -bufH / 2f);
                         else
-                            UpdateTransformEffect(bounds.Left, bounds.Top);
-                        effectOutput = _transformEffect!.Output;
+                            effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
                     }
                     else
                     {
@@ -453,10 +445,8 @@ namespace LuaScript
 
             if (dirty)
             {
-                EnsureBitmaps(imgW, imgH);
-                WritePixelsToOutput(buffer, imgW);
-                UpdateTransformEffect(bounds.Left, bounds.Top);
-                effectOutput = _transformEffect!.Output;
+                _pixelManager!.WritePixelsToOutput(buffer, imgW, imgH);
+                effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
                 return true;
             }
 
@@ -469,106 +459,12 @@ namespace LuaScript
             _pixelLoaderSemaphore.Wait();
             try
             {
-                EnsureBitmaps(width, height);
-
-                var dc = _ownCtx!.DeviceContext;
-                var savedTarget = dc.Target;
-
-                dc.Target = _renderTarget;
-                dc.BeginDraw();
-                dc.Clear(null);
-                dc.DrawImage(input!, new Vector2(-bounds.Left, -bounds.Top));
-                dc.EndDraw();
-                dc.Target = savedTarget;
-
-                _stagingBitmap!.CopyFromBitmap(_renderTarget!);
-
-                var mapped = _stagingBitmap.Map(MapOptions.Read);
-                try
-                {
-                    if (mapped.Pitch == width * 4)
-                    {
-                        Marshal.Copy(mapped.Bits, _pixelBuffer!, 0, width * height * 4);
-                    }
-                    else
-                    {
-                        for (int row = 0; row < height; row++)
-                            Marshal.Copy(
-                                mapped.Bits + mapped.Pitch * row,
-                                _pixelBuffer!,
-                                row * width * 4,
-                                width * 4);
-                    }
-                }
-                finally
-                {
-                    _stagingBitmap.Unmap();
-                }
-
-                return _pixelBuffer!;
+                return _pixelManager!.LoadInputPixels(input!, bounds, width, height);
             }
             finally
             {
                 _pixelLoaderSemaphore.Release();
             }
-        }
-
-        private unsafe void WritePixelsToOutput(byte[] pixels, int width)
-        {
-            fixed (byte* ptr = pixels)
-                _outputBitmap!.CopyFromMemory(new nint(ptr), width * 4);
-        }
-
-        private void UpdateTransformEffect(float left, float top)
-        {
-            if (_transformEffect is null)
-            {
-                _transformEffect = new AffineTransform2D(_ownCtx!.DeviceContext);
-                _transformEffect.SetInput(0, _outputBitmap, true);
-                _cachedBounds = default;
-            }
-
-            if (_cachedBounds.Left != left || _cachedBounds.Top != top)
-            {
-                _transformEffect.TransformMatrix = Matrix3x2.CreateTranslation(left, top);
-                _cachedBounds = new RawRectF(left, top, left, top);
-            }
-        }
-
-        private void EnsureBitmaps(int width, int height)
-        {
-            if (_bitmapWidth == width && _bitmapHeight == height) return;
-
-            _renderTarget?.Dispose();
-            _stagingBitmap?.Dispose();
-            _outputBitmap?.Dispose();
-            _transformEffect?.Dispose();
-            _renderTarget = null;
-            _stagingBitmap = null;
-            _outputBitmap = null;
-            _transformEffect = null;
-            _bitmapWidth = 0;
-            _bitmapHeight = 0;
-
-            var dc = _ownCtx!.DeviceContext;
-
-            _renderTarget = dc.CreateEmptyBitmap(width, height, BitmapOptions.Target);
-
-            var stagingProps = new BitmapProperties1(
-                new PixelFormat(Format.B8G8R8A8_UNorm, Vortice.DCommon.AlphaMode.Premultiplied),
-                96f, 96f,
-                BitmapOptions.CpuRead | BitmapOptions.CannotDraw);
-            _stagingBitmap = dc.CreateBitmap(
-                new SizeI(width, height),
-                nint.Zero,
-                width * 4,
-                stagingProps);
-
-            _outputBitmap = dc.CreateEmptyBitmap(width, height, BitmapOptions.Target);
-            _pixelBuffer = new byte[width * height * 4];
-
-            _bitmapWidth = width;
-            _bitmapHeight = height;
         }
 
         protected override void Dispose(bool disposing)
@@ -579,14 +475,8 @@ namespace LuaScript
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
-                _renderTarget?.Dispose();
-                _stagingBitmap?.Dispose();
-                _outputBitmap?.Dispose();
-                _transformEffect?.Dispose();
-                _renderTarget = null;
-                _stagingBitmap = null;
-                _outputBitmap = null;
-                _transformEffect = null;
+                _pixelManager?.Dispose();
+                _pixelManager = null;
             }
             base.Dispose(disposing);
         }
