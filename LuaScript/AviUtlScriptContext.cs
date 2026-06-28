@@ -56,6 +56,14 @@ namespace LuaScript
 
         public IReadOnlyList<SceneObjectQuery> ObjectQueries => _objectQueries;
 
+        private readonly List<AviUtlEffectRequest> _effectRequests = [];
+
+        public IReadOnlyList<AviUtlEffectRequest> EffectRequests => _effectRequests;
+
+        internal void AddEffect(AviUtlEffectRequest request) => _effectRequests.Add(request);
+
+        internal void ClearEffects() => _effectRequests.Clear();
+
         public double RxRad => Rx * Math.PI / 180d;
         public double RyRad => Ry * Math.PI / 180d;
         public double RzRad => Rz * Math.PI / 180d;
