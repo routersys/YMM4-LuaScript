@@ -50,6 +50,7 @@ namespace LuaScript.Engine
             Func<string, int, SceneObjectInfo?> resolveObject,
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
+            Action<DrawCommand> addDraw,
             out bool pixelsDirty,
             out bool bufferReplaced,
             out byte[]? newPixels,
@@ -103,7 +104,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                DispatchCallback(view, resolveObject, loadFigure, addEffect);
+                DispatchCallback(view, resolveObject, loadFigure, addEffect, addDraw);
                 _workEvent.Set();
             }
 
@@ -147,7 +148,8 @@ namespace LuaScript.Engine
             MemoryMappedViewAccessor view,
             Func<string, int, SceneObjectInfo?> resolveObject,
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
-            Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect)
+            Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
+            Action<DrawCommand> addDraw)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
             switch (kind)
@@ -161,7 +163,25 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
                     break;
+                case NativeProtocol.CbKindDraw:
+                    ResolveDrawCallback(view, addDraw);
+                    break;
             }
+        }
+
+        private static void ResolveDrawCallback(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
+        {
+            long rOff = NativeProtocol.CallbackResultOffset;
+            double ox = view.ReadDouble(rOff + 0 * 8);
+            double oy = view.ReadDouble(rOff + 1 * 8);
+            double oz = view.ReadDouble(rOff + 2 * 8);
+            double zoom = view.ReadDouble(rOff + 3 * 8);
+            double alpha = view.ReadDouble(rOff + 4 * 8);
+            double aspect = view.ReadDouble(rOff + 5 * 8);
+
+            try { addDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect)); }
+            catch { }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private void ResolveGetObjectCallback(MemoryMappedViewAccessor view, Func<string, int, SceneObjectInfo?> resolveObject)

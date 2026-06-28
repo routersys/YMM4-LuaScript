@@ -61,6 +61,7 @@ local STATUS_CALLBACK = 3
 local CB_KIND_GETOBJECT = 0
 local CB_KIND_LOADFIGURE = 1
 local CB_KIND_EFFECT = 2
+local CB_KIND_DRAW = 3
 
 assert(loadfile(shimPath))()
 
@@ -222,6 +223,19 @@ function obj.effect(name, ...)
     ffi.copy(base + CB_TAG_OFFSET, payload, len)
     i32[OFF_CB_TAGLEN] = len
     i32[OFF_CB_KIND] = CB_KIND_EFFECT
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.draw(ox, oy, oz, zoom, alpha, aspect)
+    cbResult[0] = ox or 0
+    cbResult[1] = oy or 0
+    cbResult[2] = oz or 0
+    cbResult[3] = zoom or 1
+    cbResult[4] = alpha or 1
+    cbResult[5] = aspect or 0
+    i32[OFF_CB_KIND] = CB_KIND_DRAW
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)

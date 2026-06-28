@@ -447,6 +447,7 @@ namespace LuaScript
                 (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
                 NativeLoadFigure,
                 (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
+                ctx.AddDraw,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
                 out int resultW, out int resultH, out string? error);
 
@@ -458,6 +459,8 @@ namespace LuaScript
             }
 
             NativeFieldMap.FromFields(_nativeFields, ctx);
+
+            bool hasDraws = ctx.DrawCommands.Count > 0;
 
             if (dirty)
             {
@@ -471,12 +474,24 @@ namespace LuaScript
                     ctx.ReplaceBuffer(outPixels, outW, outH);
                 }
 
+                if (hasDraws)
+                {
+                    ctx.SetResolvedBuffer(outPixels, outW, outH);
+                    return true;
+                }
+
                 _pixelManager!.WritePixelsToOutput(outPixels, outW, outH);
                 if (bufferReplaced)
                     effectOutput = _pixelManager.GetTransformOutput(-outW / 2f, -outH / 2f);
                 else
                     effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
                 return true;
+            }
+
+            if (hasDraws)
+            {
+                ctx.SetResolvedBuffer(buffer, imgW, imgH);
+                return false;
             }
 
             effectOutput = null;

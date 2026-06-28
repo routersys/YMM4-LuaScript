@@ -31,6 +31,7 @@
     <Compile Include="..\LuaScript\Engine\NativeProtocol.cs" Link="Linked\NativeProtocol.cs" />
     <Compile Include="..\LuaScript\Engine\ProcessJobObject.cs" Link="Linked\ProcessJobObject.cs" />
     <Compile Include="..\LuaScript\Engine\LuaJitWorker.cs" Link="Linked\LuaJitWorker.cs" />
+    <Compile Include="..\LuaScript\DrawCommand.cs" Link="Linked\DrawCommand.cs" />
     <Compile Include="..\LuaScript\SceneObjectInfo.cs" Link="Linked\SceneObjectInfo.cs" />
     <Compile Include="..\LuaScript\SceneObjectQuery.cs" Link="Linked\SceneObjectQuery.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />

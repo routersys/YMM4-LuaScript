@@ -11,6 +11,7 @@ namespace LuaScript.Tests
         private static readonly Func<string, int, SceneObjectInfo?> NoResolver = (_, _) => null;
         private static readonly Func<string, int, double, double, double, (byte[] buffer, int w, int h)> NoLoadFigure = (_, _, _, _, _) => ([], 1, 1);
         private static readonly Action<string, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, object>>> NoAddEffect = (_, _) => { };
+        private static readonly Action<DrawCommand> NoAddDraw = _ => { };
 
         private readonly LuaJitWorker _worker = new(NativeDir);
 
@@ -36,7 +37,7 @@ namespace LuaScript.Tests
 
             bool ok = _worker.Execute(
                 "obj.rz = obj.time * 90\nobj.alpha = 128",
-                fields, pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoAddEffect, out bool dirty, out _, out _, out _, out _, out string? error);
+                fields, pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.False(dirty);
@@ -71,7 +72,7 @@ namespace LuaScript.Tests
                 "local gray = r*0.299 + g*0.587 + b*0.114 " +
                 "obj.setpixel(x,y,gray,gray,gray,a) end end";
 
-            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -106,7 +107,7 @@ namespace LuaScript.Tests
                 "local gray=r*0.299+g*0.587+b*0.114 " +
                 "pd:set(base+1,gray) pd:set(base+2,gray) pd:set(base+3,gray) end end";
 
-            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -142,7 +143,7 @@ namespace LuaScript.Tests
             for (int k = 1; k <= 5; k++)
             {
                 var fields = Fields(2, 2, k);
-                bool ok = _worker.Execute("obj.x = obj.time * 10", fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+                bool ok = _worker.Execute("obj.x = obj.time * 10", fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
                 Assert.True(ok, error);
                 Assert.Equal(k * 10d, fields[NativeProtocol.X]);
             }
@@ -157,12 +158,12 @@ namespace LuaScript.Tests
             var fields = Fields(2, 2, 0d);
 
             bool timedOut = _worker.Execute(
-                "local x=0 while true do x=x+1 end", fields, pixels, 2, 2, 1500, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+                "local x=0 while true do x=x+1 end", fields, pixels, 2, 2, 1500, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
             Assert.False(timedOut);
             Assert.Contains("timed out", error);
 
             var fields2 = Fields(2, 2, 3d);
-            bool ok = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out error);
+            bool ok = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(3d, fields2[NativeProtocol.X]);
         }
@@ -184,7 +185,7 @@ namespace LuaScript.Tests
                 "obj.zoom = o.zoom obj.rz = o.rz obj.alpha = o.alpha " +
                 "obj.sx = o.sy obj.rzr = o.rzr";
 
-            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(12d, fields[NativeProtocol.X]);
@@ -216,13 +217,13 @@ namespace LuaScript.Tests
                 "local b = obj.getobject(\"a\") " +
                 "obj.x = a.x + b.x";
 
-            bool ok = _worker.Execute(script, Fields(2, 2, 0d), pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute(script, Fields(2, 2, 0d), pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
             Assert.Equal(1, calls);
             var fields = Fields(2, 2, 0d);
 
             x = 20d;
-            ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out error);
+            ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, resolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(2, calls);
             Assert.Equal(40d, fields[NativeProtocol.X]);
@@ -239,10 +240,31 @@ namespace LuaScript.Tests
             const string script =
                 "local o = obj.getobject(\"missing\") obj.x = o == nil and 1 or 0";
 
-            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute(script, fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(1d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
+        public void Draw_RecordsCommandsThroughCallback()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.draw() obj.draw(10, 20, 30, 2, 0.5, 0.25)",
+                fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(2, commands.Count);
+            Assert.Equal(new DrawCommand(0d, 0d, 0d, 1d, 1d, 0d), commands[0]);
+            Assert.Equal(new DrawCommand(10d, 20d, 30d, 2d, 0.5d, 0.25d), commands[1]);
         }
 
         [Fact]
@@ -253,12 +275,12 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool ok = _worker.Execute("obj.x = missing.value", fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out string? error);
+            bool ok = _worker.Execute("obj.x = missing.value", fields, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
             Assert.False(ok);
             Assert.False(string.IsNullOrEmpty(error));
 
             var fields2 = Fields(2, 2, 7d);
-            bool ok2 = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, out _, out _, out _, out _, out _, out error);
+            bool ok2 = _worker.Execute("obj.x = obj.time", fields2, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out error);
             Assert.True(ok2, error);
             Assert.Equal(7d, fields2[NativeProtocol.X]);
         }

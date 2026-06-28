@@ -124,6 +124,14 @@ namespace LuaScript
             _pixelBufferLoaded = true;
         }
 
+        internal void SetResolvedBuffer(byte[] buffer, int width, int height)
+        {
+            _pixelBuffer = buffer;
+            _pixelBufferLoaded = true;
+            ImageWidth = width;
+            ImageHeight = height;
+        }
+
         internal byte[]? GetPixelBuffer() => _pixelBuffer;
 
         internal void MarkPixelsDirty() => _isPixelsDirty = true;
