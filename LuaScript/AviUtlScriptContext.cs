@@ -52,6 +52,8 @@ namespace LuaScript
 
         public Func<SceneObjectResolver>? ResolverProvider { get; set; }
 
+        private const double Epsilon = 1e-10;
+
         private readonly List<SceneObjectQuery> _objectQueries = [];
 
         public IReadOnlyList<SceneObjectQuery> ObjectQueries => _objectQueries;
@@ -131,6 +133,46 @@ namespace LuaScript
             _objectQueries.Add(new SceneObjectQuery(tag, frame, null));
             info = default;
             return false;
+        }
+
+        public void ApplyWriteBack(
+            double newSx, double newSy, double newZoom, double newAspect,
+            double newRx, double newRy, double newRz,
+            double newRxr, double newRyr, double newRzr)
+        {
+            double initialSx = Sx;
+            double initialSy = Sy;
+            double initialZoom = Zoom;
+            double initialAspect = Aspect;
+
+            Sx = newSx;
+            Sy = newSy;
+            Zoom = newZoom;
+            Aspect = newAspect;
+
+            bool sxsyChanged = Math.Abs(Sx - initialSx) > Epsilon || Math.Abs(Sy - initialSy) > Epsilon;
+            bool zoomAspectChanged = Math.Abs(Zoom - initialZoom) > Epsilon || Math.Abs(Aspect - initialAspect) > Epsilon;
+
+            if (zoomAspectChanged && !sxsyChanged)
+            {
+                Sx = Zoom * (1.0 + Aspect);
+                Sy = Zoom * (1.0 - Aspect);
+            }
+
+            double initialRxr = RxRad;
+            Rx = Math.Abs(newRxr - initialRxr) > Epsilon
+                ? newRxr * (180d / Math.PI)
+                : newRx;
+
+            double initialRyr = RyRad;
+            Ry = Math.Abs(newRyr - initialRyr) > Epsilon
+                ? newRyr * (180d / Math.PI)
+                : newRy;
+
+            double initialRzr = RzRad;
+            Rz = Math.Abs(newRzr - initialRzr) > Epsilon
+                ? newRzr * (180d / Math.PI)
+                : newRz;
         }
 
         public unsafe (double r, double g, double b, double a) GetPixel(int x, int y)

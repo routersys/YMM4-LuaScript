@@ -573,39 +573,17 @@ namespace LuaScript
                 ctx.Oz = _objTable.Get("oz").CastToNumber() ?? ctx.Oz;
                 ctx.Alpha = _objTable.Get("alpha").CastToNumber() ?? ctx.Alpha;
 
-                double initialSx = ctx.Sx;
-                double initialSy = ctx.Sy;
-                double initialZoom = ctx.Zoom;
-                double initialAspect = ctx.Aspect;
-
-                ctx.Sx = _objTable.Get("sx").CastToNumber() ?? ctx.Sx;
-                ctx.Sy = _objTable.Get("sy").CastToNumber() ?? ctx.Sy;
-                ctx.Zoom = _objTable.Get("zoom").CastToNumber() ?? ctx.Zoom;
-                ctx.Aspect = _objTable.Get("aspect").CastToNumber() ?? ctx.Aspect;
-
-                bool sxsyChanged = Math.Abs(ctx.Sx - initialSx) > 1e-10 || Math.Abs(ctx.Sy - initialSy) > 1e-10;
-                bool zoomAspectChanged = Math.Abs(ctx.Zoom - initialZoom) > 1e-10 || Math.Abs(ctx.Aspect - initialAspect) > 1e-10;
-
-                if (zoomAspectChanged && !sxsyChanged)
-                {
-                    ctx.Sx = ctx.Zoom * (1.0 + ctx.Aspect);
-                    ctx.Sy = ctx.Zoom * (1.0 - ctx.Aspect);
-                }
-
-                double rxrNew = _objTable.Get("rxr").CastToNumber() ?? ctx.RxRad;
-                ctx.Rx = Math.Abs(rxrNew - ctx.RxRad) > 1e-10
-                    ? rxrNew * (180d / Math.PI)
-                    : _objTable.Get("rx").CastToNumber() ?? ctx.Rx;
-
-                double ryrNew = _objTable.Get("ryr").CastToNumber() ?? ctx.RyRad;
-                ctx.Ry = Math.Abs(ryrNew - ctx.RyRad) > 1e-10
-                    ? ryrNew * (180d / Math.PI)
-                    : _objTable.Get("ry").CastToNumber() ?? ctx.Ry;
-
-                double rzrNew = _objTable.Get("rzr").CastToNumber() ?? ctx.RzRad;
-                ctx.Rz = Math.Abs(rzrNew - ctx.RzRad) > 1e-10
-                    ? rzrNew * (180d / Math.PI)
-                    : _objTable.Get("rz").CastToNumber() ?? ctx.Rz;
+                ctx.ApplyWriteBack(
+                    _objTable.Get("sx").CastToNumber() ?? ctx.Sx,
+                    _objTable.Get("sy").CastToNumber() ?? ctx.Sy,
+                    _objTable.Get("zoom").CastToNumber() ?? ctx.Zoom,
+                    _objTable.Get("aspect").CastToNumber() ?? ctx.Aspect,
+                    _objTable.Get("rx").CastToNumber() ?? ctx.Rx,
+                    _objTable.Get("ry").CastToNumber() ?? ctx.Ry,
+                    _objTable.Get("rz").CastToNumber() ?? ctx.Rz,
+                    _objTable.Get("rxr").CastToNumber() ?? ctx.RxRad,
+                    _objTable.Get("ryr").CastToNumber() ?? ctx.RyRad,
+                    _objTable.Get("rzr").CastToNumber() ?? ctx.RzRad);
             }
 
             public void Dispose()

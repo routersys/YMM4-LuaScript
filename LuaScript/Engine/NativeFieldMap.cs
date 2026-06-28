@@ -78,42 +78,17 @@ namespace LuaScript.Engine
             ctx.Oz = f[NativeProtocol.Oz];
             ctx.Alpha = f[NativeProtocol.Alpha];
 
-            double initialSx = ctx.Sx;
-            double initialSy = ctx.Sy;
-            double initialZoom = ctx.Zoom;
-            double initialAspect = ctx.Aspect;
-
-            ctx.Sx = f[NativeProtocol.Sx];
-            ctx.Sy = f[NativeProtocol.Sy];
-            ctx.Zoom = f[NativeProtocol.Zoom];
-            ctx.Aspect = f[NativeProtocol.Aspect];
-
-            bool sxsyChanged = Math.Abs(ctx.Sx - initialSx) > Epsilon || Math.Abs(ctx.Sy - initialSy) > Epsilon;
-            bool zoomAspectChanged = Math.Abs(ctx.Zoom - initialZoom) > Epsilon || Math.Abs(ctx.Aspect - initialAspect) > Epsilon;
-
-            if (zoomAspectChanged && !sxsyChanged)
-            {
-                ctx.Sx = ctx.Zoom * (1.0 + ctx.Aspect);
-                ctx.Sy = ctx.Zoom * (1.0 - ctx.Aspect);
-            }
-
-            double initialRxr = ctx.RxRad;
-            double rxrNew = f[NativeProtocol.Rxr];
-            ctx.Rx = Math.Abs(rxrNew - initialRxr) > Epsilon
-                ? rxrNew * (180d / Math.PI)
-                : f[NativeProtocol.Rx];
-
-            double initialRyr = ctx.RyRad;
-            double ryrNew = f[NativeProtocol.Ryr];
-            ctx.Ry = Math.Abs(ryrNew - initialRyr) > Epsilon
-                ? ryrNew * (180d / Math.PI)
-                : f[NativeProtocol.Ry];
-
-            double initialRzr = ctx.RzRad;
-            double rzrNew = f[NativeProtocol.Rzr];
-            ctx.Rz = Math.Abs(rzrNew - initialRzr) > Epsilon
-                ? rzrNew * (180d / Math.PI)
-                : f[NativeProtocol.Rz];
+            ctx.ApplyWriteBack(
+                f[NativeProtocol.Sx],
+                f[NativeProtocol.Sy],
+                f[NativeProtocol.Zoom],
+                f[NativeProtocol.Aspect],
+                f[NativeProtocol.Rx],
+                f[NativeProtocol.Ry],
+                f[NativeProtocol.Rz],
+                f[NativeProtocol.Rxr],
+                f[NativeProtocol.Ryr],
+                f[NativeProtocol.Rzr]);
         }
     }
 }
