@@ -487,6 +487,33 @@ namespace LuaScript
                     LoadFigure(name, color, size, line, aspect);
                     return DynValue.Void;
                 });
+
+                obj["effect"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.Void;
+
+                    string name = args[0].String;
+                    var arguments = new List<KeyValuePair<string, object>>();
+                    for (int i = 1; i + 1 < args.Count; i += 2)
+                    {
+                        if (args[i].Type != DataType.String)
+                            continue;
+                        var value = args[i + 1];
+                        object boxed = value.Type switch
+                        {
+                            DataType.Number => value.Number,
+                            DataType.Boolean => value.Boolean,
+                            DataType.String => value.String,
+                            _ => value.CastToNumber() ?? 0d,
+                        };
+                        arguments.Add(new KeyValuePair<string, object>(args[i].String, boxed));
+                    }
+
+                    _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
+                    return DynValue.Void;
+                });
             }
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)
