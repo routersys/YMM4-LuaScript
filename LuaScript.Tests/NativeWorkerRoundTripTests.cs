@@ -313,6 +313,53 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void CopyBuffer_TmpSaveRestore_RoundTripsPixels()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = (byte)((i * 37 + 11) & 0xFF);
+            pixels[3] = 255; pixels[7] = 255; pixels[11] = 255; pixels[15] = 255;
+            var original = (byte[])pixels.Clone();
+
+            var fields = Fields(w, h, 0d);
+            const string script =
+                "obj.copybuffer('tmp','obj') " +
+                "for y=0,obj.h-1 do for x=0,obj.w-1 do obj.setpixel(x,y,0,0,0,0) end end " +
+                "obj.copybuffer('obj','tmp')";
+
+            bool ok = _worker.Execute(script, fields, pixels, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(original, pixels);
+        }
+
+        [Fact]
+        public void CopyBuffer_CachePersistsAcrossRuns()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var stored = new byte[w * h * 4];
+            for (int i = 0; i < stored.Length; i++)
+                stored[i] = (byte)((i * 53 + 7) & 0xFF);
+            stored[3] = 255; stored[7] = 255; stored[11] = 255; stored[15] = 255;
+
+            var save = (byte[])stored.Clone();
+            bool ok = _worker.Execute("obj.copybuffer('cache:foo','obj')", Fields(w, h, 0d), save, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
+            Assert.True(ok, error);
+
+            var blank = new byte[w * h * 4];
+            ok = _worker.Execute("obj.copybuffer('obj','cache:foo')", Fields(w, h, 0d), blank, w, h, 5000, NoResolver, NoLoadFigure, NoAddEffect, NoAddDraw, out bool dirty, out _, out _, out _, out _, out error);
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(stored, blank);
+        }
+
+        [Fact]
         public void RuntimeError_IsReported_AndWorkerSurvives()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

@@ -567,6 +567,18 @@ namespace LuaScript
                     _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly));
                     return DynValue.Void;
                 });
+
+                obj["copybuffer"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count < 2 ||
+                        args[0].Type != DataType.String || args[1].Type != DataType.String)
+                        return DynValue.Void;
+
+                    if (_activeContext.CopyBuffer(args[0].String, args[1].String))
+                        RefreshObjDimensions();
+                    return DynValue.Void;
+                });
             }
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)
@@ -580,6 +592,13 @@ namespace LuaScript
                 var buffer = FigureRenderer.Render(name, w, h, color, line);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
 
+                RefreshObjDimensions();
+            }
+
+            private void RefreshObjDimensions()
+            {
+                int w = _activeContext!.ImageWidth;
+                int h = _activeContext.ImageHeight;
                 var obj = _objTable!;
                 obj["w"] = w;
                 obj["h"] = h;

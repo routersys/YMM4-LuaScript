@@ -76,7 +76,20 @@ local width, height = 0, 0
 local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
 local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
 local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
+local pixelCapacity = mapSize - PIXEL_OFFSET
+local buffers = {}
 local dirty = false
+
+local function bufferKind(id)
+    local c = id:match("^%s*(.)")
+    if not c then return nil end
+    c = c:lower()
+    if c == "c" then
+        local name = id:match(":%s*(.-)%s*$")
+        return "c", name and ("c:" .. name) or "c"
+    end
+    return c, c
+end
 
 local obj = {}
 local scene = {}
@@ -267,6 +280,38 @@ function obj.drawpoly(...)
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.copybuffer(dst, src)
+    if type(dst) ~= "string" or type(src) ~= "string" then return end
+    local sk, skey = bufferKind(src)
+    local data, w, h
+    if sk == "o" then
+        data = ffi.string(pixels, width * height * 4)
+        w = width; h = height
+    elseif sk == "t" or sk == "c" then
+        local b = buffers[skey]
+        if not b then return end
+        data, w, h = b.data, b.w, b.h
+    else
+        return
+    end
+    local dk, dkey = bufferKind(dst)
+    if dk == "o" then
+        local need = w * h * 4
+        if need > pixelCapacity then return end
+        ffi.copy(pixels, data, need)
+        width = w; height = h
+        i32[OFF_WIDTH] = w; i32[OFF_HEIGHT] = h
+        dirty = true
+        obj.w = w; obj.h = h
+        obj.hw = w / 2; obj.hh = h / 2
+        obj.cx = w / 2; obj.cy = h / 2
+        obj.cz = 0
+        obj.diagonal = math.sqrt(w * w + h * h)
+    elseif dk == "t" or dk == "c" then
+        buffers[dkey] = { data = data, w = w, h = h }
+    end
 end
 
 local cacheTag, cacheFrame, cacheFound
