@@ -91,6 +91,11 @@
 
         * Each trackbar supports animation sliders (with interpolation).
         * .lua files can be imported/exported from the script editor toolbar.
+        * The checkboxes (obj.check0 - obj.check3) and the color (color) appear in the
+          effect panel automatically when the script references them (the trackbars are
+          always shown). This general use carries no range/default declaration, so handle
+          value ranges within the script. The AviUtl --track / --check / --color headers
+          still work as before.
 
 
 - Global Variables -

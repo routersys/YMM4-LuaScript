@@ -91,6 +91,11 @@
 
         * Cada control deslizante es compatible con los deslizadores de animación (con interpolación).
         * Los archivos .lua pueden importarse/exportarse desde la barra de herramientas del editor de scripts.
+        * Las casillas (obj.check0 - obj.check3) y el color (color) aparecen en el panel de
+          efectos automáticamente cuando el script los referencia (las barras siempre se
+          muestran). Este uso general no conlleva declaración de rango/valor predeterminado,
+          así que gestione los rangos dentro del script. Las cabeceras --track / --check /
+          --color de AviUtl siguen funcionando como antes.
 
 
 - Variables globales -

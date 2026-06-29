@@ -90,6 +90,11 @@
 
         * Setiap trackbar mendukung slider animasi (dengan interpolasi).
         * File .lua dapat diimpor/diekspor dari toolbar editor skrip.
+        * Kotak centang (obj.check0 - obj.check3) dan warna (color) muncul di panel efek
+          secara otomatis saat skrip mereferensikannya (trackbar selalu ditampilkan).
+          Penggunaan umum ini tidak disertai deklarasi rentang/nilai default, jadi tangani
+          rentang nilai di dalam skrip. Header --track / --check / --color AviUtl tetap
+          berfungsi seperti sebelumnya.
 
 
 - Variabel Global -
