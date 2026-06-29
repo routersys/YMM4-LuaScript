@@ -24,6 +24,61 @@
             Omitting these calls when unnecessary will speed up processing.
 
 
+- Execution Engines and Automatic Acceleration -
+
+        Scripts that contain pixel processing (a nested getpixel/setpixel loop)
+        are analyzed and automatically routed to a faster engine.
+        Ordinary scripts (coordinate, rotation, opacity changes, etc.) keep
+        running on MoonSharp as before, with no change in behavior.
+
+        o Automatic routing (when no directive is present)
+                - A self-contained per-pixel map (see conditions below)
+                  -> CPU kernel (fast, exact)
+                - Other pixel operations -> Native (LuaJIT, only when deployed)
+                - No pixel operations -> MoonSharp
+
+        o Engine directives (a comment on the first line of the script)
+                --!cpu       : CPU kernel. Compiled at runtime to an expression
+                               tree and run in parallel on all CPU cores
+                               (bit-identical to MoonSharp).
+                --!gpu       : GPU kernel. Run as a Direct2D pixel shader,
+                               eliminating the GPU->CPU transfer for top speed.
+                               Results may differ slightly due to float32
+                               precision (opt-in).
+                --!native    : LuaJIT (separate process). Fast and identical to
+                               MoonSharp. Requires the native folder deployed.
+                --!moonsharp : Forces the classic MoonSharp engine.
+                * If a directive is unavailable or unsupported, it automatically
+                  falls back to a lower engine (the output is never broken).
+
+        o Syntax eligible for the fast kernel (a pure per-pixel map)
+                Only a nested loop of the following form becomes a kernel.
+                    for y = 0, obj.h - 1 do
+                        for x = 0, obj.w - 1 do
+                            local r, g, b, a = obj.getpixel(x, y)
+                            obj.setpixel(x, y, r2, g2, b2 [, a2])
+                        end
+                    end
+                - The body may use only arithmetic, math.*, comparisons, the
+                  threshold idiom "cond and value1 or value2", and local
+                  variables.
+                - It may reference only the current pixel being processed
+                  (getpixel(x, y)) and values such as obj/scene/time.
+                - Anything using neighbor sampling (blur, etc.), writes to other
+                  coordinates, getpixeldata, getobject, table/string operations,
+                  or if statements is not turned into a kernel and automatically
+                  runs on the classic engine.
+
+        Example (turns a white figure red):
+                --!gpu
+                for y = 0, obj.h - 1 do
+                    for x = 0, obj.w - 1 do
+                        local r, g, b, a = obj.getpixel(x, y)
+                        obj.setpixel(x, y, r, g / 2, b / 2, a)
+                    end
+                end
+
+
 - Parameters -
 
         The effect panel has 4 trackbars (animation-enabled) as follows.

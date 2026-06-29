@@ -24,6 +24,55 @@
             不需要時省略呼叫可加快處理速度。
 
 
+- 執行引擎與自動加速 -
+
+        包含像素處理（getpixel/setpixel 雙重迴圈）的腳本會被解析語法，
+        並自動分配到更快的引擎。
+        座標、旋轉、不透明度等一般腳本仍照舊由 MoonSharp 執行，行為不變。
+
+        ○ 自動分配（未指定指令時）
+                · 自像素完結的像素映射（見下方條件）→ CPU 核心（高速、精確）
+                · 上述以外的像素操作 → 原生（LuaJIT，僅在已部署時）
+                · 無像素操作 → MoonSharp
+
+        ○ 引擎指定指令（腳本首行的註解）
+                --!cpu       ：CPU 核心。執行時編譯為運算式樹，
+                               在所有 CPU 核心上並行執行（與 MoonSharp 完全一致）。
+                --!gpu       ：GPU 核心。作為 Direct2D 像素著色器執行，
+                               排除 GPU→CPU 傳輸，速度最快。
+                               因 float32 精度，結果可能有極小差異（需主動選用）。
+                --!native    ：LuaJIT（獨立程序）。高速且與 MoonSharp 一致。
+                               需要部署 native 資料夾。
+                --!moonsharp ：強制使用傳統的 MoonSharp。
+                ※ 指令不可用/不支援時，會自動回退到較低的引擎
+                  （輸出不會損壞）。
+
+        ○ 可成為高速核心的語法（純像素映射）
+                只有以下形式的雙重迴圈才會被核心化。
+                    for y = 0, obj.h - 1 do
+                        for x = 0, obj.w - 1 do
+                            local r, g, b, a = obj.getpixel(x, y)
+                            obj.setpixel(x, y, r2, g2, b2 [, a2])
+                        end
+                    end
+                · 主體中僅可使用四則運算、math.*、比較、閾值寫法
+                  「條件 and 值1 or 值2」以及 local 變數。
+                · 僅可參照正在處理的自像素（getpixel(x, y)）
+                  以及 obj/scene/time 等值。
+                · 含有鄰域參照（模糊等）、寫入其他座標、getpixeldata、
+                  getobject、表/字串操作、if 陳述式等的腳本不會被核心化，
+                  會自動由傳統引擎執行。
+
+        範例（讓白色圖形變紅）：
+                --!gpu
+                for y = 0, obj.h - 1 do
+                    for x = 0, obj.w - 1 do
+                        local r, g, b, a = obj.getpixel(x, y)
+                        obj.setpixel(x, y, r, g / 2, b / 2, a)
+                    end
+                end
+
+
 - 參數 -
 
         特效面板包含以下 4 個軌道條（支援動畫）。

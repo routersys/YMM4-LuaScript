@@ -24,6 +24,61 @@
             primer acceso. Omitir estas llamadas cuando no sean necesarias acelera el procesamiento.
 
 
+- Motores de ejecución y aceleración automática -
+
+        Los scripts que contienen procesamiento de píxeles (un bucle anidado
+        getpixel/setpixel) se analizan y se enrutan automáticamente a un motor
+        más rápido. Los scripts normales (coordenadas, rotación, opacidad, etc.)
+        siguen ejecutándose en MoonSharp como antes, sin cambios de comportamiento.
+
+        o Enrutamiento automático (cuando no hay directiva)
+                - Un mapeo por píxel autocontenido (ver condiciones abajo)
+                  -> núcleo CPU (rápido, exacto)
+                - Otras operaciones de píxeles -> Nativo (LuaJIT, solo si está
+                  desplegado)
+                - Sin operaciones de píxeles -> MoonSharp
+
+        o Directivas de motor (un comentario en la primera línea del script)
+                --!cpu       : Núcleo CPU. Compilado en tiempo de ejecución a un
+                               árbol de expresiones y ejecutado en paralelo en
+                               todos los núcleos de la CPU (idéntico a MoonSharp).
+                --!gpu       : Núcleo GPU. Ejecutado como un sombreador de píxeles
+                               de Direct2D, eliminando la transferencia GPU->CPU
+                               para máxima velocidad. Los resultados pueden diferir
+                               levemente por la precisión float32 (opcional).
+                --!native    : LuaJIT (proceso aparte). Rápido e idéntico a
+                               MoonSharp. Requiere la carpeta native desplegada.
+                --!moonsharp : Fuerza el motor clásico MoonSharp.
+                * Si una directiva no está disponible o no es compatible, recurre
+                  automáticamente a un motor inferior (la salida nunca se rompe).
+
+        o Sintaxis apta para el núcleo rápido (un mapeo por píxel puro)
+                Solo un bucle anidado con la forma siguiente se convierte en núcleo.
+                    for y = 0, obj.h - 1 do
+                        for x = 0, obj.w - 1 do
+                            local r, g, b, a = obj.getpixel(x, y)
+                            obj.setpixel(x, y, r2, g2, b2 [, a2])
+                        end
+                    end
+                - El cuerpo solo puede usar aritmética, math.*, comparaciones, el
+                  modismo de umbral "cond and valor1 or valor2" y variables local.
+                - Solo puede referenciar el píxel actual en proceso
+                  (getpixel(x, y)) y valores como obj/scene/time.
+                - Todo lo que use muestreo de vecinos (desenfoque, etc.),
+                  escrituras en otras coordenadas, getpixeldata, getobject,
+                  operaciones de tabla/cadena o sentencias if no se convierte en
+                  núcleo y se ejecuta automáticamente en el motor clásico.
+
+        Ejemplo (vuelve roja una figura blanca):
+                --!gpu
+                for y = 0, obj.h - 1 do
+                    for x = 0, obj.w - 1 do
+                        local r, g, b, a = obj.getpixel(x, y)
+                        obj.setpixel(x, y, r, g / 2, b / 2, a)
+                    end
+                end
+
+
 - Parámetros -
 
         El panel de efectos tiene los siguientes 4 controles deslizantes (con soporte de animación).
