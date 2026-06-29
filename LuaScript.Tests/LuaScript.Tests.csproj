@@ -49,6 +49,8 @@
     <Compile Include="..\LuaScript\Engine\Kernel\KernelUniform.cs" Link="Linked\Kernel\KernelUniform.cs" />
     <Compile Include="..\LuaScript\Engine\Kernel\KernelModel.cs" Link="Linked\Kernel\KernelModel.cs" />
     <Compile Include="..\LuaScript\Engine\Kernel\KernelExtractor.cs" Link="Linked\Kernel\KernelExtractor.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\CpuKernel.cs" Link="Linked\Kernel\CpuKernel.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\CpuKernelCompiler.cs" Link="Linked\Kernel\CpuKernelCompiler.cs" />
   </ItemGroup>
 
 </Project>
