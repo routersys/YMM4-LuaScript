@@ -174,7 +174,7 @@ namespace LuaScript
             var t3 = ClampTrack(item.Track3.GetValue(frame, length, fps), layout, 3);
 
             bool c0 = item.Check0, c1 = item.Check1, c2 = item.Check2, c3 = item.Check3;
-            bool hasColor = layout.HasColor;
+            bool hasColor = item.IsColorVisible;
             int colorRgb = hasColor ? (item.Color.R << 16) | (item.Color.G << 8) | item.Color.B : 0;
 
             var inDesc = desc.DrawDescription;

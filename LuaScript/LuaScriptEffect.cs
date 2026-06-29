@@ -118,16 +118,17 @@ namespace LuaScript
             Layout = layout;
 
             bool hasAny = layout.HasAny;
+            var usage = ScriptParameterUsage.Detect(_script);
 
             IsTrack0Visible = !hasAny || layout.HasTrack(0);
             IsTrack1Visible = !hasAny || layout.HasTrack(1);
             IsTrack2Visible = !hasAny || layout.HasTrack(2);
             IsTrack3Visible = !hasAny || layout.HasTrack(3);
-            IsCheck0Visible = layout.HasCheck(0);
-            IsCheck1Visible = layout.HasCheck(1);
-            IsCheck2Visible = layout.HasCheck(2);
-            IsCheck3Visible = layout.HasCheck(3);
-            IsColorVisible = layout.HasColor;
+            IsCheck0Visible = layout.HasCheck(0) || (!hasAny && usage.Check0);
+            IsCheck1Visible = layout.HasCheck(1) || (!hasAny && usage.Check1);
+            IsCheck2Visible = layout.HasCheck(2) || (!hasAny && usage.Check2);
+            IsCheck3Visible = layout.HasCheck(3) || (!hasAny && usage.Check3);
+            IsColorVisible = layout.HasColor || (!hasAny && usage.Color);
 
             SeedDefaults(layout);
         }
