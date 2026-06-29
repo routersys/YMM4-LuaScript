@@ -311,22 +311,84 @@
                 示例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
         ○ obj.load(目标, ...)
-                将对象缓冲区替换为生成的内容。本版本仅支持 "figure"(图形)。
+                将对象缓冲区替换为生成的内容。支持 "figure"(图形) / "text"(文本) /
+                "image"(图像文件) / "movie"(视频文件)。加载后 obj.w / obj.h 等会更新为
+                生成尺寸，紧接着的 getpixel 也可读取。传统引擎与高速引擎均可运行。
+
                 obj.load("figure", 名称, 颜色, 大小 [, 线宽 [, 纵横比]])
-                        生成图形并替换对象缓冲区
-                        (输出按图形大小生成并居中)。
-                        名称    : 图形名。円 / 四角形 / 三角形 / 五角形 / 六角形 /
-                                  星形 之一(也可用英文 circle, rect, triangle,
-                                  pentagon, hexagon, star)。
-                        颜色    : 填充色 0xRRGGBB。
-                        大小    : 图形基准大小(像素)。
-                        线宽    : 轮廓宽度(可省略)。省略或 0 为填充;
-                                  指定大于等于大小的值时也为填充。
-                        纵横比  : 变形 -1.0 ～ 1.0(可省略)。正值缩小宽度，负值缩小高度。
-                示例：obj.load("figure", "円", 0xff3366, 200)
-                * 仅实现了 obj.load("figure", ...)。图像文件、"text"、"tempbuffer"、
-                  "movie" 等目标不执行任何操作。
-                * 绘制类脚本在 MoonSharp 引擎上运行。
+                        生成图形并替换缓冲区(居中)。
+                        名称   : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                 (也可用英文 circle, rect, triangle, pentagon,
+                                 hexagon, star)。
+                        颜色   : 填充色 0xRRGGBB。
+                        大小   : 基准大小(像素)。
+                        线宽   : 轮廓宽度(可省略)。0 为填充。
+                        纵横比 : 变形 -1.0 ～ 1.0(可省略)。
+                        示例：obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", 字符串)
+                        以 obj.setfont 指定的字体、大小、颜色绘制字符串并替换缓冲区
+                        (使用 DirectWrite 绘制)。
+                        示例：obj.setfont("Yu Gothic UI", 48); obj.load("text", "字幕")
+
+                obj.load("image", 路径)
+                        加载图像文件并替换缓冲区。
+                        ※ 为安全起见会校验文件头，仅加载真正的图像
+                          (PNG / JPEG / GIF / BMP / TIFF / WebP)。
+                        示例：obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", 路径 [, 时间])
+                        加载视频文件指定时间的帧并替换缓冲区
+                        (使用 Media Foundation 解码)。
+                        时间 : 秒。省略时为 obj.time。
+                        ※ 为安全起见会校验文件头，仅加载真正的视频
+                          (MP4 / MOV / MKV / WebM / AVI / FLV / ASF)。
+                        示例：obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        ○ obj.setfont(字体 [, 大小 [, 样式 [, 颜色]]])
+                设置 obj.load("text") 使用的字体。
+                样式 : 位标志。1=粗体, 2=斜体, 3=粗斜体。
+                颜色 : 0xRRGGBB。
+                示例：obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        ○ obj.draw([ox, oy, oz [, 缩放 [, 不透明度 [, 纵横比]]]])
+                将当前对象图像合成到累积缓冲区并绘制。
+                多次调用会叠加绘制(残像、粒子等)。
+                ox, oy, oz : 相对中心的偏移(默认 0)。
+                缩放       : 1.0 为原始大小(默认 1.0)。
+                不透明度   : 0.0 ～ 1.0(默认 1.0)。
+                纵横比     : -1.0 ～ 1.0(默认 0)。
+                ※ 调用后将抑制标准绘制，输出合成结果。
+
+        ○ obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                        [, u0,v0, u1,v1, u2,v2, u3,v3 [, 不透明度]])
+                将对象图像以纹理方式绘制到 4 个顶点指定的四边形。
+                顶点顺序为左上→右上→右下→左下。省略 UV 时使用整幅图像。
+                ※ 使用仿射变换映射(平行四边形精确，非平行四边形为近似)。
+
+        ○ obj.copybuffer(目标, 源)
+                在缓冲区之间复制图像。按标识符首字符判定。
+                  "obj"      : 对象图像缓冲区
+                  "tmp"      : 临时缓冲区
+                  "cache:名称" : 命名缓存(跨帧保留)
+                示例：obj.copybuffer("tmp", "obj")  -- 保存
+                      obj.copybuffer("obj", "tmp")  -- 恢复
+                ※ 由于 YMM4 的结构，无法获取 "frm"(帧缓冲区 / 背景)。
+
+        ○ obj.getvalue(目标)
+                获取 obj 的当前值(与 obj.x、obj.track0 等相同)。
+                目标   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"～"track3","time","frame" 等。
+                返回值 : 数值(未知目标返回 0)。
+
+        ○ obj.setoption(名称, 值) / obj.getoption(名称)
+                设置 / 获取选项。未支持的项目也会被接受，不会中断脚本
+                (getoption 返回设置值，未设置为 0)。
+                当前会反映到绘制的项目：
+                  "antialias" : 0 为最近邻，其它为线性插值(obj.draw / obj.drawpoly)。
+
+        ○ obj.pixeloption(名称, 值)
+                将像素操作的选项作为状态保存。
 
 
 
@@ -495,27 +557,26 @@
         ○ obj.rand(st, ed [, seed [, frame]])
                 与 AviUtl 兼容的确定性整数随机数。详情请参阅“obj 表 - 函数”。
 
-        ○ 图形绘制
-                obj.load("figure", ...) 生成圆、四角形、三角形、五角形、六角形、星形，
-                并替换对象缓冲区。详情请参阅“obj 表 - 函数”。
+        ○ 绘制·合成·加载
+                支持 obj.draw / obj.drawpoly 的绘制合成、obj.copybuffer 的缓冲区操作、
+                obj.load("figure"/"text"/"image"/"movie") 的生成与加载、obj.setfont、
+                obj.effect、obj.getvalue 以及 obj.setoption / obj.getoption /
+                obj.pixeloption。详情请参阅“obj 表 - 函数”。
 
-        以下功能需要与本体的绘制管线集成，因此不在此兼容层的范围内。
+        以下功能不在此兼容层的范围内。
         调用它们的脚本不会按预期运行。
-                × 绘制与合成(obj.draw / obj.drawpoly)、obj.load 的 "figure" 以外目标
-                  (图像文件、"text"、"movie" 等)，以及 obj.setfont
-                × 滤镜效果与缓冲区操作
-                  (obj.effect / obj.copybuffer / obj.setoption 等)
-                × 通过 require 加载模块，以及 io 等文件访问
+                × 通过 require 加载模块，以及 io / dofile 等任意文件访问
+                  (obj.load 的图像 / 视频加载已带文件头校验支持)。
+                × obj.setanchor、scene.set / scene.get 等。
 
 
 - 不支持项目·限制事项 -
 
-        × 不支持 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly() 等(obj.load 仅支持 "figure"，参阅“AviUtl 脚本的部分兼容”)。
-        × 不支持 AviUtl2 的 obj.rand1()、obj.setfont()、obj.mes() 等。
-        × 不支持 AviUtl2 的 obj.setoption()、obj.getoption()、obj.getvalue()、obj.setanchor() 等。
+        × 不支持 AviUtl2 的 obj.rand1()、obj.mes()、obj.setanchor() 等。
         × 不支持 AviUtl2 scene 表中的 scene.set()、scene.get() 等函数。
           （仅支持读取 scene.width 和 scene.height）
-        × 不支持文件访问（require、dofile、io 等）。
+        × 不支持脚本进行任意文件访问（require、dofile、io 等）。
+          仅 obj.load("image"/"movie") 会加载经文件头校验确认为真正媒体的文件。
         × 修改 obj.z 会反映到绘制中（包含在 ReadBack 中），
           但 3D 绘制支持有限。
         × 超过脚本超时时间（5 秒）时，执行将被强制终止。
