@@ -88,6 +88,9 @@ namespace LuaScript
         private ID2D1Image? _cachedEffectOutput;
 
         private VideoEffectChain? _effectChain;
+        private DrawCompositor? _drawCompositor;
+        private TextRenderer? _nativeTextRenderer;
+        private ImageDecoder? _nativeImageDecoder;
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
@@ -232,6 +235,17 @@ namespace LuaScript
                     }
                 }
 
+                if (ctx.DrawCommands.Count > 0)
+                {
+                    ctx.EnsurePixelBuffer();
+                    var drawBuffer = ctx.GetPixelBuffer();
+                    if (drawBuffer is not null)
+                    {
+                        _drawCompositor ??= new DrawCompositor(_ownCtx);
+                        effectOutput = _drawCompositor.Compose(drawBuffer, ctx.ImageWidth, ctx.ImageHeight, ctx.DrawCommands);
+                    }
+                }
+
                 outDesc = BuildOutputDesc(inDesc, ctx);
 
                 if (ctx.EffectRequests.Count > 0)
@@ -340,6 +354,7 @@ namespace LuaScript
 
             ctx.ClearQueries();
             ctx.ClearEffects();
+            ctx.ClearDraws();
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
@@ -433,7 +448,10 @@ namespace LuaScript
                 script, _nativeFields, buffer, imgW, imgH, NativeTimeoutMilliseconds,
                 (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
                 NativeLoadFigure,
+                NativeLoadText,
+                NativeLoadImage,
                 (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
+                ctx.AddDraw,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
                 out int resultW, out int resultH, out string? error);
 
@@ -445,6 +463,8 @@ namespace LuaScript
             }
 
             NativeFieldMap.FromFields(_nativeFields, ctx);
+
+            bool hasDraws = ctx.DrawCommands.Count > 0;
 
             if (dirty)
             {
@@ -458,6 +478,12 @@ namespace LuaScript
                     ctx.ReplaceBuffer(outPixels, outW, outH);
                 }
 
+                if (hasDraws)
+                {
+                    ctx.SetResolvedBuffer(outPixels, outW, outH);
+                    return true;
+                }
+
                 _pixelManager!.WritePixelsToOutput(outPixels, outW, outH);
                 if (bufferReplaced)
                     effectOutput = _pixelManager.GetTransformOutput(-outW / 2f, -outH / 2f);
@@ -466,8 +492,28 @@ namespace LuaScript
                 return true;
             }
 
+            if (hasDraws)
+            {
+                ctx.SetResolvedBuffer(buffer, imgW, imgH);
+                return false;
+            }
+
             effectOutput = null;
             return false;
+        }
+
+        private (byte[] buffer, int w, int h) NativeLoadText(string family, string text, double size, bool bold, bool italic, int color)
+        {
+            _nativeTextRenderer ??= new TextRenderer();
+            var buffer = _nativeTextRenderer.Render(text, family, size, bold, italic, color, out int w, out int h);
+            return (buffer, w, h);
+        }
+
+        private (byte[] buffer, int w, int h) NativeLoadImage(string path)
+        {
+            _nativeImageDecoder ??= new ImageDecoder();
+            var buffer = _nativeImageDecoder.Decode(path, out int w, out int h);
+            return (buffer, w, h);
         }
 
         private static (byte[] buffer, int w, int h) NativeLoadFigure(string name, int color, double size, double lineWidth, double aspect)
@@ -502,6 +548,9 @@ namespace LuaScript
                 _engine.Dispose();
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
+                _drawCompositor?.Dispose();
+                _nativeTextRenderer?.Dispose();
+                _nativeImageDecoder?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _pixelManager?.Dispose();
                 _pixelManager = null;

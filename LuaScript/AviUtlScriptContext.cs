@@ -66,6 +66,88 @@ namespace LuaScript
 
         internal void ClearEffects() => _effectRequests.Clear();
 
+        private readonly List<DrawCommand> _drawCommands = [];
+
+        public IReadOnlyList<DrawCommand> DrawCommands => _drawCommands;
+
+        internal void AddDraw(DrawCommand command) => _drawCommands.Add(command);
+
+        internal void ClearDraws() => _drawCommands.Clear();
+
+        private readonly Dictionary<string, (byte[] Data, int Width, int Height)> _buffers = new(StringComparer.Ordinal);
+
+        internal bool CopyBuffer(string dst, string src)
+        {
+            if (!TryReadBuffer(src, out var data, out int w, out int h))
+                return false;
+            return TryWriteBuffer(dst, data, w, h);
+        }
+
+        private bool TryReadBuffer(string id, out byte[] data, out int width, out int height)
+        {
+            data = [];
+            width = 0;
+            height = 0;
+            switch (BufferKind(id, out string key))
+            {
+                case 'o':
+                    EnsurePixelBuffer();
+                    if (_pixelBuffer is null)
+                        return false;
+                    data = _pixelBuffer;
+                    width = ImageWidth;
+                    height = ImageHeight;
+                    return true;
+                case 't':
+                case 'c':
+                    if (_buffers.TryGetValue(key, out var stored))
+                    {
+                        data = stored.Data;
+                        width = stored.Width;
+                        height = stored.Height;
+                        return true;
+                    }
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        private bool TryWriteBuffer(string id, byte[] data, int width, int height)
+        {
+            switch (BufferKind(id, out string key))
+            {
+                case 'o':
+                    ReplaceBuffer((byte[])data.Clone(), width, height);
+                    return true;
+                case 't':
+                case 'c':
+                    _buffers[key] = ((byte[])data.Clone(), width, height);
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        private static char BufferKind(string id, out string key)
+        {
+            key = string.Empty;
+            int i = 0;
+            while (i < id.Length && (id[i] == ' ' || id[i] == '\t'))
+                i++;
+            if (i >= id.Length)
+                return '\0';
+            char kind = char.ToLowerInvariant(id[i]);
+            if (kind == 't')
+                key = "t";
+            else if (kind == 'c')
+            {
+                int colon = id.IndexOf(':', i);
+                key = colon >= 0 ? "c:" + id[(colon + 1)..].Trim() : "c";
+            }
+            return kind;
+        }
+
         public double RxRad => Rx * Math.PI / 180d;
         public double RyRad => Ry * Math.PI / 180d;
         public double RzRad => Rz * Math.PI / 180d;
@@ -114,6 +196,14 @@ namespace LuaScript
             if (_pixelBufferLoaded) return;
             _pixelBuffer = _pixelLoader?.Invoke();
             _pixelBufferLoaded = true;
+        }
+
+        internal void SetResolvedBuffer(byte[] buffer, int width, int height)
+        {
+            _pixelBuffer = buffer;
+            _pixelBufferLoaded = true;
+            ImageWidth = width;
+            ImageHeight = height;
         }
 
         internal byte[]? GetPixelBuffer() => _pixelBuffer;

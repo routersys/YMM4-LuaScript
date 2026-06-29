@@ -53,6 +53,17 @@ namespace LuaScript
 
             private readonly List<string> _removalBuffer = [];
 
+            private readonly Dictionary<string, DynValue> _options = new(StringComparer.Ordinal);
+            private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
+
+            private TextRenderer? _textRenderer;
+            private ImageDecoder? _imageDecoder;
+            private string _fontFamily = string.Empty;
+            private double _fontSize = 34d;
+            private bool _fontBold;
+            private bool _fontItalic;
+            private int _fontColor = 0xFFFFFF;
+
             private Script? _script;
             private DynValue? _compiledChunk;
             private string _lastCompiledCode = string.Empty;
@@ -202,6 +213,14 @@ namespace LuaScript
             {
                 var script = _script!;
                 bool isFirstSetup = _objTable is null;
+
+                _options.Clear();
+                _pixelOptions.Clear();
+                _fontFamily = string.Empty;
+                _fontSize = 34d;
+                _fontBold = false;
+                _fontItalic = false;
+                _fontColor = 0xFFFFFF;
 
                 if (isFirstSetup)
                 {
@@ -473,18 +492,46 @@ namespace LuaScript
                 obj["load"] = DynValue.NewCallback((_, args) =>
                 {
                     _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count < 4)
-                        return DynValue.Void;
-                    if (args[0].Type != DataType.String || args[0].String != "figure")
+                    if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
                         return DynValue.Void;
 
-                    string name = args[1].Type == DataType.String ? args[1].String : string.Empty;
-                    int color = (int)(args[2].CastToNumber() ?? 0d);
-                    double size = args[3].CastToNumber() ?? 0d;
-                    double line = args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d;
-                    double aspect = args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d;
+                    switch (args[0].String)
+                    {
+                        case "figure" when args.Count >= 4:
+                            LoadFigure(
+                                args[1].Type == DataType.String ? args[1].String : string.Empty,
+                                (int)(args[2].CastToNumber() ?? 0d),
+                                args[3].CastToNumber() ?? 0d,
+                                args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d,
+                                args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d);
+                            break;
+                        case "text":
+                            LoadText(args.Count > 1 && args[1].Type == DataType.String ? args[1].String : string.Empty);
+                            break;
+                        case "image" when args.Count > 1 && args[1].Type == DataType.String:
+                            LoadImage(args[1].String);
+                            break;
+                    }
+                    return DynValue.Void;
+                });
 
-                    LoadFigure(name, color, size, line, aspect);
+                obj["setfont"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0)
+                        return DynValue.Void;
+                    if (args[0].Type == DataType.String)
+                        _fontFamily = args[0].String;
+                    if (args.Count > 1)
+                        _fontSize = args[1].CastToNumber() ?? _fontSize;
+                    if (args.Count > 2)
+                    {
+                        int type = (int)(args[2].CastToNumber() ?? 0d);
+                        _fontBold = (type & 1) != 0;
+                        _fontItalic = (type & 2) != 0;
+                    }
+                    if (args.Count > 3)
+                        _fontColor = (int)(args[3].CastToNumber() ?? _fontColor);
                     return DynValue.Void;
                 });
 
@@ -514,7 +561,112 @@ namespace LuaScript
                     _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
                     return DynValue.Void;
                 });
+
+                obj["draw"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null)
+                        return DynValue.Void;
+
+                    double ox = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                    double oy = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                    double oz = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                    double zoom = args.Count > 3 ? args[3].CastToNumber() ?? 1d : 1d;
+                    double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
+                    double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
+
+                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias()));
+                    return DynValue.Void;
+                });
+
+                obj["drawpoly"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count < 12)
+                        return DynValue.Void;
+
+                    var poly = new double[DrawPolyMath.Length];
+                    for (int i = 0; i < 12; i++)
+                        poly[i] = args[i].CastToNumber() ?? 0d;
+
+                    if (args.Count >= 20)
+                    {
+                        for (int i = 0; i < 8; i++)
+                            poly[12 + i] = args[12 + i].CastToNumber() ?? 0d;
+                    }
+                    else
+                    {
+                        double w = _activeContext.ImageWidth;
+                        double h = _activeContext.ImageHeight;
+                        poly[12] = 0d; poly[13] = 0d;
+                        poly[14] = w; poly[15] = 0d;
+                        poly[16] = w; poly[17] = h;
+                        poly[18] = 0d; poly[19] = h;
+                    }
+
+                    poly[20] = args.Count switch
+                    {
+                        13 => args[12].CastToNumber() ?? 1d,
+                        >= 21 => args[20].CastToNumber() ?? 1d,
+                        _ => 1d,
+                    };
+
+                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias()));
+                    return DynValue.Void;
+                });
+
+                obj["copybuffer"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || args.Count < 2 ||
+                        args[0].Type != DataType.String || args[1].Type != DataType.String)
+                        return DynValue.Void;
+
+                    if (_activeContext.CopyBuffer(args[0].String, args[1].String))
+                        RefreshObjDimensions();
+                    return DynValue.Void;
+                });
+
+                obj["getvalue"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.NewNumber(0d);
+                    var value = _objTable!.Get(args[0].String);
+                    return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
+                });
+
+                obj["setoption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.Void;
+                    _options[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                    return DynValue.Void;
+                });
+
+                obj["getoption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.NewNumber(0d);
+                    return _options.TryGetValue(args[0].String, out var value) ? value : DynValue.NewNumber(0d);
+                });
+
+                obj["pixeloption"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0 || args[0].Type != DataType.String)
+                        return DynValue.Void;
+                    _pixelOptions[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                    return DynValue.Void;
+                });
             }
+
+            private double CurrentAntialias() =>
+                _options.TryGetValue("antialias", out var value) && value.Type == DataType.Number
+                    ? value.Number
+                    : 1d;
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)
             {
@@ -527,6 +679,31 @@ namespace LuaScript
                 var buffer = FigureRenderer.Render(name, w, h, color, line);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
 
+                RefreshObjDimensions();
+            }
+
+            private void LoadText(string text)
+            {
+                _textRenderer ??= new TextRenderer();
+                var buffer = _textRenderer.Render(
+                    text, _fontFamily, _fontSize, _fontBold, _fontItalic, _fontColor,
+                    out int w, out int h);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
+            private void LoadImage(string path)
+            {
+                _imageDecoder ??= new ImageDecoder();
+                var buffer = _imageDecoder.Decode(path, out int w, out int h);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
+            private void RefreshObjDimensions()
+            {
+                int w = _activeContext!.ImageWidth;
+                int h = _activeContext.ImageHeight;
                 var obj = _objTable!;
                 obj["w"] = w;
                 obj["h"] = h;
@@ -591,6 +768,8 @@ namespace LuaScript
                 _disposeRequested = true;
                 _workSignal.Release();
                 _thread.Join();
+                _textRenderer?.Dispose();
+                _imageDecoder?.Dispose();
                 _cts.Cancel();
                 _cts.Dispose();
                 _workSignal.Dispose();
@@ -604,6 +783,8 @@ namespace LuaScript
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     _thread.Join();
+                    _textRenderer?.Dispose();
+                    _imageDecoder?.Dispose();
                     _cts.Dispose();
                     _workSignal.Dispose();
                     _doneSignal.Dispose();

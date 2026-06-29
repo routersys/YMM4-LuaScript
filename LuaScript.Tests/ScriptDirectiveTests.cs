@@ -40,7 +40,7 @@ namespace LuaScript.Tests
         [InlineData("obj.load(\"figure\", \"円\", 0xff0000, 100)", "MoonSharp")]
         [InlineData("obj.load(\"figure\", \"円\", 0xff0000, 100)\nlocal r = obj.getpixel(0,0)", "Native")]
         [InlineData("obj.draw()", "MoonSharp")]
-        [InlineData("obj.draw()\nlocal r = obj.getpixel(0,0)", "MoonSharp")]
+        [InlineData("obj.draw()\nlocal r = obj.getpixel(0,0)", "Native")]
         [InlineData("--!native\nobj.load(\"figure\", \"円\", 0xff0000, 100)", "Native")]
         public void ResolveAuto_RoutesPixelScriptsToNative(string script, string expected)
         {

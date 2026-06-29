@@ -61,6 +61,10 @@ local STATUS_CALLBACK = 3
 local CB_KIND_GETOBJECT = 0
 local CB_KIND_LOADFIGURE = 1
 local CB_KIND_EFFECT = 2
+local CB_KIND_DRAW = 3
+local CB_KIND_DRAWPOLY = 4
+local CB_KIND_LOADTEXT = 5
+local CB_KIND_LOADIMAGE = 6
 
 assert(loadfile(shimPath))()
 
@@ -73,7 +77,23 @@ end
 local width, height = 0, 0
 local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
 local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
+local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
+local pixelCapacity = mapSize - PIXEL_OFFSET
+local buffers = {}
+local options = {}
+local pixeloptions = {}
 local dirty = false
+
+local function bufferKind(id)
+    local c = id:match("^%s*(.)")
+    if not c then return nil end
+    c = c:lower()
+    if c == "c" then
+        local name = id:match(":%s*(.-)%s*$")
+        return "c", name and ("c:" .. name) or "c"
+    end
+    return c, c
+end
 
 local obj = {}
 local scene = {}
@@ -156,26 +176,20 @@ function obj.rand(a, b, seed, frame)
     return aviutl_rand(a or 0, b or 0, seed or 0, frame or obj.frame or 0)
 end
 
-function obj.load(kind, name, color, size, lineWidth, aspect)
-    if kind ~= "figure" then return end
-    name = name or ""
-    color = color or 0
-    size = size or 100
-    lineWidth = lineWidth or 0
-    aspect = aspect or 0
-    local nameBytes = tostring(name)
-    local len = #nameBytes
-    if len > CB_TAG_MAX then len = CB_TAG_MAX end
-    ffi.copy(base + CB_TAG_OFFSET, nameBytes, len)
-    i32[OFF_CB_TAGLEN] = len
-    i32[OFF_CB_KIND] = CB_KIND_LOADFIGURE
-    cbResult[0] = color
-    cbResult[1] = size
-    cbResult[2] = lineWidth
-    cbResult[3] = aspect
-    i32[OFF_STATUS] = STATUS_CALLBACK
-    k32.SetEvent(doneEvent)
-    k32.WaitForSingleObject(workEvent, INFINITE)
+local font = { family = "", size = 34, bold = false, italic = false, color = 0xFFFFFF }
+
+function obj.setfont(name, size, style, col1)
+    if name ~= nil then font.family = tostring(name) end
+    if size ~= nil then font.size = size end
+    if style ~= nil then
+        local s = math.floor(style)
+        font.bold = (s % 2) == 1
+        font.italic = (math.floor(s / 2) % 2) == 1
+    end
+    if col1 ~= nil then font.color = col1 end
+end
+
+local function applyLoadResult()
     local newW = i32[OFF_LOAD_RESULT_W]
     local newH = i32[OFF_LOAD_RESULT_H]
     if newW > 0 and newH > 0 then
@@ -189,6 +203,63 @@ function obj.load(kind, name, color, size, lineWidth, aspect)
         obj.cx = newW / 2; obj.cy = newH / 2
         obj.cz = 0
         obj.diagonal = math.sqrt(newW * newW + newH * newH)
+    end
+end
+
+local function loadFigure(name, color, size, lineWidth, aspect)
+    local nameBytes = tostring(name or "")
+    local len = #nameBytes
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, nameBytes, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADFIGURE
+    cbResult[0] = color or 0
+    cbResult[1] = size or 100
+    cbResult[2] = lineWidth or 0
+    cbResult[3] = aspect or 0
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
+local function loadText(str)
+    local payload = font.family .. "\0" .. tostring(str or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADTEXT
+    cbResult[0] = font.size
+    cbResult[1] = font.bold and 1 or 0
+    cbResult[2] = font.italic and 1 or 0
+    cbResult[3] = font.color
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
+local function loadImage(path)
+    local payload = tostring(path or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADIMAGE
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
+function obj.load(kind, ...)
+    if kind == "figure" then
+        loadFigure(...)
+    elseif kind == "text" then
+        loadText(...)
+    elseif kind == "image" then
+        loadImage(...)
     end
 end
 
@@ -225,6 +296,105 @@ function obj.effect(name, ...)
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.draw(ox, oy, oz, zoom, alpha, aspect)
+    cbResult[0] = ox or 0
+    cbResult[1] = oy or 0
+    cbResult[2] = oz or 0
+    cbResult[3] = zoom or 1
+    cbResult[4] = alpha or 1
+    cbResult[5] = aspect or 0
+    cbResult[6] = options.antialias or 1
+    i32[OFF_CB_KIND] = CB_KIND_DRAW
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.drawpoly(...)
+    local n = select("#", ...)
+    if n < 12 then return end
+    local a = { ... }
+    for i = 0, 11 do cbTagD[i] = a[i + 1] or 0 end
+    if n >= 20 then
+        for i = 0, 7 do cbTagD[12 + i] = a[13 + i] or 0 end
+    else
+        cbTagD[12] = 0; cbTagD[13] = 0
+        cbTagD[14] = width; cbTagD[15] = 0
+        cbTagD[16] = width; cbTagD[17] = height
+        cbTagD[18] = 0; cbTagD[19] = height
+    end
+    local alpha = 1
+    if n == 13 then
+        alpha = a[13] or 1
+    elseif n >= 21 then
+        alpha = a[21] or 1
+    end
+    cbTagD[20] = alpha
+    cbTagD[21] = options.antialias or 1
+    i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.getvalue(target)
+    if type(target) ~= "string" then return 0 end
+    local v = obj[target]
+    if type(v) == "number" then return v end
+    return 0
+end
+
+function obj.setoption(name, value)
+    if type(name) ~= "string" then return end
+    if value == nil then value = true end
+    options[name] = value
+end
+
+function obj.getoption(name)
+    if type(name) ~= "string" then return 0 end
+    local v = options[name]
+    if v == nil then return 0 end
+    return v
+end
+
+function obj.pixeloption(name, value)
+    if type(name) ~= "string" then return end
+    if value == nil then value = true end
+    pixeloptions[name] = value
+end
+
+function obj.copybuffer(dst, src)
+    if type(dst) ~= "string" or type(src) ~= "string" then return end
+    local sk, skey = bufferKind(src)
+    local data, w, h
+    if sk == "o" then
+        data = ffi.string(pixels, width * height * 4)
+        w = width; h = height
+    elseif sk == "t" or sk == "c" then
+        local b = buffers[skey]
+        if not b then return end
+        data, w, h = b.data, b.w, b.h
+    else
+        return
+    end
+    local dk, dkey = bufferKind(dst)
+    if dk == "o" then
+        local need = w * h * 4
+        if need > pixelCapacity then return end
+        ffi.copy(pixels, data, need)
+        width = w; height = h
+        i32[OFF_WIDTH] = w; i32[OFF_HEIGHT] = h
+        dirty = true
+        obj.w = w; obj.h = h
+        obj.hw = w / 2; obj.hh = h / 2
+        obj.cx = w / 2; obj.cy = h / 2
+        obj.cz = 0
+        obj.diagonal = math.sqrt(w * w + h * h)
+    elseif dk == "t" or dk == "c" then
+        buffers[dkey] = { data = data, w = w, h = h }
+    end
 end
 
 local cacheTag, cacheFrame, cacheFound
@@ -348,6 +518,9 @@ while true do
     if compiledChunk and code == compiledCode then
         loadFields()
         cacheTag = nil
+        for k in pairs(options) do options[k] = nil end
+        for k in pairs(pixeloptions) do pixeloptions[k] = nil end
+        font.family = ""; font.size = 34; font.bold = false; font.italic = false; font.color = 0xFFFFFF
         math.randomseed(f64[31])
         setfenv(compiledChunk, sandbox)
         local ok, err = pcall(compiledChunk)
