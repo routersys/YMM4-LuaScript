@@ -14,8 +14,7 @@ namespace LuaScript.Diagnostics
 {
     internal sealed class LuaScriptDiagnosticOverlay : IBackgroundRenderer, ILuaScriptDiagnosticsListener
     {
-        private static readonly FieldInfo? s_textViewsField =
-            typeof(FoldingManager).GetField("textViews", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly FieldInfo? s_textViewsField = ResolveTextViewsField();
 
         private static readonly Pen s_squigglePen = CreateSquigglePen();
 
@@ -225,6 +224,16 @@ namespace LuaScript.Diagnostics
             pen.Brush.Freeze();
             pen.Freeze();
             return pen;
+        }
+
+        private static FieldInfo? ResolveTextViewsField()
+        {
+            foreach (var field in typeof(FoldingManager).GetFields(BindingFlags.Instance | BindingFlags.NonPublic))
+            {
+                if (typeof(IEnumerable<TextView>).IsAssignableFrom(field.FieldType))
+                    return field;
+            }
+            return null;
         }
 
         private static TextView? ResolveTextView(FoldingManager? manager)
