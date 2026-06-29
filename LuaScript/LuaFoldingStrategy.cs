@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Folding;
+using LuaScript.Diagnostics;
 using YukkuriMovieMaker.Controls.AvalonEdit.FoldingStrategy;
 
 namespace LuaScript
@@ -25,6 +26,7 @@ namespace LuaScript
         public void UpdateFoldings(FoldingManager manager, TextDocument document)
         {
             manager.UpdateFoldings(CreateNewFoldings(document, out int firstErrorOffset), firstErrorOffset);
+            LuaScriptDiagnosticOverlay.Attach(manager);
         }
 
         private static IEnumerable<NewFolding> CreateNewFoldings(TextDocument document, out int firstErrorOffset)

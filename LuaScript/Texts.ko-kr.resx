@@ -84,4 +84,7 @@
 <data name="ToolBarImportErrorTitle" xml:space="preserve"><value>가져오기 오류</value></data>
 <data name="ToolBarExportErrorTitle" xml:space="preserve"><value>내보내기 오류</value></data>
 <data name="LuaFileFilter" xml:space="preserve"><value>Lua 스크립트 (*.lua)|*.lua|모든 파일 (*.*)|*.*</value></data>
+<data name="DiagnosticCompile" xml:space="preserve"><value>구문 오류</value></data>
+<data name="DiagnosticRuntime" xml:space="preserve"><value>런타임 오류</value></data>
+<data name="DiagnosticTimeout" xml:space="preserve"><value>시간 초과</value></data>
 </root>

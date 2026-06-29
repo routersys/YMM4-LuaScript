@@ -84,4 +84,7 @@
 <data name="ToolBarImportErrorTitle" xml:space="preserve"><value>インポートエラー</value></data>
 <data name="ToolBarExportErrorTitle" xml:space="preserve"><value>エクスポートエラー</value></data>
 <data name="LuaFileFilter" xml:space="preserve"><value>Luaスクリプト (*.lua)|*.lua|すべてのファイル (*.*)|*.*</value></data>
+<data name="DiagnosticCompile" xml:space="preserve"><value>構文エラー</value></data>
+<data name="DiagnosticRuntime" xml:space="preserve"><value>実行時エラー</value></data>
+<data name="DiagnosticTimeout" xml:space="preserve"><value>タイムアウト</value></data>
 </root>

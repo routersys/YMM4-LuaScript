@@ -24,3 +24,6 @@ ToolBarClearTitle,,確認,Confirm,确认,確認,확인,Confirmar,تأكيد,Konf
 ToolBarImportErrorTitle,,インポートエラー,Import Error,导入错误,導入錯誤,가져오기 오류,Error de importación,خطأ في الاستيراد,Kesalahan impor
 ToolBarExportErrorTitle,,エクスポートエラー,Export Error,导出错误,導出錯誤,내보내기 오류,Error de exportación,خطأ في التصدير,Kesalahan ekspor
 LuaFileFilter,,Luaスクリプト (*.lua)|*.lua|すべてのファイル (*.*)|*.*,Lua Script (*.lua)|*.lua|All Files (*.*)|*.*,Lua脚本 (*.lua)|*.lua|所有文件 (*.*)|*.*,Lua腳本 (*.lua)|*.lua|所有檔案 (*.*)|*.*,Lua 스크립트 (*.lua)|*.lua|모든 파일 (*.*)|*.*,Script Lua (*.lua)|*.lua|Todos los archivos (*.*)|*.*,نص Lua (*.lua)|*.lua|جميع الملفات (*.*)|*.*,Skrip Lua (*.lua)|*.lua|Semua File (*.*)|*.*
+DiagnosticCompile,,構文エラー,Syntax error,语法错误,語法錯誤,구문 오류,Error de sintaxis,خطأ في بناء الجملة,Kesalahan sintaksis
+DiagnosticRuntime,,実行時エラー,Runtime error,运行时错误,執行時錯誤,런타임 오류,Error de ejecución,خطأ وقت التشغيل,Kesalahan runtime
+DiagnosticTimeout,,タイムアウト,Timed out,执行超时,執行逾時,시간 초과,Tiempo de espera agotado,انتهت المهلة,Waktu habis

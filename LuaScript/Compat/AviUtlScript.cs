@@ -13,10 +13,12 @@ namespace LuaScript.Compat
             Param,
         }
 
-        public static string Transform(string source)
+        public static string Transform(string source) => TransformWithMap(source).Code;
+
+        public static (string Code, int[] LineMap) TransformWithMap(string source)
         {
             if (string.IsNullOrEmpty(source))
-                return source;
+                return (source, []);
 
             var lines = source.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
@@ -48,15 +50,24 @@ namespace LuaScript.Compat
                 AppendDeclarations(lines[i], prelude);
 
             if (!hasSection && prelude.Count == 0)
-                return source;
+                return (source, []);
 
             var builder = new StringBuilder(source.Length + 64);
-            foreach (var declaration in prelude)
-                builder.Append(declaration).Append('\n');
-            for (int i = sectionStart; i < sectionEnd; i++)
-                builder.Append(lines[i]).Append('\n');
+            var lineMap = new int[prelude.Count + (sectionEnd - sectionStart)];
+            int row = 0;
 
-            return builder.ToString();
+            foreach (var declaration in prelude)
+            {
+                builder.Append(declaration).Append('\n');
+                lineMap[row++] = -1;
+            }
+            for (int i = sectionStart; i < sectionEnd; i++)
+            {
+                builder.Append(lines[i]).Append('\n');
+                lineMap[row++] = i;
+            }
+
+            return (builder.ToString(), lineMap);
         }
 
         private static void AppendDeclarations(string line, List<string> prelude)

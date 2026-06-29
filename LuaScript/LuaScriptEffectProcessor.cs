@@ -2,6 +2,7 @@ using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using LuaScript.Compat;
+using LuaScript.Diagnostics;
 using LuaScript.Engine;
 using LuaScript.Engine.Kernel;
 using Vortice;
@@ -90,6 +91,7 @@ namespace LuaScript
         private bool _isFirst = true;
         private string _sourceScript = string.Empty;
         private string _runnableScript = string.Empty;
+        private int[] _runnableLineMap = [];
         private bool _runnableCached;
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
@@ -138,10 +140,37 @@ namespace LuaScript
             if (_runnableCached && string.Equals(source, _sourceScript, StringComparison.Ordinal))
                 return _runnableScript;
 
-            _runnableScript = AviUtlScript.Transform(source);
+            var (code, lineMap) = AviUtlScript.TransformWithMap(source);
+            _runnableScript = code;
+            _runnableLineMap = lineMap;
             _sourceScript = source;
             _runnableCached = true;
             return _runnableScript;
+        }
+
+        private static LuaScriptDiagnosticKind ClassifyDiagnostic(LuaScriptException exception) => exception switch
+        {
+            LuaScriptCompilationException => LuaScriptDiagnosticKind.Compile,
+            LuaScriptTimeoutException => LuaScriptDiagnosticKind.Timeout,
+            _ => LuaScriptDiagnosticKind.Runtime,
+        };
+
+        private LuaScriptDiagnostic CreateDiagnostic(LuaScriptDiagnosticKind kind, string message)
+        {
+            var diagnostic = LuaScriptDiagnosticParser.Parse(kind, message);
+            return diagnostic.Line > 0
+                ? diagnostic with { Line = MapRunnableLine(diagnostic.Line) }
+                : diagnostic;
+        }
+
+        private int MapRunnableLine(int runnableLine)
+        {
+            int index = runnableLine - 1;
+            if (index < 0 || index >= _runnableLineMap.Length)
+                return runnableLine;
+
+            int sourceLine = _runnableLineMap[index];
+            return sourceLine >= 0 ? sourceLine + 1 : 0;
         }
 
         protected override void setInput(ID2D1Image? input)
@@ -213,6 +242,7 @@ namespace LuaScript
             ctx.SetPixelLoader(() => LoadInputPixels(bounds, imgW, imgH));
 
             DrawDescription outDesc = inDesc;
+            IReadOnlyList<LuaScriptDiagnostic> diagnostics = [];
 
             try
             {
@@ -288,6 +318,7 @@ namespace LuaScript
                 _context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
                 _isFirst = true;
                 Log.Default.Write(ex.Message, ex);
+                LuaScriptDiagnostics.Instance.Report(script, [CreateDiagnostic(LuaScriptDiagnosticKind.Timeout, ex.Message)]);
                 return inDesc;
             }
             catch (LuaScriptException ex)
@@ -295,12 +326,15 @@ namespace LuaScript
                 effectOutput = null;
                 outDesc = inDesc;
                 Log.Default.Write(ex.Message, ex);
+                diagnostics = [CreateDiagnostic(ClassifyDiagnostic(ex), ex.Message)];
             }
             finally
             {
                 _pixelLoaderSemaphore.Wait();
                 _pixelLoaderSemaphore.Release();
             }
+
+            LuaScriptDiagnostics.Instance.Report(script, diagnostics);
 
             _isFirst = false;
             _cachedKey = key;
