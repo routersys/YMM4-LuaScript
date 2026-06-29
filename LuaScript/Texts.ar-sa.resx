@@ -84,4 +84,7 @@
 <data name="ToolBarImportErrorTitle" xml:space="preserve"><value>خطأ في الاستيراد</value></data>
 <data name="ToolBarExportErrorTitle" xml:space="preserve"><value>خطأ في التصدير</value></data>
 <data name="LuaFileFilter" xml:space="preserve"><value>نص Lua (*.lua)|*.lua|جميع الملفات (*.*)|*.*</value></data>
+<data name="DiagnosticCompile" xml:space="preserve"><value>خطأ في بناء الجملة</value></data>
+<data name="DiagnosticRuntime" xml:space="preserve"><value>خطأ وقت التشغيل</value></data>
+<data name="DiagnosticTimeout" xml:space="preserve"><value>انتهت المهلة</value></data>
 </root>
