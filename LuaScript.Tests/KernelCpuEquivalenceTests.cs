@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using LuaScript.Engine;
 using LuaScript.Engine.Kernel;
 using MoonSharp.Interpreter;
 
@@ -35,6 +36,28 @@ namespace LuaScript.Tests
             var fields = new Dictionary<string, double> { ["w"] = Width, ["h"] = Height, ["track0"] = 73d, ["track1"] = 40d };
             var globals = new Dictionary<string, double> { ["time"] = 1.2345d };
             AssertEquivalent(script, fields, globals);
+        }
+
+        [Theory]
+        [InlineData("--!cpu\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,255-r,255-g,255-b,a) end end")]
+        [InlineData("--!gpu\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) local l=0.298912*r+0.586611*g+0.114478*b obj.setpixel(x,y,l,l,l,a) end end")]
+        [InlineData("--!cpu\r\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,x/obj.w*255,y/obj.h*255,b,a) end end")]
+        public void DirectivePrefixedKernelsMatchMoonSharp(string script)
+        {
+            var fields = new Dictionary<string, double> { ["w"] = Width, ["h"] = Height };
+            AssertEquivalent(script, fields, new Dictionary<string, double>());
+        }
+
+        [Theory]
+        [InlineData("--!cpu", "Cpu")]
+        [InlineData("--!gpu", "Gpu")]
+        public void DirectivePrefixedKernelsRouteToAcceleratedLane(string directive, string expected)
+        {
+            string script = directive + "\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,r,g,b,a) end end";
+
+            Assert.True(ScriptDirective.TryResolveExplicit(script, out var kind));
+            Assert.Equal(expected, kind.ToString());
+            Assert.NotNull(KernelExtractor.TryExtract(script));
         }
 
         [Theory]
