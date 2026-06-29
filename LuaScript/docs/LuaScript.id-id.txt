@@ -318,24 +318,92 @@
                 Contoh: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
         o obj.load(target, ...)
-                Mengganti buffer objek dengan konten yang dihasilkan.
-                Pada versi ini hanya target "figure" yang didukung.
+                Mengganti buffer objek dengan konten yang dihasilkan. Target "figure",
+                "text", "image" (berkas gambar) dan "movie" (berkas video) didukung.
+                Setelah dimuat, obj.w / obj.h, dll. diperbarui ke ukuran yang
+                dihasilkan dan dapat dibaca oleh getpixel tepat setelah pemuatan.
+                Berfungsi pada mesin MoonSharp maupun mesin cepat (LuaJIT).
+
                 obj.load("figure", name, color, size [, line [, aspect]])
-                        Menghasilkan sebuah bentuk dan mengganti buffer objek dengannya
-                        (output diubah ukurannya sesuai bentuk dan dipusatkan).
-                        name   : Nama bentuk. Salah satu dari 円 / 四角形 / 三角形 /
-                                 五角形 / 六角形 / 星形 (alias Inggris circle, rect,
-                                 triangle, pentagon, hexagon, star juga diterima).
+                        Menghasilkan bentuk dan mengganti buffer (dipusatkan).
+                        name   : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                 (alias Inggris circle, rect, triangle, pentagon,
+                                 hexagon, star juga diterima).
                         color  : Warna isi 0xRRGGBB.
                         size   : Ukuran dasar dalam piksel.
-                        line   : Lebar garis tepi (opsional). Dihilangkan atau 0 mengisi
-                                 bentuk; nilai sama atau lebih besar dari ukuran juga mengisinya.
-                        aspect : Distorsi -1.0 ~ 1.0 (opsional). Positif mengecilkan
-                                 lebar, negatif mengecilkan tinggi.
-                Contoh: obj.load("figure", "円", 0xff3366, 200)
-                * Hanya obj.load("figure", ...) yang diimplementasikan. Target lain
-                  (berkas gambar, "text", "tempbuffer", "movie", dll.) tidak melakukan apa pun.
-                * Skrip penggambaran dijalankan pada mesin MoonSharp.
+                        line   : Lebar garis tepi (opsional). 0 mengisi bentuk.
+                        aspect : Distorsi -1.0 ~ 1.0 (opsional).
+                        Contoh: obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", string)
+                        Menggambar string dengan font, ukuran, dan warna yang diatur
+                        oleh obj.setfont dan mengganti buffer (digambar dengan DirectWrite).
+                        Contoh: obj.setfont("Yu Gothic UI", 48); obj.load("text", "字幕")
+
+                obj.load("image", path)
+                        Memuat berkas gambar dan mengganti buffer.
+                        * Demi keamanan, header awal divalidasi dan hanya gambar asli
+                          (PNG / JPEG / GIF / BMP / TIFF / WebP) yang dimuat.
+                        Contoh: obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", path [, time])
+                        Memuat frame pada waktu tertentu dari berkas video dan mengganti
+                        buffer (didekode dengan Media Foundation).
+                        time : Detik. Default obj.time jika dihilangkan.
+                        * Demi keamanan, header awal divalidasi dan hanya video asli
+                          (MP4 / MOV / MKV / WebM / AVI / FLV / ASF) yang dimuat.
+                        Contoh: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        o obj.setfont(font [, size [, style [, color]]])
+                Mengatur font yang digunakan oleh obj.load("text").
+                style : Flag bit. 1=tebal, 2=miring, 3=tebal+miring.
+                color : 0xRRGGBB.
+                Contoh: obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        o obj.draw([ox, oy, oz [, zoom [, alpha [, aspect]]]])
+                Mengomposit gambar objek saat ini ke buffer akumulasi.
+                Memanggilnya beberapa kali menggambar salinan bertumpuk (afterimage,
+                partikel, dll.).
+                ox, oy, oz : Offset dari pusat (default 0).
+                zoom       : 1.0 adalah ukuran asli (default 1.0).
+                alpha      : 0.0 ~ 1.0 (default 1.0).
+                aspect     : -1.0 ~ 1.0 (default 0).
+                * Setelah dipanggil, penggambaran standar ditekan dan hasil komposit
+                  dikeluarkan.
+
+        o obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                        [, u0,v0, u1,v1, u2,v2, u3,v3 [, alpha]])
+                Memetakan gambar objek sebagai tekstur ke quad dari 4 verteks.
+                Urutan verteks: kiri-atas, kanan-atas, kanan-bawah, kiri-bawah.
+                Jika UV dihilangkan, seluruh gambar digunakan.
+                * Dipetakan dengan transformasi afin (tepat untuk jajaran genjang,
+                  perkiraan untuk non-jajaran genjang).
+
+        o obj.copybuffer(tujuan, sumber)
+                Menyalin gambar antar buffer, dipilih oleh karakter pertama.
+                  "obj"         : Buffer gambar objek
+                  "tmp"         : Buffer sementara
+                  "cache:nama"  : Cache bernama (dipertahankan antar frame)
+                Contoh: obj.copybuffer("tmp", "obj")  -- simpan
+                        obj.copybuffer("obj", "tmp")  -- pulihkan
+                * "frm" (buffer frame / latar) tidak dapat diperoleh karena struktur YMM4.
+
+        o obj.getvalue(target)
+                Mengambil nilai saat ini dari obj (sama dengan obj.x, obj.track0, dll.).
+                target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"~"track3","time","frame", dll.
+                Mengembalikan: sebuah angka (0 untuk target yang tidak dikenal).
+
+        o obj.setoption(name, value) / obj.getoption(name)
+                Mengatur / mengambil opsi. Opsi yang tidak didukung tetap diterima
+                sehingga tidak menghentikan skrip (getoption mengembalikan nilai
+                tersimpan, 0 jika belum diatur).
+                Opsi yang saat ini memengaruhi penggambaran:
+                  "antialias" : 0 = tetangga terdekat, selain itu interpolasi linear
+                                (obj.draw / obj.drawpoly).
+
+        o obj.pixeloption(name, value)
+                Menyimpan opsi untuk operasi piksel sebagai status.
 
 
 
@@ -512,29 +580,29 @@
                 Fungsi bilangan acak bulat deterministik yang kompatibel dengan AviUtl.
                 Lihat "Tabel obj - Fungsi" untuk detailnya.
 
-        o Penggambaran figur
-                obj.load("figure", ...) menghasilkan bentuk dasar (lingkaran, persegi,
-                segitiga, segilima, segienam, bintang) dan mengganti buffer objek
-                dengannya. Lihat "Tabel obj - Fungsi" untuk detailnya.
+        o Penggambaran, komposisi, dan pemuatan
+                Penggambaran dan komposisi dengan obj.draw / obj.drawpoly, operasi
+                buffer dengan obj.copybuffer, pembuatan dan pemuatan dengan
+                obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
+                obj.getvalue, serta obj.setoption / obj.getoption / obj.pixeloption
+                didukung. Lihat "Tabel obj - Fungsi" untuk detailnya.
 
-        Berikut ini memerlukan integrasi dengan pipeline render sehingga berada di
-        luar cakupan lapisan ini. Skrip yang memanggilnya tidak akan berperilaku
-        seperti yang diharapkan.
-                x Penggambaran dan komposisi (obj.draw / obj.drawpoly), target obj.load
-                  selain "figure" (berkas gambar, "text", "movie", dll.) dan obj.setfont
-                x Efek filter dan operasi buffer
-                  (obj.effect / obj.copybuffer / obj.setoption, dll.)
-                x Pemuatan modul melalui require, dan akses file seperti io
+        Berikut ini berada di luar cakupan lapisan ini. Skrip yang memanggilnya tidak
+        akan berperilaku seperti yang diharapkan.
+                x Pemuatan modul melalui require, dan akses berkas sembarang seperti
+                  io / dofile (pemuatan gambar / video via obj.load didukung dengan
+                  validasi header).
+                x obj.setanchor, scene.set / scene.get, dll.
 
 
 - Fitur yang Tidak Didukung / Batasan -
 
-        x obj.effect(), obj.draw(), obj.drawpoly(), dll. dari AviUtl2 tidak didukung (hanya obj.load("figure", ...) yang didukung; lihat "Kompatibilitas Parsial Skrip AviUtl").
-        x obj.rand1(), obj.setfont(), obj.mes(), dll. dari AviUtl2 tidak didukung.
-        x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
+        x obj.rand1(), obj.mes(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
         x Fungsi seperti scene.set() dan scene.get() dalam tabel scene AviUtl2 tidak didukung.
           (Hanya scene.width dan scene.height yang dapat dibaca)
-        x Akses file (require, dofile, io, dll.) tidak didukung.
+        x Akses berkas sembarang dari skrip (require, dofile, io, dll.) tidak didukung.
+          Hanya obj.load("image"/"movie") yang memuat berkas yang dipastikan sebagai
+          media asli melalui validasi header awal.
         x Memodifikasi obj.z tercermin dalam render (termasuk dalam ReadBack),
           tetapi dukungan render 3D terbatas.
         x Jika batas waktu skrip (5 detik) terlampaui, eksekusi dihentikan paksa.
