@@ -41,6 +41,11 @@
     <Compile Include="..\LuaScript\Compat\AviUtlParameterLayout.cs" Link="Linked\AviUtlParameterLayout.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlRandom.cs" Link="Linked\AviUtlRandom.cs" />
     <Compile Include="..\LuaScript\Compat\FigureRenderer.cs" Link="Linked\FigureRenderer.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\KernelUnsupportedException.cs" Link="Linked\Kernel\KernelUnsupportedException.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaToken.cs" Link="Linked\Kernel\LuaToken.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaLexer.cs" Link="Linked\Kernel\LuaLexer.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaAst.cs" Link="Linked\Kernel\LuaAst.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaParser.cs" Link="Linked\Kernel\LuaParser.cs" />
   </ItemGroup>
 
 </Project>
