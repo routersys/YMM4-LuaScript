@@ -313,23 +313,86 @@
                 예: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
         ○ obj.load(대상, ...)
-                오브젝트 버퍼를 생성한 내용으로 교체합니다.
-                이 버전에서는 "figure"(도형)만 지원합니다.
+                오브젝트 버퍼를 생성한 내용으로 교체합니다. "figure"(도형) /
+                "text"(텍스트) / "image"(이미지 파일) / "movie"(동영상 파일)를
+                지원합니다. 로드 후 obj.w / obj.h 등은 생성 크기로 갱신되며, 로드
+                직후의 getpixel로도 참조할 수 있습니다. 기존 엔진과 고속 엔진
+                양쪽에서 동작합니다.
+
                 obj.load("figure", 이름, 색, 크기 [, 라인 [, 종횡비]])
-                        도형을 생성하여 오브젝트 버퍼를 교체합니다
-                        (출력은 도형 크기에 맞춰 생성되고 중심에 배치됩니다).
-                        이름    : 도형 이름. 円 / 四角形 / 三角形 / 五角形 / 六角形 /
-                                  星形 중 하나(영어 circle, rect, triangle,
-                                  pentagon, hexagon, star 도 사용 가능).
-                        색      : 채움 색 0xRRGGBB.
-                        크기    : 도형의 기준 크기(픽셀).
-                        라인    : 외곽선 두께(생략 가능). 생략 또는 0이면 채움.
-                                  크기 이상의 값을 지정한 경우에도 채움이 됩니다.
-                        종횡비  : 왜곡 -1.0 ～ 1.0(생략 가능). 양수는 너비, 음수는 높이를 줄입니다.
-                예: obj.load("figure", "円", 0xff3366, 200)
-                ※ 구현된 것은 obj.load("figure", ...) 뿐입니다. 이미지 파일,
-                  "text"・"tempbuffer"・"movie" 등의 대상은 아무것도 하지 않습니다.
-                ※ 그리기 계열 스크립트는 MoonSharp 엔진에서 실행됩니다.
+                        도형을 생성하여 버퍼를 교체합니다(중심 배치).
+                        이름   : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                 (영어 circle, rect, triangle, pentagon, hexagon,
+                                 star 도 사용 가능).
+                        색     : 채움 색 0xRRGGBB.
+                        크기   : 기준 크기(픽셀).
+                        라인   : 외곽선 두께(생략 가능). 0이면 채움.
+                        종횡비 : 왜곡 -1.0 ～ 1.0(생략 가능).
+                        예: obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", 문자열)
+                        obj.setfont로 지정한 글꼴・크기・색으로 문자열을 그려
+                        버퍼를 교체합니다(DirectWrite로 그림).
+                        예: obj.setfont("Yu Gothic UI", 48); obj.load("text", "자막")
+
+                obj.load("image", 경로)
+                        이미지 파일을 읽어 버퍼를 교체합니다.
+                        ※ 안전을 위해 선두 헤더를 검증하여 진짜 이미지
+                          (PNG / JPEG / GIF / BMP / TIFF / WebP)만 읽습니다.
+                        예: obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", 경로 [, 시간])
+                        동영상 파일의 지정 시간 프레임을 읽어 버퍼를 교체합니다
+                        (Media Foundation으로 디코딩).
+                        시간 : 초. 생략 시 obj.time.
+                        ※ 안전을 위해 선두 헤더를 검증하여 진짜 동영상
+                          (MP4 / MOV / MKV / WebM / AVI / FLV / ASF)만 읽습니다.
+                        예: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        ○ obj.setfont(글꼴 [, 크기 [, 스타일 [, 색]]])
+                obj.load("text")에서 사용할 글꼴을 설정합니다.
+                스타일 : 비트 플래그. 1=굵게, 2=기울임, 3=굵게+기울임.
+                색     : 0xRRGGBB.
+                예: obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        ○ obj.draw([ox, oy, oz [, 확대율 [, 불투명도 [, 종횡비]]]])
+                현재 오브젝트 이미지를 누적 버퍼에 합성하여 그립니다.
+                여러 번 호출하면 겹쳐서 그려집니다(잔상・파티클 등).
+                ox, oy, oz : 중심으로부터의 오프셋(기본 0).
+                확대율     : 1.0이 등배(기본 1.0).
+                불투명도   : 0.0 ～ 1.0(기본 1.0).
+                종횡비     : -1.0 ～ 1.0(기본 0).
+                ※ 호출하면 표준 그리기가 억제되고 합성 결과가 출력됩니다.
+
+        ○ obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                        [, u0,v0, u1,v1, u2,v2, u3,v3 [, 불투명도]])
+                4개 정점으로 지정한 사각형에 오브젝트 이미지를 텍스처로 그립니다.
+                정점 순서는 좌상→우상→우하→좌하. UV 생략 시 전체 이미지를 사용합니다.
+                ※ 아핀 변환으로 매핑합니다(평행사변형은 정확, 비평행사변형은 근사).
+
+        ○ obj.copybuffer(대상, 원본)
+                버퍼 간에 이미지를 복사합니다. 식별자의 첫 글자로 판정합니다.
+                  "obj"      : 오브젝트 이미지 버퍼
+                  "tmp"      : 임시 버퍼
+                  "cache:이름" : 명명 캐시(프레임 간 유지)
+                예: obj.copybuffer("tmp", "obj")  -- 저장
+                    obj.copybuffer("obj", "tmp")  -- 복원
+                ※ "frm"(프레임 버퍼 / 배경)은 YMM4의 구조상 가져올 수 없습니다.
+
+        ○ obj.getvalue(대상)
+                obj의 현재 값을 가져옵니다(obj.x, obj.track0 등과 동일).
+                대상   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"～"track3","time","frame" 등.
+                반환값 : 숫자(알 수 없는 대상은 0).
+
+        ○ obj.setoption(이름, 값) / obj.getoption(이름)
+                옵션을 설정 / 가져옵니다. 지원하지 않는 항목도 받아들여
+                스크립트를 중단시키지 않습니다(getoption은 설정값을 반환, 미설정은 0).
+                현재 그리기에 반영되는 항목:
+                  "antialias" : 0이면 최근접, 그 외는 선형 보간(obj.draw / obj.drawpoly).
+
+        ○ obj.pixeloption(이름, 값)
+                픽셀 조작 옵션을 상태로 보존합니다.
 
 
 
@@ -503,28 +566,28 @@
                 AviUtl 호환의 결정론적 정수 난수입니다. 자세한 내용은
                 "obj 테이블 - 함수"를 참조하세요.
 
-        ○ 도형 그리기
-                obj.load("figure", ...) 로 원·사각형·삼각형·오각형·육각형·별형을
-                생성하여 오브젝트 버퍼를 교체합니다. 자세한 내용은
+        ○ 그리기·합성·로드
+                obj.draw / obj.drawpoly에 의한 그리기 합성, obj.copybuffer에 의한
+                버퍼 조작, obj.load("figure"/"text"/"image"/"movie")에 의한 생성·로드,
+                obj.setfont, obj.effect, obj.getvalue, 그리고 obj.setoption /
+                obj.getoption / obj.pixeloption을 지원합니다. 자세한 내용은
                 "obj 테이블 - 함수"를 참조하세요.
 
-        다음 기능은 본체의 렌더링 파이프라인과의 통합이 필요하므로 이 호환
-        계층의 범위 밖입니다. 이를 호출하는 스크립트는 의도대로 동작하지 않습니다.
-                × 그리기·합성(obj.draw / obj.drawpoly), obj.load의 "figure" 이외 대상
-                  (이미지 파일·"text"・"movie" 등), 그리고 obj.setfont
-                × 필터 효과 및 버퍼 조작
-                  (obj.effect / obj.copybuffer / obj.setoption 등)
-                × require에 의한 모듈 로드 및 io 등의 파일 접근
+        다음 기능은 이 호환 계층의 범위 밖입니다.
+        이를 호출하는 스크립트는 의도대로 동작하지 않습니다.
+                × require에 의한 모듈 로드 및 io / dofile 등의 임의 파일 접근
+                  (obj.load의 이미지 / 동영상 로드는 헤더 검증과 함께 지원).
+                × obj.setanchor, scene.set / scene.get 등.
 
 
 - 미지원·제한 사항 -
 
-        × AviUtl2의 obj.effect(), obj.draw(), obj.drawpoly() 등은 지원하지 않습니다(obj.load은 "figure"만 지원. "AviUtl 스크립트 부분 호환" 참조).
-        × AviUtl2의 obj.rand1(), obj.setfont(), obj.mes() 등은 지원하지 않습니다.
-        × AviUtl2의 obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 등은 지원하지 않습니다.
+        × AviUtl2의 obj.rand1(), obj.mes(), obj.setanchor() 등은 지원하지 않습니다.
         × AviUtl2의 scene 테이블의 scene.set(), scene.get() 등의 함수는 지원하지 않습니다.
           (scene.width와 scene.height의 읽기만 지원)
-        × 파일 접근(require, dofile, io 등)은 지원하지 않습니다.
+        × 스크립트에서의 임의 파일 접근(require, dofile, io 등)은 지원하지 않습니다.
+          obj.load("image"/"movie")만 선두 헤더 검증으로 진짜 미디어로 확인된 파일을
+          읽습니다.
         × obj.z를 변경하면 렌더링에 반영되지만(ReadBack에 포함),
           3D 렌더링 지원은 제한적입니다.
         × 스크립트 타임아웃(5초)을 초과하면 실행이 강제 종료됩니다.
