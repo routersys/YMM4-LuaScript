@@ -64,6 +64,7 @@ local CB_KIND_EFFECT = 2
 local CB_KIND_DRAW = 3
 local CB_KIND_DRAWPOLY = 4
 local CB_KIND_LOADTEXT = 5
+local CB_KIND_LOADIMAGE = 6
 
 assert(loadfile(shimPath))()
 
@@ -239,11 +240,26 @@ local function loadText(str)
     applyLoadResult()
 end
 
+local function loadImage(path)
+    local payload = tostring(path or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADIMAGE
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
 function obj.load(kind, ...)
     if kind == "figure" then
         loadFigure(...)
     elseif kind == "text" then
         loadText(...)
+    elseif kind == "image" then
+        loadImage(...)
     end
 end
 

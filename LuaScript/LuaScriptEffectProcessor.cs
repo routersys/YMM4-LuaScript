@@ -90,6 +90,7 @@ namespace LuaScript
         private VideoEffectChain? _effectChain;
         private DrawCompositor? _drawCompositor;
         private TextRenderer? _nativeTextRenderer;
+        private ImageDecoder? _nativeImageDecoder;
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
@@ -448,6 +449,7 @@ namespace LuaScript
                 (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
                 NativeLoadFigure,
                 NativeLoadText,
+                NativeLoadImage,
                 (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
                 ctx.AddDraw,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
@@ -507,6 +509,13 @@ namespace LuaScript
             return (buffer, w, h);
         }
 
+        private (byte[] buffer, int w, int h) NativeLoadImage(string path)
+        {
+            _nativeImageDecoder ??= new ImageDecoder();
+            var buffer = _nativeImageDecoder.Decode(path, out int w, out int h);
+            return (buffer, w, h);
+        }
+
         private static (byte[] buffer, int w, int h) NativeLoadFigure(string name, int color, double size, double lineWidth, double aspect)
         {
             aspect = Math.Clamp(aspect, -1d, 1d);
@@ -541,6 +550,7 @@ namespace LuaScript
                 _effectChain?.Dispose();
                 _drawCompositor?.Dispose();
                 _nativeTextRenderer?.Dispose();
+                _nativeImageDecoder?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _pixelManager?.Dispose();
                 _pixelManager = null;

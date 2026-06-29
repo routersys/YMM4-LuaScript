@@ -57,6 +57,7 @@ namespace LuaScript
             private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
 
             private TextRenderer? _textRenderer;
+            private ImageDecoder? _imageDecoder;
             private string _fontFamily = string.Empty;
             private double _fontSize = 34d;
             private bool _fontBold;
@@ -507,6 +508,9 @@ namespace LuaScript
                         case "text":
                             LoadText(args.Count > 1 && args[1].Type == DataType.String ? args[1].String : string.Empty);
                             break;
+                        case "image" when args.Count > 1 && args[1].Type == DataType.String:
+                            LoadImage(args[1].String);
+                            break;
                     }
                     return DynValue.Void;
                 });
@@ -688,6 +692,14 @@ namespace LuaScript
                 RefreshObjDimensions();
             }
 
+            private void LoadImage(string path)
+            {
+                _imageDecoder ??= new ImageDecoder();
+                var buffer = _imageDecoder.Decode(path, out int w, out int h);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
             private void RefreshObjDimensions()
             {
                 int w = _activeContext!.ImageWidth;
@@ -757,6 +769,7 @@ namespace LuaScript
                 _workSignal.Release();
                 _thread.Join();
                 _textRenderer?.Dispose();
+                _imageDecoder?.Dispose();
                 _cts.Cancel();
                 _cts.Dispose();
                 _workSignal.Dispose();
@@ -771,6 +784,7 @@ namespace LuaScript
                 {
                     _thread.Join();
                     _textRenderer?.Dispose();
+                    _imageDecoder?.Dispose();
                     _cts.Dispose();
                     _workSignal.Dispose();
                     _doneSignal.Dispose();
