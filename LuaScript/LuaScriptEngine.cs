@@ -58,6 +58,7 @@ namespace LuaScript
 
             private TextRenderer? _textRenderer;
             private ImageDecoder? _imageDecoder;
+            private MovieDecoder? _movieDecoder;
             private string _fontFamily = string.Empty;
             private double _fontSize = 34d;
             private bool _fontBold;
@@ -511,6 +512,11 @@ namespace LuaScript
                         case "image" when args.Count > 1 && args[1].Type == DataType.String:
                             LoadImage(args[1].String);
                             break;
+                        case "movie" when args.Count > 1 && args[1].Type == DataType.String:
+                            LoadMovie(
+                                args[1].String,
+                                args.Count > 2 ? args[2].CastToNumber() ?? _activeContext.Time : _activeContext.Time);
+                            break;
                     }
                     return DynValue.Void;
                 });
@@ -700,6 +706,14 @@ namespace LuaScript
                 RefreshObjDimensions();
             }
 
+            private void LoadMovie(string path, double time)
+            {
+                _movieDecoder ??= new MovieDecoder();
+                var buffer = _movieDecoder.Decode(path, time, out int w, out int h);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
             private void RefreshObjDimensions()
             {
                 int w = _activeContext!.ImageWidth;
@@ -770,6 +784,7 @@ namespace LuaScript
                 _thread.Join();
                 _textRenderer?.Dispose();
                 _imageDecoder?.Dispose();
+                _movieDecoder?.Dispose();
                 _cts.Cancel();
                 _cts.Dispose();
                 _workSignal.Dispose();
@@ -785,6 +800,7 @@ namespace LuaScript
                     _thread.Join();
                     _textRenderer?.Dispose();
                     _imageDecoder?.Dispose();
+                    _movieDecoder?.Dispose();
                     _cts.Dispose();
                     _workSignal.Dispose();
                     _doneSignal.Dispose();

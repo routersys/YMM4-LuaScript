@@ -91,6 +91,7 @@ namespace LuaScript
         private DrawCompositor? _drawCompositor;
         private TextRenderer? _nativeTextRenderer;
         private ImageDecoder? _nativeImageDecoder;
+        private MovieDecoder? _nativeMovieDecoder;
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
@@ -450,6 +451,7 @@ namespace LuaScript
                 NativeLoadFigure,
                 NativeLoadText,
                 NativeLoadImage,
+                NativeLoadMovie,
                 (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
                 ctx.AddDraw,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
@@ -513,6 +515,13 @@ namespace LuaScript
         {
             _nativeImageDecoder ??= new ImageDecoder();
             var buffer = _nativeImageDecoder.Decode(path, out int w, out int h);
+            return (buffer, w, h);
+        }
+
+        private (byte[] buffer, int w, int h) NativeLoadMovie(string path, double time)
+        {
+            _nativeMovieDecoder ??= new MovieDecoder();
+            var buffer = _nativeMovieDecoder.Decode(path, time, out int w, out int h);
             return (buffer, w, h);
         }
 
