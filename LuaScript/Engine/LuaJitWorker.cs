@@ -49,6 +49,7 @@ namespace LuaScript.Engine
             int timeoutMs,
             Func<string, int, SceneObjectInfo?> resolveObject,
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
+            Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
             out bool pixelsDirty,
@@ -104,7 +105,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                DispatchCallback(view, resolveObject, loadFigure, addEffect, addDraw);
+                DispatchCallback(view, resolveObject, loadFigure, loadText, addEffect, addDraw);
                 _workEvent.Set();
             }
 
@@ -148,6 +149,7 @@ namespace LuaScript.Engine
             MemoryMappedViewAccessor view,
             Func<string, int, SceneObjectInfo?> resolveObject,
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
+            Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw)
         {
@@ -159,6 +161,9 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindLoadFigure:
                     ResolveLoadFigureCallback(view, loadFigure);
+                    break;
+                case NativeProtocol.CbKindLoadText:
+                    ResolveLoadTextCallback(view, loadText);
                     break;
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
@@ -246,6 +251,41 @@ namespace LuaScript.Engine
 
             (byte[] buffer, int w, int h) result;
             try { result = loadFigure(name, color, size, lineWidth, aspect); }
+            catch { result = (new byte[4], 1, 1); }
+
+            int pixelSize = result.w * result.h * 4;
+            long capacity = view.Capacity - NativeProtocol.PixelOffset;
+            if (pixelSize > capacity)
+            {
+                result = (new byte[4], 1, 1);
+                pixelSize = 4;
+            }
+
+            view.Write(NativeProtocol.OffLoadResultWidth, result.w);
+            view.Write(NativeProtocol.OffLoadResultHeight, result.h);
+            view.WriteArray(NativeProtocol.PixelOffset, result.buffer, 0, pixelSize);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveLoadTextCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string payload = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+            int separator = payload.IndexOf('\0');
+            string family = separator >= 0 ? payload[..separator] : string.Empty;
+            string text = separator >= 0 ? payload[(separator + 1)..] : payload;
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            double size = view.ReadDouble(rOff + 0 * 8);
+            bool bold = view.ReadDouble(rOff + 1 * 8) != 0;
+            bool italic = view.ReadDouble(rOff + 2 * 8) != 0;
+            int color = (int)view.ReadDouble(rOff + 3 * 8);
+
+            (byte[] buffer, int w, int h) result;
+            try { result = loadText(family, text, size, bold, italic, color); }
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
