@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using LuaScript.Compat;
 using LuaScript.Engine;
+using LuaScript.Engine.Kernel;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
@@ -64,6 +65,15 @@ namespace LuaScript
         private double[]? _nativeFields;
         private bool _nativeWarned;
         private bool _effectChainWarned;
+        private bool _gpuWarned;
+
+        private string _kernelSource = string.Empty;
+        private bool _kernelResolved;
+        private KernelProgram? _kernelProgram;
+        private CpuKernel? _cpuKernel;
+        private GpuKernel? _gpuKernel;
+        private bool _gpuKernelChecked;
+        private double[]? _kernelUniforms;
 
         private EffectDescription? _frameDesc;
         private SceneObjectResolver? _frameResolver;
@@ -207,59 +217,68 @@ namespace LuaScript
             try
             {
                 string runnable = GetRunnableScript(script);
-                bool wantNative = ScriptDirective.ResolveAuto(runnable) == ScriptEngineKind.Native;
-                bool nativeReady = wantNative && LuaJitWorker.IsAvailable(NativeDirectory);
-                if (wantNative && !nativeReady)
-                    WarnNativeUnavailableOnce();
+                EnsureKernel(runnable);
 
-                if (nativeReady)
+                if (ExecuteKernelLane(runnable, ctx, bounds, imgW, imgH))
                 {
-                    ExecuteNative(runnable, ctx, bounds, imgW, imgH);
+                    outDesc = inDesc;
                 }
                 else
                 {
-                    _engine.Execute(runnable, ctx);
+                    bool wantNative = ScriptDirective.ResolveAuto(runnable) == ScriptEngineKind.Native;
+                    bool nativeReady = wantNative && LuaJitWorker.IsAvailable(NativeDirectory);
+                    if (wantNative && !nativeReady)
+                        WarnNativeUnavailableOnce();
 
-                    if (ctx.IsPixelsDirty)
+                    if (nativeReady)
                     {
-                        int bufW = ctx.ImageWidth;
-                        int bufH = ctx.ImageHeight;
-                        _pixelManager!.WritePixelsToOutput(ctx.GetPixelBuffer()!, bufW, bufH);
-                        if (ctx.BufferReplaced)
-                            effectOutput = _pixelManager.GetTransformOutput(-bufW / 2f, -bufH / 2f);
-                        else
-                            effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
+                        ExecuteNative(runnable, ctx, bounds, imgW, imgH);
                     }
                     else
                     {
-                        effectOutput = null;
-                    }
-                }
+                        _engine.Execute(runnable, ctx);
 
-                if (ctx.DrawCommands.Count > 0)
-                {
-                    ctx.EnsurePixelBuffer();
-                    var drawBuffer = ctx.GetPixelBuffer();
-                    if (drawBuffer is not null)
-                    {
-                        _drawCompositor ??= new DrawCompositor(_ownCtx);
-                        effectOutput = _drawCompositor.Compose(drawBuffer, ctx.ImageWidth, ctx.ImageHeight, ctx.DrawCommands);
+                        if (ctx.IsPixelsDirty)
+                        {
+                            int bufW = ctx.ImageWidth;
+                            int bufH = ctx.ImageHeight;
+                            _pixelManager!.WritePixelsToOutput(ctx.GetPixelBuffer()!, bufW, bufH);
+                            if (ctx.BufferReplaced)
+                                effectOutput = _pixelManager.GetTransformOutput(-bufW / 2f, -bufH / 2f);
+                            else
+                                effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
+                        }
+                        else
+                        {
+                            effectOutput = null;
+                        }
                     }
-                }
 
-                outDesc = BuildOutputDesc(inDesc, ctx);
-
-                if (ctx.EffectRequests.Count > 0)
-                {
-                    var source = effectOutput ?? input;
-                    try
+                    if (ctx.DrawCommands.Count > 0)
                     {
-                        effectOutput = ApplyEffectChain(source, ctx.EffectRequests, desc, ref outDesc);
+                        ctx.EnsurePixelBuffer();
+                        var drawBuffer = ctx.GetPixelBuffer();
+                        if (drawBuffer is not null)
+                        {
+                            _drawCompositor ??= new DrawCompositor(_ownCtx);
+                            effectOutput = _drawCompositor.Compose(drawBuffer, ctx.ImageWidth, ctx.ImageHeight, ctx.DrawCommands);
+                        }
                     }
-                    catch (Exception ex)
+
+                    outDesc = BuildOutputDesc(inDesc, ctx);
+
+                    if (ctx.EffectRequests.Count > 0)
                     {
-                        effectOutput = source;
-                        WarnEffectChainFailureOnce(ex);
+                        var source = effectOutput ?? input;
+                        try
+                        {
+                            effectOutput = ApplyEffectChain(source, ctx.EffectRequests, desc, ref outDesc);
+                        }
+                        catch (Exception ex)
+                        {
+                            effectOutput = source;
+                            WarnEffectChainFailureOnce(ex);
+                        }
                     }
                 }
             }
@@ -423,6 +442,81 @@ namespace LuaScript
             };
         }
 
+        private void EnsureKernel(string runnable)
+        {
+            if (_kernelResolved && string.Equals(runnable, _kernelSource, StringComparison.Ordinal))
+                return;
+
+            _kernelSource = runnable;
+            _kernelResolved = true;
+            _kernelProgram = KernelExtractor.TryExtract(runnable);
+            _cpuKernel = _kernelProgram is null ? null : CpuKernelCompiler.Compile(_kernelProgram);
+            _gpuKernel?.Dispose();
+            _gpuKernel = null;
+            _gpuKernelChecked = false;
+        }
+
+        private bool ExecuteKernelLane(string runnable, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
+        {
+            if (_kernelProgram is null || _cpuKernel is null)
+                return false;
+
+            bool explicitDirective = ScriptDirective.TryResolveExplicit(runnable, out var kind);
+            if (explicitDirective && kind is not (ScriptEngineKind.Gpu or ScriptEngineKind.Cpu))
+                return false;
+
+            _kernelUniforms ??= KernelUniformBinding.Create();
+            KernelUniformBinding.Fill(ctx, _kernelUniforms);
+
+            if (explicitDirective && kind == ScriptEngineKind.Gpu)
+            {
+                var gpu = GetGpuKernel();
+                if (gpu is not null)
+                {
+                    effectOutput = gpu.Apply(input!, _kernelUniforms);
+                    return true;
+                }
+                WarnGpuUnavailableOnce();
+            }
+
+            byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
+            _cpuKernel.Execute(buffer, imgW, imgH, _kernelUniforms);
+            _pixelManager!.WritePixelsToOutput(buffer, imgW, imgH);
+            effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
+            return true;
+        }
+
+        private GpuKernel? GetGpuKernel()
+        {
+            if (_gpuKernelChecked)
+                return _gpuKernel;
+
+            _gpuKernelChecked = true;
+            if (_kernelProgram is null)
+                return null;
+
+            try
+            {
+                var kernel = new GpuKernel(_ownCtx!, _kernelProgram);
+                if (kernel.IsReady)
+                    _gpuKernel = kernel;
+                else
+                    kernel.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Default.Write("LuaScript: GPU kernel initialization failed; falling back to CPU.", ex);
+            }
+            return _gpuKernel;
+        }
+
+        private void WarnGpuUnavailableOnce()
+        {
+            if (_gpuWarned) return;
+            _gpuWarned = true;
+            Log.Default.Write("LuaScript: GPU kernel unavailable; using the CPU kernel lane instead.");
+        }
+
         private void WarnNativeUnavailableOnce()
         {
             if (_nativeWarned) return;
@@ -555,6 +649,7 @@ namespace LuaScript
             if (disposing)
             {
                 _engine.Dispose();
+                _gpuKernel?.Dispose();
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
                 _drawCompositor?.Dispose();
