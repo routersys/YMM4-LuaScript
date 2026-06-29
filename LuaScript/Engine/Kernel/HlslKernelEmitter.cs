@@ -5,7 +5,9 @@ namespace LuaScript.Engine.Kernel
 {
     internal static class HlslKernelEmitter
     {
-        public static int ConstantVectorCount { get; } = (KernelUniforms.Count + 3) / 4;
+        public const int ConstantVectorCount = 16;
+
+        public const int ConstantFloatCount = ConstantVectorCount * 4;
 
         private static readonly string[] Intrinsics =
         [
