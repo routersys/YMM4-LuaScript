@@ -16,6 +16,9 @@ namespace LuaScript.Engine
             return UsesPixelApi(script) ? ScriptEngineKind.Native : ScriptEngineKind.MoonSharp;
         }
 
+        public static bool TryResolveExplicit(string? script, out ScriptEngineKind kind) =>
+            TryGetDirective(script, out kind);
+
         public static bool UsesPixelApi(string? script) =>
             script is not null && (script.Contains("getpixel", StringComparison.Ordinal) || script.Contains("setpixel", StringComparison.Ordinal));
 

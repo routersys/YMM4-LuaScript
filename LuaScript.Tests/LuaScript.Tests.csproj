@@ -41,6 +41,17 @@
     <Compile Include="..\LuaScript\Compat\AviUtlParameterLayout.cs" Link="Linked\AviUtlParameterLayout.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlRandom.cs" Link="Linked\AviUtlRandom.cs" />
     <Compile Include="..\LuaScript\Compat\FigureRenderer.cs" Link="Linked\FigureRenderer.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\KernelUnsupportedException.cs" Link="Linked\Kernel\KernelUnsupportedException.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaToken.cs" Link="Linked\Kernel\LuaToken.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaLexer.cs" Link="Linked\Kernel\LuaLexer.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaAst.cs" Link="Linked\Kernel\LuaAst.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\LuaParser.cs" Link="Linked\Kernel\LuaParser.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\KernelUniform.cs" Link="Linked\Kernel\KernelUniform.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\KernelModel.cs" Link="Linked\Kernel\KernelModel.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\KernelExtractor.cs" Link="Linked\Kernel\KernelExtractor.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\CpuKernel.cs" Link="Linked\Kernel\CpuKernel.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\CpuKernelCompiler.cs" Link="Linked\Kernel\CpuKernelCompiler.cs" />
+    <Compile Include="..\LuaScript\Engine\Kernel\HlslKernelEmitter.cs" Link="Linked\Kernel\HlslKernelEmitter.cs" />
   </ItemGroup>
 
 </Project>
