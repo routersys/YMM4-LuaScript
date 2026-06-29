@@ -56,6 +56,13 @@ namespace LuaScript
             private readonly Dictionary<string, DynValue> _options = new(StringComparer.Ordinal);
             private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
 
+            private TextRenderer? _textRenderer;
+            private string _fontFamily = string.Empty;
+            private double _fontSize = 34d;
+            private bool _fontBold;
+            private bool _fontItalic;
+            private int _fontColor = 0xFFFFFF;
+
             private Script? _script;
             private DynValue? _compiledChunk;
             private string _lastCompiledCode = string.Empty;
@@ -208,6 +215,11 @@ namespace LuaScript
 
                 _options.Clear();
                 _pixelOptions.Clear();
+                _fontFamily = string.Empty;
+                _fontSize = 34d;
+                _fontBold = false;
+                _fontItalic = false;
+                _fontColor = 0xFFFFFF;
 
                 if (isFirstSetup)
                 {
@@ -479,18 +491,43 @@ namespace LuaScript
                 obj["load"] = DynValue.NewCallback((_, args) =>
                 {
                     _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count < 4)
-                        return DynValue.Void;
-                    if (args[0].Type != DataType.String || args[0].String != "figure")
+                    if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
                         return DynValue.Void;
 
-                    string name = args[1].Type == DataType.String ? args[1].String : string.Empty;
-                    int color = (int)(args[2].CastToNumber() ?? 0d);
-                    double size = args[3].CastToNumber() ?? 0d;
-                    double line = args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d;
-                    double aspect = args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d;
+                    switch (args[0].String)
+                    {
+                        case "figure" when args.Count >= 4:
+                            LoadFigure(
+                                args[1].Type == DataType.String ? args[1].String : string.Empty,
+                                (int)(args[2].CastToNumber() ?? 0d),
+                                args[3].CastToNumber() ?? 0d,
+                                args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d,
+                                args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d);
+                            break;
+                        case "text":
+                            LoadText(args.Count > 1 && args[1].Type == DataType.String ? args[1].String : string.Empty);
+                            break;
+                    }
+                    return DynValue.Void;
+                });
 
-                    LoadFigure(name, color, size, line, aspect);
+                obj["setfont"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (args.Count == 0)
+                        return DynValue.Void;
+                    if (args[0].Type == DataType.String)
+                        _fontFamily = args[0].String;
+                    if (args.Count > 1)
+                        _fontSize = args[1].CastToNumber() ?? _fontSize;
+                    if (args.Count > 2)
+                    {
+                        int type = (int)(args[2].CastToNumber() ?? 0d);
+                        _fontBold = (type & 1) != 0;
+                        _fontItalic = (type & 2) != 0;
+                    }
+                    if (args.Count > 3)
+                        _fontColor = (int)(args[3].CastToNumber() ?? _fontColor);
                     return DynValue.Void;
                 });
 
@@ -641,6 +678,16 @@ namespace LuaScript
                 RefreshObjDimensions();
             }
 
+            private void LoadText(string text)
+            {
+                _textRenderer ??= new TextRenderer();
+                var buffer = _textRenderer.Render(
+                    text, _fontFamily, _fontSize, _fontBold, _fontItalic, _fontColor,
+                    out int w, out int h);
+                _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
             private void RefreshObjDimensions()
             {
                 int w = _activeContext!.ImageWidth;
@@ -709,6 +756,7 @@ namespace LuaScript
                 _disposeRequested = true;
                 _workSignal.Release();
                 _thread.Join();
+                _textRenderer?.Dispose();
                 _cts.Cancel();
                 _cts.Dispose();
                 _workSignal.Dispose();
@@ -722,6 +770,7 @@ namespace LuaScript
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     _thread.Join();
+                    _textRenderer?.Dispose();
                     _cts.Dispose();
                     _workSignal.Dispose();
                     _doneSignal.Dispose();
