@@ -376,6 +376,8 @@
                 Memetakan gambar objek sebagai tekstur ke quad dari 4 verteks.
                 Urutan verteks: kiri-atas, kanan-atas, kanan-bawah, kiri-bawah.
                 Jika UV dihilangkan, seluruh gambar digunakan.
+                * Jika hanya argumen ke-13 yang diberikan (UV dihilangkan), nilainya
+                  dipakai sebagai alpha (12 koordinat + alpha).
                 * Dipetakan dengan transformasi afin (tepat untuk jajaran genjang,
                   perkiraan untuk non-jajaran genjang).
 

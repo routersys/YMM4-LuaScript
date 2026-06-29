@@ -378,6 +378,8 @@
                 Aplica la imagen del objeto como textura sobre un cuadrilátero dado por
                 4 vértices. El orden es superior-izq, superior-der, inferior-der,
                 inferior-izq. Si se omiten las UV se usa toda la imagen.
+                * Si solo se da un 13.º argumento (UV omitidas), se usa como alpha
+                  (12 coordenadas + alpha).
                 * Se mapea con una transformación afín (exacta para paralelogramos,
                   aproximada para no paralelogramos).
 

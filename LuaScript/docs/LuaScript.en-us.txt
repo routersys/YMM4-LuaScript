@@ -380,6 +380,8 @@
                 Texture-maps the object image onto a quad given by 4 vertices.
                 Vertex order is top-left, top-right, bottom-right, bottom-left.
                 When UVs are omitted the whole image is used.
+                * If only a 13th argument is given (UVs omitted), it is used as the
+                  alpha (12 coordinates + alpha).
                 * Mapped with an affine transform (exact for parallelograms,
                   approximate for non-parallelograms).
 
