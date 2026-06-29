@@ -320,24 +320,93 @@
                 Ejemplo: obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
         o obj.load(target, ...)
-                Reemplaza el búfer del objeto con contenido generado.
-                En esta versión solo se admite el target "figure".
+                Reemplaza el búfer del objeto con contenido generado. Se admiten los
+                targets "figure", "text", "image" (archivo de imagen) y "movie"
+                (archivo de vídeo). Tras la carga, obj.w / obj.h, etc. se actualizan al
+                tamaño generado y pueden leerse con getpixel justo después de la carga.
+                Funciona en el motor MoonSharp y en el motor rápido (LuaJIT).
+
                 obj.load("figure", name, color, size [, line [, aspect]])
-                        Genera una forma y reemplaza el búfer del objeto con ella
-                        (la salida se redimensiona a la forma y se centra).
-                        name   : Nombre de la forma. Uno de 円 / 四角形 / 三角形 /
-                                 五角形 / 六角形 / 星形 (también se aceptan los alias
-                                 en inglés circle, rect, triangle, pentagon, hexagon, star).
+                        Genera una forma y reemplaza el búfer (centrada).
+                        name   : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                 (también los alias en inglés circle, rect, triangle,
+                                 pentagon, hexagon, star).
                         color  : Color de relleno 0xRRGGBB.
                         size   : Tamaño base en píxeles.
-                        line   : Grosor del contorno (opcional). Omitido o 0 rellena la
-                                 forma; un valor igual o mayor que el tamaño también la rellena.
-                        aspect : Distorsión -1.0 ~ 1.0 (opcional). Positivo reduce el
-                                 ancho, negativo reduce el alto.
-                Ejemplo: obj.load("figure", "円", 0xff3366, 200)
-                * Solo se implementa obj.load("figure", ...). Otros targets
-                  (archivos de imagen, "text", "tempbuffer", "movie", etc.) no hacen nada.
-                * Los scripts de dibujo se ejecutan en el motor MoonSharp.
+                        line   : Grosor del contorno (opcional). 0 rellena la forma.
+                        aspect : Distorsión -1.0 ~ 1.0 (opcional).
+                        Ejemplo: obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", cadena)
+                        Dibuja la cadena con la fuente, el tamaño y el color definidos
+                        por obj.setfont y reemplaza el búfer (con DirectWrite).
+                        Ejemplo: obj.setfont("Yu Gothic UI", 48); obj.load("text", "字幕")
+
+                obj.load("image", ruta)
+                        Carga un archivo de imagen y reemplaza el búfer.
+                        * Por seguridad se valida la cabecera inicial y solo se cargan
+                          imágenes genuinas (PNG / JPEG / GIF / BMP / TIFF / WebP).
+                        Ejemplo: obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", ruta [, tiempo])
+                        Carga el fotograma en el tiempo indicado de un archivo de vídeo
+                        y reemplaza el búfer (decodificado con Media Foundation).
+                        tiempo : Segundos. Por defecto obj.time si se omite.
+                        * Por seguridad se valida la cabecera inicial y solo se cargan
+                          vídeos genuinos (MP4 / MOV / MKV / WebM / AVI / FLV / ASF).
+                        Ejemplo: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        o obj.setfont(fuente [, tamaño [, estilo [, color]]])
+                Establece la fuente usada por obj.load("text").
+                estilo : Bits. 1=negrita, 2=cursiva, 3=negrita+cursiva.
+                color  : 0xRRGGBB.
+                Ejemplo: obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        o obj.draw([ox, oy, oz [, zoom [, alpha [, aspect]]]])
+                Compone la imagen actual del objeto en el búfer de acumulación.
+                Llamarla varias veces dibuja copias superpuestas (estelas,
+                partículas, etc.).
+                ox, oy, oz : Desplazamiento desde el centro (por defecto 0).
+                zoom       : 1.0 es tamaño original (por defecto 1.0).
+                alpha      : 0.0 ~ 1.0 (por defecto 1.0).
+                aspect     : -1.0 ~ 1.0 (por defecto 0).
+                * Una vez llamada, se suprime el dibujo estándar y se emite el
+                  resultado compuesto.
+
+        o obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                        [, u0,v0, u1,v1, u2,v2, u3,v3 [, alpha]])
+                Aplica la imagen del objeto como textura sobre un cuadrilátero dado por
+                4 vértices. El orden es superior-izq, superior-der, inferior-der,
+                inferior-izq. Si se omiten las UV se usa toda la imagen.
+                * Se mapea con una transformación afín (exacta para paralelogramos,
+                  aproximada para no paralelogramos).
+
+        o obj.copybuffer(destino, origen)
+                Copia una imagen entre búferes, seleccionado por el primer carácter.
+                  "obj"          : Búfer de imagen del objeto
+                  "tmp"          : Búfer temporal
+                  "cache:nombre" : Caché con nombre (se conserva entre fotogramas)
+                Ejemplo: obj.copybuffer("tmp", "obj")  -- guardar
+                         obj.copybuffer("obj", "tmp")  -- restaurar
+                * "frm" (búfer de fotograma / fondo) no puede obtenerse por la
+                  estructura de YMM4.
+
+        o obj.getvalue(target)
+                Obtiene el valor actual de obj (igual que obj.x, obj.track0, etc.).
+                target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"~"track3","time","frame", etc.
+                Devuelve: un número (0 para un target desconocido).
+
+        o obj.setoption(nombre, valor) / obj.getoption(nombre)
+                Establece / obtiene una opción. Las opciones no admitidas se aceptan
+                para no detener el script (getoption devuelve el valor guardado, 0 si
+                no está establecido).
+                Opciones que afectan al dibujo actualmente:
+                  "antialias" : 0 = vecino más cercano, en otro caso interpolación
+                                lineal (obj.draw / obj.drawpoly).
+
+        o obj.pixeloption(nombre, valor)
+                Guarda como estado una opción para las operaciones de píxeles.
 
 
 
@@ -515,29 +584,29 @@
                 Función de número aleatorio entero determinista compatible con AviUtl.
                 Consulte "Tabla obj - Funciones" para más detalles.
 
-        o Dibujo de figuras
-                obj.load("figure", ...) genera una forma básica (círculo, rectángulo,
-                triángulo, pentágono, hexágono, estrella) y reemplaza el búfer del
-                objeto con ella. Consulte "Tabla obj - Funciones" para más detalles.
+        o Dibujo, composición y carga
+                Se admiten el dibujo y composición con obj.draw / obj.drawpoly, las
+                operaciones de búfer con obj.copybuffer, la generación y carga con
+                obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
+                obj.getvalue y obj.setoption / obj.getoption / obj.pixeloption.
+                Consulte "Tabla obj - Funciones" para más detalles.
 
-        Lo siguiente requiere integración con la canalización de renderizado y, por
-        tanto, queda fuera del alcance de esta capa. Los scripts que lo llamen no se
-        comportarán como se espera.
-                x Dibujo y composición (obj.draw / obj.drawpoly), targets de obj.load
-                  distintos de "figure" (archivos de imagen, "text", "movie", etc.) y obj.setfont
-                x Efectos de filtro y operaciones de búfer
-                  (obj.effect / obj.copybuffer / obj.setoption, etc.)
-                x Carga de módulos mediante require y acceso a archivos como io
+        Lo siguiente queda fuera del alcance de esta capa. Los scripts que lo llamen no
+        se comportarán como se espera.
+                x Carga de módulos mediante require y acceso arbitrario a archivos como
+                  io / dofile (la carga de imagen / vídeo con obj.load sí se admite con
+                  validación de cabecera).
+                x obj.setanchor, scene.set / scene.get, etc.
 
 
 - Funciones no admitidas / Limitaciones -
 
-        x obj.effect(), obj.draw(), obj.drawpoly(), etc. de AviUtl2 no son compatibles (solo se admite obj.load("figure", ...); consulte "Compatibilidad parcial con scripts de AviUtl").
-        x obj.rand1(), obj.setfont(), obj.mes(), etc. de AviUtl2 no son compatibles.
-        x obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
+        x obj.rand1(), obj.mes(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
         x Las funciones como scene.set() y scene.get() de la tabla scene de AviUtl2 no son compatibles.
           (Solo se pueden leer scene.width y scene.height)
-        x El acceso a archivos (require, dofile, io, etc.) no es compatible.
+        x El acceso arbitrario a archivos desde scripts (require, dofile, io, etc.) no es compatible.
+          Solo obj.load("image"/"movie") carga archivos confirmados como medios genuinos
+          mediante validación de la cabecera inicial.
         x Modificar obj.z se refleja en el renderizado (incluido en ReadBack),
           pero el soporte de renderizado 3D es limitado.
         x Si se supera el tiempo de espera del script (5 segundos), la ejecución se termina forzosamente.

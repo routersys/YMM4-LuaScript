@@ -67,6 +67,10 @@
 			<HintPath>$(YMM4DirPath)Vortice.Mathematics.dll</HintPath>
 			<Private>false</Private>
 		</Reference>
+		<Reference Include="Vortice.MediaFoundation">
+			<HintPath>$(YMM4DirPath)Vortice.MediaFoundation.dll</HintPath>
+			<Private>false</Private>
+		</Reference>
 		<Reference Include="YukkuriMovieMaker">
 			<HintPath>$(YMM4DirPath)YukkuriMovieMaker.dll</HintPath>
 			<Private>false</Private>

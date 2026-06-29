@@ -65,6 +65,7 @@ local CB_KIND_DRAW = 3
 local CB_KIND_DRAWPOLY = 4
 local CB_KIND_LOADTEXT = 5
 local CB_KIND_LOADIMAGE = 6
+local CB_KIND_LOADMOVIE = 7
 
 assert(loadfile(shimPath))()
 
@@ -253,6 +254,20 @@ local function loadImage(path)
     applyLoadResult()
 end
 
+local function loadMovie(path, time)
+    local payload = tostring(path or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADMOVIE
+    cbResult[0] = time or obj.time or 0
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
 function obj.load(kind, ...)
     if kind == "figure" then
         loadFigure(...)
@@ -260,6 +275,8 @@ function obj.load(kind, ...)
         loadText(...)
     elseif kind == "image" then
         loadImage(...)
+    elseif kind == "movie" then
+        loadMovie(...)
     end
 end
 

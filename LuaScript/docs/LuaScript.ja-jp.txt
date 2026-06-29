@@ -318,22 +318,86 @@
 
         ○obj.load(対象, ...)
                 オブジェクトのバッファを生成した内容に置き換えます。
-                本バージョンでは "figure"(図形)のみ対応します。
+                対象は "figure"(図形) / "text"(テキスト) / "image"(画像ファイル) /
+                "movie"(動画ファイル) に対応します。生成後 obj.w / obj.h 等は生成
+                サイズへ更新され、load 直後の getpixel でも参照できます。
+                従来エンジン・高速エンジンの両方で動作します。
+
                 obj.load("figure", 名前, 色, サイズ [, ライン [, アスペクト]])
-                        図形を生成してオブジェクトのバッファを置き換えます
-                        (出力は図形サイズに合わせて生成され、中心に配置されます)。
-                        名前      : 図形名。円 / 四角形 / 三角形 / 五角形 / 六角形 /
-                                    星形 のいずれか(英語名 circle, rect, triangle,
-                                    pentagon, hexagon, star も使用可)。
+                        図形を生成してバッファを置き換えます(中心に配置)。
+                        名前      : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                    (英語名 circle, rect, triangle, pentagon,
+                                    hexagon, star も使用可)。
                         色        : 塗り色 0xRRGGBB。
                         サイズ    : 図形の基準サイズ(ピクセル)。
-                        ライン    : 輪郭の太さ(省略可)。省略または 0 で塗りつぶし。
-                                    サイズ以上の値を指定した場合も塗りつぶしになります。
-                        アスペクト: 歪曲 -1.0 ～ 1.0(省略可)。正で横幅、負で縦幅が縮みます。
-                例：obj.load("figure", "円", 0xff3366, 200)
-                ※ 実装されているのは obj.load("figure", ...) のみです。画像ファイルや
-                  "text"・"tempbuffer"・"movie" 等の対象は何も行いません。
-                ※ 描画系スクリプトは従来エンジン(MoonSharp)で実行されます。
+                        ライン    : 輪郭の太さ(省略可)。0 で塗りつぶし。
+                        アスペクト: 歪曲 -1.0 ～ 1.0(省略可)。
+                        例：obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", 文字列)
+                        obj.setfont で指定したフォント・サイズ・色で文字列を
+                        描画してバッファを置き換えます(DirectWrite で描画)。
+                        例：obj.setfont("Yu Gothic UI", 48); obj.load("text", "字幕")
+
+                obj.load("image", パス)
+                        画像ファイルを読み込んでバッファを置き換えます。
+                        ※ 安全のため先頭ヘッダーを検証し、真正な画像
+                          (PNG / JPEG / GIF / BMP / TIFF / WebP)のみ読み込みます。
+                        例：obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", パス [, 時間])
+                        動画ファイルの指定時間のフレームを読み込んでバッファを
+                        置き換えます(Media Foundation で復号)。
+                        時間 : 秒。省略時は obj.time。
+                        ※ 安全のため先頭ヘッダーを検証し、真正な動画
+                          (MP4 / MOV / MKV / WebM / AVI / FLV / ASF)のみ
+                          読み込みます。
+                        例：obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        ○obj.setfont(フォント名 [, サイズ [, スタイル [, 色]]])
+                obj.load("text") で使用するフォントを設定します。
+                スタイル : ビット和。1=太字, 2=斜体, 3=太字+斜体。
+                色       : 0xRRGGBB。
+                例：obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        ○obj.draw([ox, oy, oz [, 拡大率 [, 不透明度 [, アスペクト]]]])
+                現在のオブジェクト画像を蓄積バッファへ合成して描画します。
+                複数回呼ぶと重ねて描画されます(残像・パーティクル等)。
+                ox, oy, oz : 中心からのオフセット(省略時 0)。
+                拡大率     : 1.0 で等倍(省略時 1.0)。
+                不透明度   : 0.0 ～ 1.0(省略時 1.0)。
+                アスペクト : -1.0 ～ 1.0(省略時 0)。
+                ※ 呼び出すと標準描画は抑制され、合成結果が出力されます。
+
+        ○obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                       [, u0,v0, u1,v1, u2,v2, u3,v3 [, 不透明度]])
+                4 頂点で指定した四角形へオブジェクト画像をテクスチャ描画します。
+                頂点は左上→右上→右下→左下の順。UV 省略時は画像全体を使用します。
+                ※ アフィン変換で写像します(平行四辺形は厳密、非平行四辺形は近似)。
+
+        ○obj.copybuffer(コピー先, コピー元)
+                バッファ間で画像をコピーします。識別子の先頭文字で判定します。
+                  "obj"        : オブジェクト画像バッファ
+                  "tmp"        : 一時バッファ
+                  "cache:名前" : 名前付きキャッシュ(フレーム間で保持)
+                例：obj.copybuffer("tmp", "obj")  -- 退避
+                    obj.copybuffer("obj", "tmp")  -- 復元
+                ※ "frm"(フレームバッファ/背景)はYMM4の構造上取得できません。
+
+        ○obj.getvalue(対象)
+                obj の現在値を取得します(obj.x や obj.track0 等と同値)。
+                対象   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"～"track3","time","frame" 等。
+                戻り値 : 数値(未知の対象は 0)。
+
+        ○obj.setoption(名前, 値) / obj.getoption(名前)
+                オプションを設定 / 取得します。未対応の項目も受理してスクリプトを
+                停止させません(getoption は設定値を返し、未設定は 0)。
+                現在描画へ反映される項目：
+                  "antialias" : 0 で最近傍、それ以外で線形補間(obj.draw/drawpoly)。
+
+        ○obj.pixeloption(名前, 値)
+                ピクセル操作のオプションを状態として保持します。
 
 
 
@@ -507,28 +571,28 @@
                 AviUtl 互換の決定論的な整数乱数です。詳細は「obj テーブル - 関数」を
                 参照してください。
 
-        ○図形描画
-                obj.load("figure", ...) で円・四角形・三角形・五角形・六角形・星形を
-                生成し、オブジェクトのバッファを置き換えます。詳細は「obj テーブル -
+        ○描画・合成・読み込み
+                obj.draw / obj.drawpoly による描画合成、obj.copybuffer による
+                バッファ操作、obj.load("figure"/"text"/"image"/"movie") による生成・
+                読み込み、obj.setfont、obj.effect、obj.getvalue、obj.setoption /
+                obj.getoption / obj.pixeloption に対応します。詳細は「obj テーブル -
                 関数」を参照してください。
 
-        次の機能は本体の描画パイプラインへの統合を要するため、この互換層では対象外です。
+        次の機能はこの互換層では対象外です。
         これらを呼び出すスクリプトは意図どおりには動作しません。
-                ×描画・合成(obj.draw / obj.drawpoly)、obj.load の "figure" 以外の対象
-                  (画像ファイル・"text"・"movie" 等)、および obj.setfont
-                ×フィルタ効果やバッファ操作
-                  (obj.effect / obj.copybuffer / obj.setoption など)
-                ×require によるモジュール読み込み、io などのファイルアクセス
+                ×require によるモジュール読み込み、io / dofile などの任意ファイル
+                  アクセス(obj.load の画像 / 動画はヘッダー検証付きで対応)。
+                ×obj.setanchor、scene.set / scene.get 等。
 
 
 - 非対応・制限事項 -
 
-        ×AviUtl2 の obj.effect(), obj.draw(), obj.drawpoly() 等には対応していません(obj.load は "figure" のみ対応。「AviUtl スクリプトの部分互換」を参照)。
-        ×AviUtl2 の obj.rand1(), obj.setfont(), obj.mes() 等には対応していません。
-        ×AviUtl2 の obj.setoption(), obj.getoption(), obj.getvalue(), obj.setanchor() 等には対応していません。
+        ×AviUtl2 の obj.rand1(), obj.mes(), obj.setanchor() 等には対応していません。
         ×AviUtl2 の scene テーブルの scene.set(), scene.get() 等の関数には対応していません。
           (scene.width と scene.height の読み取りのみ対応)
-        ×ファイルアクセス(require, dofile, io 等)には対応していません。
+        ×スクリプトからの任意ファイルアクセス(require, dofile, io 等)には対応して
+          いません。obj.load("image"/"movie") のみ、先頭ヘッダー検証で真正なメディアと
+          確認できたファイルを読み込みます。
         ×obj.z を変更した場合、描画には反映されます(ReadBack に含まれる)が、
           3D 描画のサポートは限定的です。
         ×スクリプトのタイムアウト(5秒)を超えた場合、実行は強制終了されます。

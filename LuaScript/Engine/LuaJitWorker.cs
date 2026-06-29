@@ -51,6 +51,7 @@ namespace LuaScript.Engine
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
             Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Func<string, (byte[] buffer, int w, int h)> loadImage,
+            Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
             out bool pixelsDirty,
@@ -106,7 +107,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, addEffect, addDraw);
+                DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw);
                 _workEvent.Set();
             }
 
@@ -152,6 +153,7 @@ namespace LuaScript.Engine
             Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
             Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Func<string, (byte[] buffer, int w, int h)> loadImage,
+            Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw)
         {
@@ -169,6 +171,9 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindLoadImage:
                     ResolveLoadImageCallback(view, loadImage);
+                    break;
+                case NativeProtocol.CbKindLoadMovie:
+                    ResolveLoadMovieCallback(view, loadMovie);
                     break;
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
@@ -317,6 +322,33 @@ namespace LuaScript.Engine
 
             (byte[] buffer, int w, int h) result;
             try { result = loadImage(path); }
+            catch { result = (new byte[4], 1, 1); }
+
+            int pixelSize = result.w * result.h * 4;
+            long capacity = view.Capacity - NativeProtocol.PixelOffset;
+            if (pixelSize > capacity)
+            {
+                result = (new byte[4], 1, 1);
+                pixelSize = 4;
+            }
+
+            view.Write(NativeProtocol.OffLoadResultWidth, result.w);
+            view.Write(NativeProtocol.OffLoadResultHeight, result.h);
+            view.WriteArray(NativeProtocol.PixelOffset, result.buffer, 0, pixelSize);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveLoadMovieCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, double, (byte[] buffer, int w, int h)> loadMovie)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string path = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+            double time = view.ReadDouble(NativeProtocol.CallbackResultOffset);
+
+            (byte[] buffer, int w, int h) result;
+            try { result = loadMovie(path, time); }
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
