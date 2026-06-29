@@ -311,22 +311,84 @@
                 範例：obj.ox = obj.ox + obj.rand(-10, 10, 1, obj.frame)
 
         ○ obj.load(目標, ...)
-                將物件緩衝區替換為產生的內容。本版本僅支援 "figure"(圖形)。
+                將物件緩衝區替換為產生的內容。支援 "figure"(圖形) / "text"(文字) /
+                "image"(影像檔) / "movie"(影片檔)。載入後 obj.w / obj.h 等會更新為產生
+                尺寸，緊接著的 getpixel 亦可讀取。傳統引擎與高速引擎皆可執行。
+
                 obj.load("figure", 名稱, 顏色, 大小 [, 線寬 [, 長寬比]])
-                        產生圖形並替換物件緩衝區
-                        (輸出依圖形大小產生並置中)。
-                        名稱    : 圖形名。円 / 四角形 / 三角形 / 五角形 / 六角形 /
-                                  星形 之一(亦可用英文 circle, rect, triangle,
-                                  pentagon, hexagon, star)。
-                        顏色    : 填滿色 0xRRGGBB。
-                        大小    : 圖形基準大小(像素)。
-                        線寬    : 輪廓寬度(可省略)。省略或 0 為填滿;
-                                  指定大於等於大小的值時亦為填滿。
-                        長寬比  : 變形 -1.0 ～ 1.0(可省略)。正值縮小寬度，負值縮小高度。
-                範例：obj.load("figure", "円", 0xff3366, 200)
-                * 僅實作了 obj.load("figure", ...)。影像檔、"text"、"tempbuffer"、
-                  "movie" 等目標不執行任何動作。
-                * 繪製類腳本在 MoonSharp 引擎上執行。
+                        產生圖形並替換緩衝區(置中)。
+                        名稱   : 円 / 四角形 / 三角形 / 五角形 / 六角形 / 星形
+                                 (亦可用英文 circle, rect, triangle, pentagon,
+                                 hexagon, star)。
+                        顏色   : 填滿色 0xRRGGBB。
+                        大小   : 基準大小(像素)。
+                        線寬   : 輪廓寬度(可省略)。0 為填滿。
+                        長寬比 : 變形 -1.0 ～ 1.0(可省略)。
+                        範例：obj.load("figure", "円", 0xff3366, 200)
+
+                obj.load("text", 字串)
+                        以 obj.setfont 指定的字型、大小、顏色繪製字串並替換緩衝區
+                        (使用 DirectWrite 繪製)。
+                        範例：obj.setfont("Yu Gothic UI", 48); obj.load("text", "字幕")
+
+                obj.load("image", 路徑)
+                        載入影像檔並替換緩衝區。
+                        ※ 為安全起見會驗證檔頭，僅載入真正的影像
+                          (PNG / JPEG / GIF / BMP / TIFF / WebP)。
+                        範例：obj.load("image", "C:\\img\\logo.png")
+
+                obj.load("movie", 路徑 [, 時間])
+                        載入影片檔指定時間的影格並替換緩衝區
+                        (使用 Media Foundation 解碼)。
+                        時間 : 秒。省略時為 obj.time。
+                        ※ 為安全起見會驗證檔頭，僅載入真正的影片
+                          (MP4 / MOV / MKV / WebM / AVI / FLV / ASF)。
+                        範例：obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+        ○ obj.setfont(字型 [, 大小 [, 樣式 [, 顏色]]])
+                設定 obj.load("text") 使用的字型。
+                樣式 : 位元旗標。1=粗體, 2=斜體, 3=粗斜體。
+                顏色 : 0xRRGGBB。
+                範例：obj.setfont("Meiryo", 64, 1, 0xffffff)
+
+        ○ obj.draw([ox, oy, oz [, 縮放 [, 不透明度 [, 長寬比]]]])
+                將目前物件影像合成到累積緩衝區並繪製。
+                多次呼叫會疊加繪製(殘影、粒子等)。
+                ox, oy, oz : 相對中心的偏移(預設 0)。
+                縮放       : 1.0 為原始大小(預設 1.0)。
+                不透明度   : 0.0 ～ 1.0(預設 1.0)。
+                長寬比     : -1.0 ～ 1.0(預設 0)。
+                ※ 呼叫後會抑制標準繪製，輸出合成結果。
+
+        ○ obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3
+                        [, u0,v0, u1,v1, u2,v2, u3,v3 [, 不透明度]])
+                將物件影像以材質方式繪製到 4 個頂點指定的四邊形。
+                頂點順序為左上→右上→右下→左下。省略 UV 時使用整幅影像。
+                ※ 使用仿射變換對應(平行四邊形精確，非平行四邊形為近似)。
+
+        ○ obj.copybuffer(目標, 來源)
+                在緩衝區之間複製影像。依識別字首字元判定。
+                  "obj"      : 物件影像緩衝區
+                  "tmp"      : 暫存緩衝區
+                  "cache:名稱" : 具名快取(跨影格保留)
+                範例：obj.copybuffer("tmp", "obj")  -- 儲存
+                      obj.copybuffer("obj", "tmp")  -- 還原
+                ※ 由於 YMM4 的結構，無法取得 "frm"(影格緩衝區 / 背景)。
+
+        ○ obj.getvalue(目標)
+                取得 obj 的目前值(與 obj.x、obj.track0 等相同)。
+                目標   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
+                         "alpha","sx","sy","track0"～"track3","time","frame" 等。
+                回傳值 : 數值(未知目標回傳 0)。
+
+        ○ obj.setoption(名稱, 值) / obj.getoption(名稱)
+                設定 / 取得選項。未支援的項目也會被接受，不會中斷腳本
+                (getoption 回傳設定值，未設定為 0)。
+                目前會反映到繪製的項目：
+                  "antialias" : 0 為最近鄰，其它為線性內插(obj.draw / obj.drawpoly)。
+
+        ○ obj.pixeloption(名稱, 值)
+                將像素操作的選項作為狀態保存。
 
 
 
@@ -495,27 +557,26 @@
         ○ obj.rand(st, ed [, seed [, frame]])
                 與 AviUtl 相容的確定性整數亂數。詳情請參閱「obj 表 - 函式」。
 
-        ○ 圖形繪製
-                obj.load("figure", ...) 產生圓、四角形、三角形、五角形、六角形、星形，
-                並替換物件緩衝區。詳情請參閱「obj 表 - 函式」。
+        ○ 繪製·合成·載入
+                支援 obj.draw / obj.drawpoly 的繪製合成、obj.copybuffer 的緩衝區操作、
+                obj.load("figure"/"text"/"image"/"movie") 的產生與載入、obj.setfont、
+                obj.effect、obj.getvalue 以及 obj.setoption / obj.getoption /
+                obj.pixeloption。詳情請參閱「obj 表 - 函式」。
 
-        以下功能需要與本體的繪製管線整合，因此不在此相容層的範圍內。
+        以下功能不在此相容層的範圍內。
         呼叫它們的腳本不會如預期運作。
-                × 繪製與合成(obj.draw / obj.drawpoly)、obj.load 的 "figure" 以外目標
-                  (影像檔、"text"、"movie" 等)，以及 obj.setfont
-                × 濾鏡效果與緩衝區操作
-                  (obj.effect / obj.copybuffer / obj.setoption 等)
-                × 透過 require 載入模組，以及 io 等檔案存取
+                × 透過 require 載入模組，以及 io / dofile 等任意檔案存取
+                  (obj.load 的影像 / 影片載入已附檔頭驗證支援)。
+                × obj.setanchor、scene.set / scene.get 等。
 
 
 - 不支援項目·限制事項 -
 
-        × 不支援 AviUtl2 的 obj.effect()、obj.draw()、obj.drawpoly() 等(obj.load 僅支援 "figure"，參閱「AviUtl 腳本的部分相容」)。
-        × 不支援 AviUtl2 的 obj.rand1()、obj.setfont()、obj.mes() 等。
-        × 不支援 AviUtl2 的 obj.setoption()、obj.getoption()、obj.getvalue()、obj.setanchor() 等。
+        × 不支援 AviUtl2 的 obj.rand1()、obj.mes()、obj.setanchor() 等。
         × 不支援 AviUtl2 scene 表中的 scene.set()、scene.get() 等函式。
           （僅支援讀取 scene.width 和 scene.height）
-        × 不支援檔案存取（require、dofile、io 等）。
+        × 不支援腳本進行任意檔案存取（require、dofile、io 等）。
+          僅 obj.load("image"/"movie") 會載入經檔頭驗證確認為真正媒體的檔案。
         × 修改 obj.z 會反映至繪製中（包含在 ReadBack 中），
           但 3D 繪製支援有限。
         × 超過腳本逾時時間（5 秒）時，執行將被強制終止。
