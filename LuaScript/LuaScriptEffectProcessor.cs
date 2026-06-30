@@ -348,7 +348,8 @@ namespace LuaScript
         private ID2D1Image ApplyEffectChain(ID2D1Image source, IReadOnlyList<AviUtlEffectRequest> requests, EffectDescription desc, ref DrawDescription drawDescription)
         {
             _effectChain ??= new VideoEffectChain(_ownCtx!);
-            return _effectChain.Apply(source, requests, desc, ref drawDescription);
+            var target = AviUtlCompatMap.ResolveTarget(item.Script);
+            return _effectChain.Apply(source, requests, desc, target, ref drawDescription);
         }
 
         private static SceneObjectResolver BuildSceneObjectResolver(EffectDescription desc)

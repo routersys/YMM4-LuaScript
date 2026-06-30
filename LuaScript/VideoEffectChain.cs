@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 using System.Windows.Media;
@@ -9,6 +8,7 @@ using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Plugin.Effects;
+using LuaScript.Compat;
 
 namespace LuaScript
 {
@@ -16,9 +16,9 @@ namespace LuaScript
     {
         private sealed class Node
         {
-            public required Type Type;
             public required IVideoEffect Model;
             public required IVideoEffectProcessor Processor;
+            public required AviUtlEffectMapping Mapping;
             public required int RequestIndex;
         }
 
@@ -28,17 +28,18 @@ namespace LuaScript
         private readonly IGraphicsDevicesAndContext _devices;
         private readonly List<Node> _nodes = [];
         private string[] _signature = [];
+        private AviUtlEngine _signatureTarget = AviUtlEngine.Both;
 
         public VideoEffectChain(IGraphicsDevicesAndContext devices)
         {
             _devices = devices;
         }
 
-        public ID2D1Image Apply(ID2D1Image source, IReadOnlyList<AviUtlEffectRequest> requests, EffectDescription baseDesc, ref DrawDescription drawDescription)
+        public ID2D1Image Apply(ID2D1Image source, IReadOnlyList<AviUtlEffectRequest> requests, EffectDescription baseDesc, AviUtlEngine target, ref DrawDescription drawDescription)
         {
             try
             {
-                SyncNodes(requests);
+                SyncNodes(requests, target);
             }
             catch
             {
@@ -52,7 +53,7 @@ namespace LuaScript
             {
                 try
                 {
-                    ApplyParameters(node.Model, requests[node.RequestIndex].Arguments);
+                    ApplyParameters(node.Model, node.Mapping, requests[node.RequestIndex].Arguments);
                     node.Processor.SetInput(current);
                     var effectDescription = new EffectDescription(baseDesc, desc, baseDesc.InputIndex, baseDesc.InputCount, baseDesc.GroupIndex, baseDesc.GroupCount);
                     desc = node.Processor.Update(effectDescription);
@@ -67,19 +68,23 @@ namespace LuaScript
             return current;
         }
 
-        private void SyncNodes(IReadOnlyList<AviUtlEffectRequest> requests)
+        private void SyncNodes(IReadOnlyList<AviUtlEffectRequest> requests, AviUtlEngine target)
         {
-            if (SignatureMatches(requests))
+            if (SignatureMatches(requests, target))
                 return;
 
             DisposeNodes();
+            _signatureTarget = target;
             _signature = new string[requests.Count];
             for (int i = 0; i < requests.Count; i++)
                 _signature[i] = requests[i].Name;
 
             for (int i = 0; i < requests.Count; i++)
             {
-                var type = Resolve(requests[i].Name);
+                if (!AviUtlCompatMap.Default.TryResolve(requests[i].Name, target, out var mapping))
+                    continue;
+
+                var type = Resolve(mapping.TargetType);
                 if (type is null)
                     continue;
 
@@ -104,13 +109,13 @@ namespace LuaScript
                     continue;
                 }
 
-                _nodes.Add(new Node { Type = type, Model = model, Processor = processor, RequestIndex = i });
+                _nodes.Add(new Node { Model = model, Processor = processor, Mapping = mapping, RequestIndex = i });
             }
         }
 
-        private bool SignatureMatches(IReadOnlyList<AviUtlEffectRequest> requests)
+        private bool SignatureMatches(IReadOnlyList<AviUtlEffectRequest> requests, AviUtlEngine target)
         {
-            if (_signature.Length != requests.Count)
+            if (_signatureTarget != target || _signature.Length != requests.Count)
                 return false;
             for (int i = 0; i < requests.Count; i++)
             {
@@ -120,10 +125,10 @@ namespace LuaScript
             return true;
         }
 
-        private static Type? Resolve(string name)
+        private static Type? Resolve(string targetType)
         {
             var registry = GetRegistry();
-            return registry.TryGetValue(Normalize(name), out var type) ? type : null;
+            return registry.TryGetValue(Normalize(targetType), out var type) ? type : null;
         }
 
         private static Dictionary<string, Type> GetRegistry()
@@ -138,9 +143,9 @@ namespace LuaScript
                 {
                     try
                     {
-                        Register(map, factory.Name, factory.EffectType);
-                        foreach (var keyword in factory.Keywords)
-                            Register(map, keyword, factory.EffectType);
+                        var type = factory.EffectType;
+                        if (type is not null)
+                            map.TryAdd(Normalize(type.Name), type);
                     }
                     catch
                     {
@@ -154,16 +159,9 @@ namespace LuaScript
             return map;
         }
 
-        private static void Register(Dictionary<string, Type> map, string? key, Type type)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                return;
-            map.TryAdd(Normalize(key), type);
-        }
-
         private static string Normalize(string value) => value.Trim().ToLowerInvariant();
 
-        private static void ApplyParameters(IVideoEffect model, IReadOnlyList<KeyValuePair<string, object>> arguments)
+        private static void ApplyParameters(IVideoEffect model, AviUtlEffectMapping mapping, IReadOnlyList<KeyValuePair<string, object>> arguments)
         {
             if (arguments.Count == 0)
                 return;
@@ -171,11 +169,13 @@ namespace LuaScript
             var properties = GetProperties(model.GetType());
             foreach (var (key, value) in arguments)
             {
-                if (!properties.TryGetValue(Normalize(key), out var property))
+                if (!mapping.TryGetParameter(key, out var parameter))
+                    continue;
+                if (!properties.TryGetValue(Normalize(parameter.Property), out var property))
                     continue;
                 try
                 {
-                    SetValue(model, property, value);
+                    SetValue(model, property, value, parameter);
                 }
                 catch
                 {
@@ -198,29 +198,20 @@ namespace LuaScript
                     continue;
 
                 map.TryAdd(Normalize(property.Name), property);
-                try
-                {
-                    var display = property.GetCustomAttribute<DisplayAttribute>()?.GetName();
-                    if (!string.IsNullOrWhiteSpace(display))
-                        map.TryAdd(Normalize(display), property);
-                }
-                catch
-                {
-                }
             }
 
             _propertyCache[type] = map;
             return map;
         }
 
-        private static void SetValue(IVideoEffect model, PropertyInfo property, object value)
+        private static void SetValue(IVideoEffect model, PropertyInfo property, object value, AviUtlParameterMapping parameter)
         {
             var type = property.PropertyType;
 
             if (type == typeof(Animation))
             {
                 if (property.GetValue(model) is Animation animation)
-                    animation.CopyFrom(new Animation(ToDouble(value)));
+                    animation.CopyFrom(new Animation(parameter.Transform(ToDouble(value))));
                 return;
             }
             if (type == typeof(bool))
@@ -240,7 +231,7 @@ namespace LuaScript
             }
             if (type == typeof(double) || type == typeof(float) || type == typeof(int) || type == typeof(long) || type == typeof(short))
             {
-                property.SetValue(model, Convert.ChangeType(ToDouble(value), type, CultureInfo.InvariantCulture));
+                property.SetValue(model, Convert.ChangeType(parameter.Transform(ToDouble(value)), type, CultureInfo.InvariantCulture));
                 return;
             }
             if (type == typeof(string))
