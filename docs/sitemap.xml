@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+<!--  created with free sitemap generation system www.sitemapxml.jp  --> 
+<url>
+  <loc>https://luascript.routersys.com/</loc>
+  <priority>1.0</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/engines.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/getting-started.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/lua-basics.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/obj.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/anim.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/pixels.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/samples.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/globals.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/obj-functions.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/scene-ymm4.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/directives.html</loc>
+  <priority>0.8</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/limits.html</loc>
+  <priority>0.7</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/index.html</loc>
+  <priority>0.7</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/stdlib.html</loc>
+  <priority>0.7</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+<url>
+  <loc>https://luascript.routersys.com/reference.html</loc>
+  <priority>0.7</priority>
+  <lastmod>2026-06-30T12:31:48+09:00</lastmod>
+</url>
+
+</urlset>
