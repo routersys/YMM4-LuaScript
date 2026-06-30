@@ -63,8 +63,6 @@ namespace LuaScript
 
         internal void SetStringParameter(string name, string? value) => _stringParameters[name] = value ?? string.Empty;
 
-        internal void ClearStringParameters() => _stringParameters.Clear();
-
         private const double Epsilon = 1e-10;
 
         private readonly List<SceneObjectQuery> _objectQueries = [];

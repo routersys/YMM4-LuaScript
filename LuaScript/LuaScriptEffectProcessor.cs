@@ -41,7 +41,7 @@ namespace LuaScript
             bool HasColor,
             int Color,
             string Script,
-            string Strings,
+            int StringsVersion,
             TimelineSourceUsage Usage,
             Guid SceneId,
             int TimelineFrame,
@@ -219,7 +219,7 @@ namespace LuaScript
                 t0, t1, t2, t3,
                 s0, s1, s2, s3,
                 c0, c1, c2, c3, hasColor, colorRgb,
-                script, BuildStringSignature(),
+                script, RefreshStringParameters(),
                 desc.Usage, desc.SceneId,
                 desc.TimelinePosition.Frame,
                 desc.TimelinePosition.Time.TotalSeconds,
@@ -407,37 +407,50 @@ namespace LuaScript
             return true;
         }
 
-        private IEnumerable<KeyValuePair<string, string>> EnumerateStringParameters()
+        private static readonly string[] s_stringParameterNames =
+        [
+            "text", "font", "dir",
+            "file_video", "file_audio", "file_image", "file_project",
+            "file_mp4", "file_exo", "file_subtitle", "file_shader",
+        ];
+
+        private readonly string?[] _stringParameterValues = new string?[s_stringParameterNames.Length];
+        private int _stringParametersVersion;
+
+        private int RefreshStringParameters()
         {
-            yield return new("text", item.Text);
-            yield return new("font", item.Font);
-            yield return new("dir", item.Directory);
-            yield return new("file_video", item.FileVideo);
-            yield return new("file_audio", item.FileAudio);
-            yield return new("file_image", item.FileImage);
-            yield return new("file_project", item.FileProject);
-            yield return new("file_mp4", item.FileMp4);
-            yield return new("file_exo", item.FileExo);
-            yield return new("file_subtitle", item.FileSubtitle);
-            yield return new("file_shader", item.FileShader);
+            var values = _stringParameterValues;
+            bool changed = false;
+            changed |= UpdateStringSlot(values, 0, item.Text);
+            changed |= UpdateStringSlot(values, 1, item.Font);
+            changed |= UpdateStringSlot(values, 2, item.Directory);
+            changed |= UpdateStringSlot(values, 3, item.FileVideo);
+            changed |= UpdateStringSlot(values, 4, item.FileAudio);
+            changed |= UpdateStringSlot(values, 5, item.FileImage);
+            changed |= UpdateStringSlot(values, 6, item.FileProject);
+            changed |= UpdateStringSlot(values, 7, item.FileMp4);
+            changed |= UpdateStringSlot(values, 8, item.FileExo);
+            changed |= UpdateStringSlot(values, 9, item.FileSubtitle);
+            changed |= UpdateStringSlot(values, 10, item.FileShader);
+            if (changed)
+                _stringParametersVersion++;
+            return _stringParametersVersion;
         }
 
-        private string BuildStringSignature()
+        private static bool UpdateStringSlot(string?[] values, int index, string value)
         {
-            var builder = new System.Text.StringBuilder();
-            foreach (var parameter in EnumerateStringParameters())
-            {
-                builder.Append(parameter.Value);
-                builder.Append(' ');
-            }
-            return builder.ToString();
+            if (ReferenceEquals(values[index], value))
+                return false;
+            values[index] = value;
+            return true;
         }
 
         private void PopulateStringParameters(AviUtlScriptContext ctx)
         {
-            ctx.ClearStringParameters();
-            foreach (var parameter in EnumerateStringParameters())
-                ctx.SetStringParameter(parameter.Key, parameter.Value);
+            var names = s_stringParameterNames;
+            var values = _stringParameterValues;
+            for (int i = 0; i < names.Length; i++)
+                ctx.SetStringParameter(names[i], values[i]);
         }
 
         private void PopulateContext(AviUtlScriptContext ctx, in RenderKey key, int imgW, int imgH)
