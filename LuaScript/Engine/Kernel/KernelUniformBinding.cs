@@ -38,6 +38,10 @@ namespace LuaScript.Engine.Kernel
             values[(int)KernelUniform.Track1] = ctx.Track1;
             values[(int)KernelUniform.Track2] = ctx.Track2;
             values[(int)KernelUniform.Track3] = ctx.Track3;
+            values[(int)KernelUniform.Slider0] = ctx.Slider0;
+            values[(int)KernelUniform.Slider1] = ctx.Slider1;
+            values[(int)KernelUniform.Slider2] = ctx.Slider2;
+            values[(int)KernelUniform.Slider3] = ctx.Slider3;
             values[(int)KernelUniform.Check0] = ctx.Check0 ? 1d : 0d;
             values[(int)KernelUniform.Check1] = ctx.Check1 ? 1d : 0d;
             values[(int)KernelUniform.Check2] = ctx.Check2 ? 1d : 0d;
