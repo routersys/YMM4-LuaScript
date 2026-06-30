@@ -81,6 +81,25 @@
 <data name="CheckDesc" xml:space="preserve"><value>复选框值(AviUtl兼容: check0~3)</value></data>
 <data name="Color" xml:space="preserve"><value>颜色</value></data>
 <data name="ColorDesc" xml:space="preserve"><value>颜色(AviUtl兼容: --color)</value></data>
+<data name="Text" xml:space="preserve"><value>文本</value></data>
+<data name="TextDesc" xml:space="preserve"><value>文本输入 (obj.text)</value></data>
+<data name="Font" xml:space="preserve"><value>字体</value></data>
+<data name="FontDesc" xml:space="preserve"><value>字体选择 (obj.font)</value></data>
+<data name="Directory" xml:space="preserve"><value>文件夹</value></data>
+<data name="DirectoryDesc" xml:space="preserve"><value>文件夹选择 (obj.dir)</value></data>
+<data name="FileDesc" xml:space="preserve"><value>文件选择 (obj.file_*)</value></data>
+<data name="FileVideo" xml:space="preserve"><value>视频文件</value></data>
+<data name="FileAudio" xml:space="preserve"><value>音频文件</value></data>
+<data name="FileImage" xml:space="preserve"><value>图像文件</value></data>
+<data name="FileProject" xml:space="preserve"><value>项目文件</value></data>
+<data name="FileMp4" xml:space="preserve"><value>MP4文件</value></data>
+<data name="FileExo" xml:space="preserve"><value>EXO文件</value></data>
+<data name="FileTransition" xml:space="preserve"><value>转场文件</value></data>
+<data name="FileTachie" xml:space="preserve"><value>立绘部件文件</value></data>
+<data name="FileTexture" xml:space="preserve"><value>纹理文件</value></data>
+<data name="FileThumbnail" xml:space="preserve"><value>缩略图文件</value></data>
+<data name="FileSubtitle" xml:space="preserve"><value>字幕文件</value></data>
+<data name="FileShader" xml:space="preserve"><value>着色器文件</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>导入</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>导出</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>清除</value></data>

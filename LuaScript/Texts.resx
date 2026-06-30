@@ -81,6 +81,25 @@
 <data name="CheckDesc" xml:space="preserve"><value>チェックボックス値 (AviUtl準拠 check0〜3 に対応)</value></data>
 <data name="Color" xml:space="preserve"><value>色</value></data>
 <data name="ColorDesc" xml:space="preserve"><value>色 (AviUtl準拠 --color に対応)</value></data>
+<data name="Text" xml:space="preserve"><value>テキスト</value></data>
+<data name="TextDesc" xml:space="preserve"><value>テキスト入力 (obj.text で参照)</value></data>
+<data name="Font" xml:space="preserve"><value>フォント</value></data>
+<data name="FontDesc" xml:space="preserve"><value>フォント選択 (obj.font で参照)</value></data>
+<data name="Directory" xml:space="preserve"><value>フォルダ</value></data>
+<data name="DirectoryDesc" xml:space="preserve"><value>フォルダ選択 (obj.dir で参照)</value></data>
+<data name="FileDesc" xml:space="preserve"><value>ファイル選択 (obj.file_* で参照)</value></data>
+<data name="FileVideo" xml:space="preserve"><value>動画ファイル</value></data>
+<data name="FileAudio" xml:space="preserve"><value>音声ファイル</value></data>
+<data name="FileImage" xml:space="preserve"><value>画像ファイル</value></data>
+<data name="FileProject" xml:space="preserve"><value>プロジェクトファイル</value></data>
+<data name="FileMp4" xml:space="preserve"><value>MP4ファイル</value></data>
+<data name="FileExo" xml:space="preserve"><value>EXOファイル</value></data>
+<data name="FileTransition" xml:space="preserve"><value>トランジションファイル</value></data>
+<data name="FileTachie" xml:space="preserve"><value>立ち絵パーツファイル</value></data>
+<data name="FileTexture" xml:space="preserve"><value>テクスチャファイル</value></data>
+<data name="FileThumbnail" xml:space="preserve"><value>サムネイルファイル</value></data>
+<data name="FileSubtitle" xml:space="preserve"><value>字幕ファイル</value></data>
+<data name="FileShader" xml:space="preserve"><value>シェーダーファイル</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>インポート</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>エクスポート</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>クリア</value></data>

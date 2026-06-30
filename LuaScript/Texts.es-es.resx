@@ -81,6 +81,25 @@
 <data name="CheckDesc" xml:space="preserve"><value>Valor de casilla (compatible AviUtl: check0-3)</value></data>
 <data name="Color" xml:space="preserve"><value>Color</value></data>
 <data name="ColorDesc" xml:space="preserve"><value>Color (compatible AviUtl: --color)</value></data>
+<data name="Text" xml:space="preserve"><value>Texto</value></data>
+<data name="TextDesc" xml:space="preserve"><value>Entrada de texto (obj.text)</value></data>
+<data name="Font" xml:space="preserve"><value>Fuente</value></data>
+<data name="FontDesc" xml:space="preserve"><value>Selección de fuente (obj.font)</value></data>
+<data name="Directory" xml:space="preserve"><value>Carpeta</value></data>
+<data name="DirectoryDesc" xml:space="preserve"><value>Selección de carpeta (obj.dir)</value></data>
+<data name="FileDesc" xml:space="preserve"><value>Selección de archivo (obj.file_*)</value></data>
+<data name="FileVideo" xml:space="preserve"><value>Archivo de video</value></data>
+<data name="FileAudio" xml:space="preserve"><value>Archivo de audio</value></data>
+<data name="FileImage" xml:space="preserve"><value>Archivo de imagen</value></data>
+<data name="FileProject" xml:space="preserve"><value>Archivo de proyecto</value></data>
+<data name="FileMp4" xml:space="preserve"><value>Archivo MP4</value></data>
+<data name="FileExo" xml:space="preserve"><value>Archivo EXO</value></data>
+<data name="FileTransition" xml:space="preserve"><value>Archivo de transición</value></data>
+<data name="FileTachie" xml:space="preserve"><value>Archivo de partes Tachie</value></data>
+<data name="FileTexture" xml:space="preserve"><value>Archivo de textura</value></data>
+<data name="FileThumbnail" xml:space="preserve"><value>Archivo de miniatura</value></data>
+<data name="FileSubtitle" xml:space="preserve"><value>Archivo de subtítulos</value></data>
+<data name="FileShader" xml:space="preserve"><value>Archivo de sombreador</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>Importar</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>Exportar</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>Limpiar</value></data>

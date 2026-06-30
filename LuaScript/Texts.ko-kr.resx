@@ -81,6 +81,25 @@
 <data name="CheckDesc" xml:space="preserve"><value>체크박스 값 (AviUtl 호환: check0~3)</value></data>
 <data name="Color" xml:space="preserve"><value>색</value></data>
 <data name="ColorDesc" xml:space="preserve"><value>색 (AviUtl 호환: --color)</value></data>
+<data name="Text" xml:space="preserve"><value>텍스트</value></data>
+<data name="TextDesc" xml:space="preserve"><value>텍스트 입력 (obj.text)</value></data>
+<data name="Font" xml:space="preserve"><value>글꼴</value></data>
+<data name="FontDesc" xml:space="preserve"><value>글꼴 선택 (obj.font)</value></data>
+<data name="Directory" xml:space="preserve"><value>폴더</value></data>
+<data name="DirectoryDesc" xml:space="preserve"><value>폴더 선택 (obj.dir)</value></data>
+<data name="FileDesc" xml:space="preserve"><value>파일 선택 (obj.file_*)</value></data>
+<data name="FileVideo" xml:space="preserve"><value>동영상 파일</value></data>
+<data name="FileAudio" xml:space="preserve"><value>음성 파일</value></data>
+<data name="FileImage" xml:space="preserve"><value>이미지 파일</value></data>
+<data name="FileProject" xml:space="preserve"><value>프로젝트 파일</value></data>
+<data name="FileMp4" xml:space="preserve"><value>MP4 파일</value></data>
+<data name="FileExo" xml:space="preserve"><value>EXO 파일</value></data>
+<data name="FileTransition" xml:space="preserve"><value>트랜지션 파일</value></data>
+<data name="FileTachie" xml:space="preserve"><value>입화 파츠 파일</value></data>
+<data name="FileTexture" xml:space="preserve"><value>텍스처 파일</value></data>
+<data name="FileThumbnail" xml:space="preserve"><value>썸네일 파일</value></data>
+<data name="FileSubtitle" xml:space="preserve"><value>자막 파일</value></data>
+<data name="FileShader" xml:space="preserve"><value>셰이더 파일</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>가져오기</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>내보내기</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>지우기</value></data>

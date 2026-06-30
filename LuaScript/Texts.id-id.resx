@@ -81,6 +81,25 @@
 <data name="CheckDesc" xml:space="preserve"><value>Nilai kotak centang (kompatibel AviUtl: check0-3)</value></data>
 <data name="Color" xml:space="preserve"><value>Warna</value></data>
 <data name="ColorDesc" xml:space="preserve"><value>Warna (kompatibel AviUtl: --color)</value></data>
+<data name="Text" xml:space="preserve"><value>Teks</value></data>
+<data name="TextDesc" xml:space="preserve"><value>Masukan teks (obj.text)</value></data>
+<data name="Font" xml:space="preserve"><value>Font</value></data>
+<data name="FontDesc" xml:space="preserve"><value>Pilihan font (obj.font)</value></data>
+<data name="Directory" xml:space="preserve"><value>Folder</value></data>
+<data name="DirectoryDesc" xml:space="preserve"><value>Pilihan folder (obj.dir)</value></data>
+<data name="FileDesc" xml:space="preserve"><value>Pilihan file (obj.file_*)</value></data>
+<data name="FileVideo" xml:space="preserve"><value>File Video</value></data>
+<data name="FileAudio" xml:space="preserve"><value>File Audio</value></data>
+<data name="FileImage" xml:space="preserve"><value>File Gambar</value></data>
+<data name="FileProject" xml:space="preserve"><value>File Proyek</value></data>
+<data name="FileMp4" xml:space="preserve"><value>File MP4</value></data>
+<data name="FileExo" xml:space="preserve"><value>File EXO</value></data>
+<data name="FileTransition" xml:space="preserve"><value>File Transisi</value></data>
+<data name="FileTachie" xml:space="preserve"><value>File Bagian Tachie</value></data>
+<data name="FileTexture" xml:space="preserve"><value>File Tekstur</value></data>
+<data name="FileThumbnail" xml:space="preserve"><value>File Thumbnail</value></data>
+<data name="FileSubtitle" xml:space="preserve"><value>File Subtitle</value></data>
+<data name="FileShader" xml:space="preserve"><value>File Shader</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>Impor</value></data>
 <data name="ToolBarExport" xml:space="preserve"><value>Ekspor</value></data>
 <data name="ToolBarClear" xml:space="preserve"><value>Hapus</value></data>
