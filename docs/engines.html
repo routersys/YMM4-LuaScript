@@ -29,6 +29,13 @@ LuaJIT ネイティブレーンや、CPU / GPU カーネルへ変換するレー
 <tr><td>GPU カーネル</td><td><code>--!gpu</code></td><td>ピクセルループを GPU シェーダーに変換。最速だが float32 精度（明示指定のみ）</td></tr>
 </table>
 
+<div class="note">
+スライダー <code>obj.slider0</code> ～ <code>obj.slider3</code> と文字列パラメータ
+<code>obj.text</code> / <code>obj.font</code> / <code>obj.dir</code> / <code>obj.file_*</code> は、
+MoonSharp とネイティブのどちらのエンジンでも同じ名前で参照できます。
+CPU カーネルと GPU カーネルは数値計算に特化するため、文字列を扱いません。
+</div>
+
 <h2>指定子の書き方</h2>
 
 <p>

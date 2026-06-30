@@ -89,6 +89,11 @@ obj.rzr = time * anim.tau</code></pre>
 <tr><td><code>obj.num</code></td><td>入力の総数</td></tr>
 <tr><td><code>obj.track0</code> ～ <code>obj.track3</code></td><td>トラックバーの値（数値）</td></tr>
 <tr><td><code>obj.check0</code> ～ <code>obj.check3</code></td><td>チェックボックスの値（真偽値）</td></tr>
+<tr><td><code>obj.slider0</code> ～ <code>obj.slider3</code></td><td>整数スライダーの値</td></tr>
+<tr><td><code>obj.text</code></td><td>テキスト入力欄の文字列</td></tr>
+<tr><td><code>obj.font</code></td><td>フォント選択欄のフォント名</td></tr>
+<tr><td><code>obj.dir</code></td><td>フォルダ選択欄のパス</td></tr>
+<tr><td><code>obj.file_video</code> ～ <code>obj.file_shader</code></td><td>各ファイル選択欄のパス</td></tr>
 </table>
 
 <div class="note">
@@ -111,6 +116,32 @@ obj.x = obj.x + math.sin(time * anim.tau * freq) * amp
 if obj.check0 then
     obj.alpha = 255
 end</code></pre>
+
+<h2>スライダーと文字列パラメータ</h2>
+
+<p>
+<code>obj.slider0</code> ～ <code>obj.slider3</code> は整数スライダーの値です。小数を含みません。
+表示範囲は <code>obj.slider0</code> が 1 ～ 10、<code>obj.slider1</code> が 0 ～ 100、
+<code>obj.slider2</code> が 0 ～ 1000、<code>obj.slider3</code> が -1000 ～ 1000 です。
+状態の切り替えなど、整数値の受け渡しに使えます。
+</p>
+
+<p>
+文字列パラメータも参照できます。<code>obj.text</code> はテキスト入力欄の文字列、
+<code>obj.font</code> はフォント名、<code>obj.dir</code> はフォルダのパスです。
+ファイル選択欄は種類ごとに <code>obj.file_video</code> / <code>obj.file_audio</code> /
+<code>obj.file_image</code> / <code>obj.file_project</code> / <code>obj.file_mp4</code> /
+<code>obj.file_exo</code> / <code>obj.file_subtitle</code> / <code>obj.file_shader</code> で参照し、
+選択したファイルのパスを取得します。取得したパスは <code>obj.load</code> へ渡して画像や動画を読み込めます。
+</p>
+
+<p>
+スライダーと文字列パラメータは、スクリプトがそれらを参照するとパラメータパネルへ表示されます。
+いずれのパラメータも MoonSharp とネイティブの両エンジンから参照できます。
+</p>
+
+<pre><code>local mode = obj.slider0
+obj.load("image", obj.file_image)</code></pre>
 
 <h2>よく使う例</h2>
 
