@@ -66,31 +66,31 @@ namespace LuaScript
 
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider0), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
         [TextBoxSlider("F0", "", 1, 10)]
-        [DefaultValue(1d)]
+        [DefaultValue(1)]
         [ShowPropertyEditorWhen(nameof(IsSlider0Visible), true)]
-        public double Slider0 { get => _slider0; set => Set(ref _slider0, value); }
-        double _slider0 = 1d;
+        public int Slider0 { get => _slider0; set => Set(ref _slider0, value); }
+        int _slider0 = 1;
 
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider1), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
-        [TextBoxSlider("F2", "", 0, 100)]
-        [DefaultValue(0d)]
+        [TextBoxSlider("F0", "", 0, 100)]
+        [DefaultValue(0)]
         [ShowPropertyEditorWhen(nameof(IsSlider1Visible), true)]
-        public double Slider1 { get => _slider1; set => Set(ref _slider1, value); }
-        double _slider1;
+        public int Slider1 { get => _slider1; set => Set(ref _slider1, value); }
+        int _slider1;
 
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider2), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
-        [TextBoxSlider("F2", "", 0, 1000)]
-        [DefaultValue(0d)]
+        [TextBoxSlider("F0", "", 0, 1000)]
+        [DefaultValue(0)]
         [ShowPropertyEditorWhen(nameof(IsSlider2Visible), true)]
-        public double Slider2 { get => _slider2; set => Set(ref _slider2, value); }
-        double _slider2;
+        public int Slider2 { get => _slider2; set => Set(ref _slider2, value); }
+        int _slider2;
 
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider3), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
-        [TextBoxSlider("F2", "", -1000, 1000)]
-        [DefaultValue(0d)]
+        [TextBoxSlider("F0", "", -1000, 1000)]
+        [DefaultValue(0)]
         [ShowPropertyEditorWhen(nameof(IsSlider3Visible), true)]
-        public double Slider3 { get => _slider3; set => Set(ref _slider3, value); }
-        double _slider3;
+        public int Slider3 { get => _slider3; set => Set(ref _slider3, value); }
+        int _slider3;
 
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Check0), Description = nameof(Texts.CheckDesc), ResourceType = typeof(Texts))]
         [ToggleSlider]
