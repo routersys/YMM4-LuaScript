@@ -59,14 +59,23 @@ namespace LuaScript.Compat
         private static AviUtlCompatMap Load()
         {
             var effects = new Dictionary<string, List<AviUtlEffectMapping>>(StringComparer.OrdinalIgnoreCase);
-            using var stream = OpenResource();
-            if (stream is null)
-                return new AviUtlCompatMap(effects);
+            try
+            {
+                using var stream = OpenResource();
+                if (stream is not null)
+                    Populate(effects, stream);
+            }
+            catch
+            {
+            }
+            return new AviUtlCompatMap(effects);
+        }
 
-            var document = XDocument.Load(stream);
-            var root = document.Root;
+        private static void Populate(Dictionary<string, List<AviUtlEffectMapping>> effects, Stream stream)
+        {
+            var root = XDocument.Load(stream).Root;
             if (root is null)
-                return new AviUtlCompatMap(effects);
+                return;
 
             foreach (var element in root.Elements("effect"))
             {
@@ -90,8 +99,6 @@ namespace LuaScript.Compat
                     list.Add(mapping);
                 }
             }
-
-            return new AviUtlCompatMap(effects);
         }
 
         private static AviUtlParameterMapping ParseParameter(XElement element)
