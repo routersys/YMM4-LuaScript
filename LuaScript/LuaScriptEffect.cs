@@ -121,6 +121,12 @@ namespace LuaScript
         public Color Color { get => _color; set => Set(ref _color, value); }
         Color _color = Colors.White;
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Text), Description = nameof(Texts.TextDesc), ResourceType = typeof(Texts))]
+        [TextEditor(AcceptsReturn = true, PropertyEditorSize = PropertyEditorSize.FullWidth)]
+        [ShowPropertyEditorWhen(nameof(IsTextVisible), true)]
+        public string Text { get => _text; set => Set(ref _text, value); }
+        string _text = string.Empty;
+
         [JsonIgnore] public bool IsSlider0Visible { get => _isSlider0Visible; private set => Set(ref _isSlider0Visible, value); }
         [JsonIgnore] public bool IsSlider1Visible { get => _isSlider1Visible; private set => Set(ref _isSlider1Visible, value); }
         [JsonIgnore] public bool IsSlider2Visible { get => _isSlider2Visible; private set => Set(ref _isSlider2Visible, value); }
@@ -134,6 +140,7 @@ namespace LuaScript
         [JsonIgnore] public bool IsCheck2Visible { get => _isCheck2Visible; private set => Set(ref _isCheck2Visible, value); }
         [JsonIgnore] public bool IsCheck3Visible { get => _isCheck3Visible; private set => Set(ref _isCheck3Visible, value); }
         [JsonIgnore] public bool IsColorVisible { get => _isColorVisible; private set => Set(ref _isColorVisible, value); }
+        [JsonIgnore] public bool IsTextVisible { get => _isTextVisible; private set => Set(ref _isTextVisible, value); }
 
         bool _isSlider0Visible;
         bool _isSlider1Visible;
@@ -148,6 +155,7 @@ namespace LuaScript
         bool _isCheck2Visible;
         bool _isCheck3Visible;
         bool _isColorVisible;
+        bool _isTextVisible;
 
         private void UpdateLayout()
         {
@@ -170,6 +178,7 @@ namespace LuaScript
             IsCheck2Visible = layout.HasCheck(2) || (!hasAny && usage.Check2);
             IsCheck3Visible = layout.HasCheck(3) || (!hasAny && usage.Check3);
             IsColorVisible = layout.HasColor || (!hasAny && usage.Color);
+            IsTextVisible = usage.Uses("text");
 
             SeedDefaults(layout);
         }

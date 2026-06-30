@@ -41,6 +41,7 @@ namespace LuaScript
             bool HasColor,
             int Color,
             string Script,
+            string Strings,
             TimelineSourceUsage Usage,
             Guid SceneId,
             int TimelineFrame,
@@ -218,7 +219,8 @@ namespace LuaScript
                 t0, t1, t2, t3,
                 s0, s1, s2, s3,
                 c0, c1, c2, c3, hasColor, colorRgb,
-                script, desc.Usage, desc.SceneId,
+                script, BuildStringSignature(),
+                desc.Usage, desc.SceneId,
                 desc.TimelinePosition.Frame,
                 desc.TimelinePosition.Time.TotalSeconds,
                 desc.ScreenSize.Width, desc.ScreenSize.Height,
@@ -405,6 +407,29 @@ namespace LuaScript
             return true;
         }
 
+        private IEnumerable<KeyValuePair<string, string>> EnumerateStringParameters()
+        {
+            yield return new("text", item.Text);
+        }
+
+        private string BuildStringSignature()
+        {
+            var builder = new System.Text.StringBuilder();
+            foreach (var parameter in EnumerateStringParameters())
+            {
+                builder.Append(parameter.Value);
+                builder.Append(' ');
+            }
+            return builder.ToString();
+        }
+
+        private void PopulateStringParameters(AviUtlScriptContext ctx)
+        {
+            ctx.ClearStringParameters();
+            foreach (var parameter in EnumerateStringParameters())
+                ctx.SetStringParameter(parameter.Key, parameter.Value);
+        }
+
         private void PopulateContext(AviUtlScriptContext ctx, in RenderKey key, int imgW, int imgH)
         {
             var zoom = key.InputDesc.Zoom;
@@ -468,6 +493,7 @@ namespace LuaScript
             ctx.IsPaused = key.Usage == TimelineSourceUsage.Paused;
             ctx.SceneId = ResolveSceneId(key.SceneId);
             ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
+            PopulateStringParameters(ctx);
         }
 
         private static double ClampTrack(double value, AviUtlParameterLayout layout, int index)
