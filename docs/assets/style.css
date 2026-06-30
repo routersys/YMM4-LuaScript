@@ -13,6 +13,10 @@ code { background: #f0f0f0; padding: 0 .2em; }
 pre code { background: none; padding: 0; }
 table { border-collapse: collapse; margin: 1em 0; }
 th, td { border: 1px solid #ccc; padding: .3em .6em; text-align: left; vertical-align: top; }
+#navresults .navmsg { font-size: .8em; color: #666; margin: .4em 0; }
+#navresults .navhit { display: block; padding: .3em .4em; text-decoration: none; color: #000; border-top: 1px solid #eee; }
+#navresults .navhit .h { display: block; font-size: .82em; color: #0969da; }
+#navresults .navhit .s { display: block; font-size: .82em; color: #444; }
 .note, .warn { border-left: 3px solid #888; padding-left: .8em; margin: 1em 0; }
 .pager { display: flex; justify-content: space-between; margin-top: 2em; }
 #navtoggle { display: none; }
