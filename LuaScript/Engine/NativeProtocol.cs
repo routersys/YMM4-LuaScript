@@ -26,6 +26,7 @@ namespace LuaScript.Engine
         public const int OffCallbackKind = 44;
         public const int OffLoadResultWidth = 48;
         public const int OffLoadResultHeight = 52;
+        public const int OffStringParamsLen = 56;
 
         public const int HeaderSize = 64;
 
@@ -42,6 +43,9 @@ namespace LuaScript.Engine
         public const int CallbackTagMax = 4096;
         public const int CallbackResultOffset = CallbackTagOffset + CallbackTagMax;
         public const int CallbackResultCount = 8;
+
+        public const int StringParamsOffset = CallbackResultOffset + CallbackResultCount * 8;
+        public const int StringParamsMax = 64 * 1024;
 
         public const int CbKindGetObject = 0;
         public const int CbKindLoadFigure = 1;
@@ -61,7 +65,7 @@ namespace LuaScript.Engine
         public const int CbAlpha = 6;
         public const int CbLayer = 7;
 
-        public const int PixelOffset = CallbackResultOffset + CallbackResultCount * 8;
+        public const int PixelOffset = StringParamsOffset + StringParamsMax;
 
         public const int W = 0;
         public const int H = 1;
