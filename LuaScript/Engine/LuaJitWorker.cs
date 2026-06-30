@@ -28,6 +28,8 @@ namespace LuaScript.Engine
         private int _lastCallbackTagLength = -1;
         private string _lastCallbackTagText = string.Empty;
         private byte[]? _resultBuffer;
+        private readonly Dictionary<string, byte[]> _stringNameBytes = new(StringComparer.Ordinal);
+        private byte[] _stringValueBytes = new byte[256];
 
         public LuaJitWorker(string nativeDir)
         {
@@ -149,7 +151,7 @@ namespace LuaScript.Engine
             return true;
         }
 
-        private static void WriteStringParameters(MemoryMappedViewAccessor view, IReadOnlyDictionary<string, string> stringParameters)
+        private void WriteStringParameters(MemoryMappedViewAccessor view, IReadOnlyDictionary<string, string> stringParameters)
         {
             long basePos = NativeProtocol.StringParamsOffset;
             long limit = basePos + NativeProtocol.StringParamsMax;
@@ -157,14 +159,22 @@ namespace LuaScript.Engine
             int count = 0;
             foreach (var pair in stringParameters)
             {
-                byte[] name = Encoding.UTF8.GetBytes(pair.Key);
-                byte[] value = Encoding.UTF8.GetBytes(pair.Value ?? string.Empty);
-                if (pos + 8 + name.Length + value.Length > limit)
+                if (!_stringNameBytes.TryGetValue(pair.Key, out var name))
+                {
+                    name = Encoding.UTF8.GetBytes(pair.Key);
+                    _stringNameBytes[pair.Key] = name;
+                }
+                string value = pair.Value ?? string.Empty;
+                int maxValueBytes = Encoding.UTF8.GetMaxByteCount(value.Length);
+                if (_stringValueBytes.Length < maxValueBytes)
+                    _stringValueBytes = new byte[Math.Max(maxValueBytes, _stringValueBytes.Length * 2)];
+                int valueLen = Encoding.UTF8.GetBytes(value, 0, value.Length, _stringValueBytes, 0);
+                if (pos + 8 + name.Length + valueLen > limit)
                     break;
                 view.Write(pos, name.Length); pos += 4;
                 view.WriteArray(pos, name, 0, name.Length); pos += name.Length;
-                view.Write(pos, value.Length); pos += 4;
-                view.WriteArray(pos, value, 0, value.Length); pos += value.Length;
+                view.Write(pos, valueLen); pos += 4;
+                view.WriteArray(pos, _stringValueBytes, 0, valueLen); pos += valueLen;
                 count++;
             }
             view.Write(basePos, count);
