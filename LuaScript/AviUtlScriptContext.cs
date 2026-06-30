@@ -57,6 +57,14 @@ namespace LuaScript
 
         public Func<SceneObjectResolver>? ResolverProvider { get; set; }
 
+        private readonly Dictionary<string, string> _stringParameters = new(StringComparer.Ordinal);
+
+        public IReadOnlyDictionary<string, string> StringParameters => _stringParameters;
+
+        internal void SetStringParameter(string name, string? value) => _stringParameters[name] = value ?? string.Empty;
+
+        internal void ClearStringParameters() => _stringParameters.Clear();
+
         private const double Epsilon = 1e-10;
 
         private readonly List<SceneObjectQuery> _objectQueries = [];
