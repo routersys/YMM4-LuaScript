@@ -40,8 +40,9 @@
 <ul>
 <li><code>scene.set()</code> や <code>scene.get()</code> はありません。<code>scene</code> は解像度の読み取りだけに対応します。</li>
 <li><code>obj.setanchor()</code> など、本ドキュメントに記載のない AviUtl 関数は対応していません。</li>
-<li><code>obj.effect</code> が呼べるのは YMM4 に読み込まれている映像エフェクトに限られます。
-  名前が見つからない・適用に失敗した場合は、そのフレームでは元の映像がそのまま使われます。</li>
+<li><code>obj.effect</code> が解決できるのは、AviUtl／AviUtl2 互換マップに宣言されたエフェクトとパラメータに限られます。
+  宣言が無い・対象エフェクトが読み込まれていない・適用に失敗した場合は、そのフレームでは元の映像がそのまま使われます。
+  対応するエフェクト名の一覧は<a href="obj-functions.html">obj の関数</a>を参照してください。</li>
 </ul>
 
 <h2>エラー表示</h2>
