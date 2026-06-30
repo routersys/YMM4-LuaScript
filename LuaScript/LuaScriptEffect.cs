@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using LuaScript.Compat;
@@ -62,6 +63,34 @@ namespace LuaScript
         [ShowPropertyEditorWhen(nameof(IsTrack3Visible), true)]
         public Animation Track3 { get; } = new Animation(0, YMM4Constants.VerySmallValue, YMM4Constants.VeryLargeValue);
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider0), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F0", "", 1, 10)]
+        [DefaultValue(1d)]
+        [ShowPropertyEditorWhen(nameof(IsSlider0Visible), true)]
+        public double Slider0 { get => _slider0; set => Set(ref _slider0, value); }
+        double _slider0 = 1d;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider1), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F2", "", 0, 100)]
+        [DefaultValue(0d)]
+        [ShowPropertyEditorWhen(nameof(IsSlider1Visible), true)]
+        public double Slider1 { get => _slider1; set => Set(ref _slider1, value); }
+        double _slider1;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider2), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F2", "", 0, 1000)]
+        [DefaultValue(0d)]
+        [ShowPropertyEditorWhen(nameof(IsSlider2Visible), true)]
+        public double Slider2 { get => _slider2; set => Set(ref _slider2, value); }
+        double _slider2;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Slider3), Description = nameof(Texts.SliderDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F2", "", -1000, 1000)]
+        [DefaultValue(0d)]
+        [ShowPropertyEditorWhen(nameof(IsSlider3Visible), true)]
+        public double Slider3 { get => _slider3; set => Set(ref _slider3, value); }
+        double _slider3;
+
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Check0), Description = nameof(Texts.CheckDesc), ResourceType = typeof(Texts))]
         [ToggleSlider]
         [ShowPropertyEditorWhen(nameof(IsCheck0Visible), true)]
@@ -92,6 +121,10 @@ namespace LuaScript
         public Color Color { get => _color; set => Set(ref _color, value); }
         Color _color = Colors.White;
 
+        [JsonIgnore] public bool IsSlider0Visible { get => _isSlider0Visible; private set => Set(ref _isSlider0Visible, value); }
+        [JsonIgnore] public bool IsSlider1Visible { get => _isSlider1Visible; private set => Set(ref _isSlider1Visible, value); }
+        [JsonIgnore] public bool IsSlider2Visible { get => _isSlider2Visible; private set => Set(ref _isSlider2Visible, value); }
+        [JsonIgnore] public bool IsSlider3Visible { get => _isSlider3Visible; private set => Set(ref _isSlider3Visible, value); }
         [JsonIgnore] public bool IsTrack0Visible { get => _isTrack0Visible; private set => Set(ref _isTrack0Visible, value); }
         [JsonIgnore] public bool IsTrack1Visible { get => _isTrack1Visible; private set => Set(ref _isTrack1Visible, value); }
         [JsonIgnore] public bool IsTrack2Visible { get => _isTrack2Visible; private set => Set(ref _isTrack2Visible, value); }
@@ -102,6 +135,10 @@ namespace LuaScript
         [JsonIgnore] public bool IsCheck3Visible { get => _isCheck3Visible; private set => Set(ref _isCheck3Visible, value); }
         [JsonIgnore] public bool IsColorVisible { get => _isColorVisible; private set => Set(ref _isColorVisible, value); }
 
+        bool _isSlider0Visible;
+        bool _isSlider1Visible;
+        bool _isSlider2Visible;
+        bool _isSlider3Visible;
         bool _isTrack0Visible = true;
         bool _isTrack1Visible = true;
         bool _isTrack2Visible = true;
@@ -120,6 +157,10 @@ namespace LuaScript
             bool hasAny = layout.HasAny;
             var usage = ScriptParameterUsage.Detect(_script);
 
+            IsSlider0Visible = usage.Slider(0);
+            IsSlider1Visible = usage.Slider(1);
+            IsSlider2Visible = usage.Slider(2);
+            IsSlider3Visible = usage.Slider(3);
             IsTrack0Visible = !hasAny || layout.HasTrack(0);
             IsTrack1Visible = !hasAny || layout.HasTrack(1);
             IsTrack2Visible = !hasAny || layout.HasTrack(2);

@@ -30,6 +30,10 @@ namespace LuaScript
             double Track1,
             double Track2,
             double Track3,
+            double Slider0,
+            double Slider1,
+            double Slider2,
+            double Slider3,
             bool Check0,
             bool Check1,
             bool Check2,
@@ -203,6 +207,7 @@ namespace LuaScript
             var t3 = ClampTrack(item.Track3.GetValue(frame, length, fps), layout, 3);
 
             bool c0 = item.Check0, c1 = item.Check1, c2 = item.Check2, c3 = item.Check3;
+            double s0 = item.Slider0, s1 = item.Slider1, s2 = item.Slider2, s3 = item.Slider3;
             bool hasColor = item.IsColorVisible;
             int colorRgb = hasColor ? (item.Color.R << 16) | (item.Color.G << 8) | item.Color.B : 0;
 
@@ -211,6 +216,7 @@ namespace LuaScript
             var key = new RenderKey(
                 frame, time, length, fps,
                 t0, t1, t2, t3,
+                s0, s1, s2, s3,
                 c0, c1, c2, c3, hasColor, colorRgb,
                 script, desc.Usage, desc.SceneId,
                 desc.TimelinePosition.Frame,
@@ -431,6 +437,10 @@ namespace LuaScript
             ctx.Track1 = key.Track1;
             ctx.Track2 = key.Track2;
             ctx.Track3 = key.Track3;
+            ctx.Slider0 = key.Slider0;
+            ctx.Slider1 = key.Slider1;
+            ctx.Slider2 = key.Slider2;
+            ctx.Slider3 = key.Slider3;
             ctx.Check0 = key.Check0;
             ctx.Check1 = key.Check1;
             ctx.Check2 = key.Check2;
