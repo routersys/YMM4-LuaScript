@@ -4,8 +4,6 @@ namespace LuaScript.Engine
 {
     internal static class NativeFieldMap
     {
-        private const double Epsilon = 1e-10;
-
         public static void ToFields(AviUtlScriptContext ctx, double[] f)
         {
             f[NativeProtocol.W] = ctx.ImageWidth;
