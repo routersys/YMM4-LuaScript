@@ -9,6 +9,11 @@ Track1,,トラック1,Track 1,轨道1,軌道1,트랙1,Pista 1,مسار 1,Jalur 1
 Track2,,トラック2,Track 2,轨道2,軌道2,트랙2,Pista 2,مسار 2,Jalur 2
 Track3,,トラック3,Track 3,轨道3,軌道3,트랙3,Pista 3,مسار 3,Jalur 3
 TrackDesc,,スライダー値 (AviUtl準拠 track0〜3 に対応),Slider value (AviUtl compatible: track0–3),滑块值(AviUtl兼容: track0~3),滑塊值(AviUtl兼容: track0~3),슬라이더 값 (AviUtl 호환: track0~3),Valor del deslizador (compatible AviUtl: track0-3),قيمة المنزلق (متوافق مع AviUtl: track0-3),Nilai slider (kompatibel AviUtl: track0-3)
+Slider0,,スライダー0,Slider 0,滑块0,滑塊0,슬라이더0,Deslizador 0,منزلق 0,Slider 0
+Slider1,,スライダー1,Slider 1,滑块1,滑塊1,슬라이더1,Deslizador 1,منزلق 1,Slider 1
+Slider2,,スライダー2,Slider 2,滑块2,滑塊2,슬라이더2,Deslizador 2,منزلق 2,Slider 2
+Slider3,,スライダー3,Slider 3,滑块3,滑塊3,슬라이더3,Deslizador 3,منزلق 3,Slider 3
+SliderDesc,,数値スライダー (obj.slider0〜3 で参照),Numeric slider (obj.slider0–3),数值滑块 (obj.slider0~3),數值滑塊 (obj.slider0~3),숫자 슬라이더 (obj.slider0~3),Deslizador numérico (obj.slider0-3),منزلق رقمي (obj.slider0-3),Slider numerik (obj.slider0-3)
 Check0,,チェック0,Check 0,复选框0,核取方塊0,체크0,Casilla 0,خانة 0,Centang 0
 Check1,,チェック1,Check 1,复选框1,核取方塊1,체크1,Casilla 1,خانة 1,Centang 1
 Check2,,チェック2,Check 2,复选框2,核取方塊2,체크2,Casilla 2,خانة 2,Centang 2

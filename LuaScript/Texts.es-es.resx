@@ -69,6 +69,11 @@
 <data name="Track2" xml:space="preserve"><value>Pista 2</value></data>
 <data name="Track3" xml:space="preserve"><value>Pista 3</value></data>
 <data name="TrackDesc" xml:space="preserve"><value>Valor del deslizador (compatible AviUtl: track0-3)</value></data>
+<data name="Slider0" xml:space="preserve"><value>Deslizador 0</value></data>
+<data name="Slider1" xml:space="preserve"><value>Deslizador 1</value></data>
+<data name="Slider2" xml:space="preserve"><value>Deslizador 2</value></data>
+<data name="Slider3" xml:space="preserve"><value>Deslizador 3</value></data>
+<data name="SliderDesc" xml:space="preserve"><value>Deslizador numérico (obj.slider0-3)</value></data>
 <data name="Check0" xml:space="preserve"><value>Casilla 0</value></data>
 <data name="Check1" xml:space="preserve"><value>Casilla 1</value></data>
 <data name="Check2" xml:space="preserve"><value>Casilla 2</value></data>
