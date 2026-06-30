@@ -91,6 +91,33 @@
           この一般利用では範囲・既定値の宣言を伴わないため、値はスクリプト内で扱います。
           --track / --check / --color ヘッダによる宣言表示も従来どおり利用できます。
 
+        数値スライダーが 4 つあり、各値は obj.slider0 ～ obj.slider3 として参照できます。
+        値は整数で、小数は扱いません。
+
+        Slider0 : 整数スライダー (範囲: 1 ～ 10)
+        Slider1 : 整数スライダー (範囲: 0 ～ 100)
+        Slider2 : 整数スライダー (範囲: 0 ～ 1000)
+        Slider3 : 整数スライダー (範囲: -1000 ～ 1000)
+
+        文字列パラメータも利用でき、各値は以下の名前で参照できます。
+
+        obj.text          : テキスト入力欄の文字列
+        obj.font          : フォント選択欄のフォント名
+        obj.dir           : フォルダ選択欄のパス
+        obj.file_video    : 動画ファイルのパス
+        obj.file_audio    : 音声ファイルのパス
+        obj.file_image    : 画像ファイルのパス
+        obj.file_project  : プロジェクトファイルのパス
+        obj.file_mp4      : MP4 ファイルのパス
+        obj.file_exo      : EXO ファイルのパス
+        obj.file_subtitle : 字幕ファイルのパス
+        obj.file_shader   : シェーダーファイルのパス
+
+        ※スライダーと文字列パラメータは、スクリプト本体でそれらを参照すると
+          自動的にエフェクトパネルへ表示されます。
+        ※ファイル選択のパスは obj.load へ渡して画像・動画の読み込みに使えます。
+        ※これらのパラメータは MoonSharp とネイティブのどちらのエンジンでも参照できます。
+
 
 - グローバル変数 -
 
@@ -213,6 +240,18 @@
         obj.track1    : エフェクトパネルの Track1 の現在値 [ReadOnly]
         obj.track2    : エフェクトパネルの Track2 の現在値 [ReadOnly]
         obj.track3    : エフェクトパネルの Track3 の現在値 [ReadOnly]
+
+        ○スライダー
+        obj.slider0   : エフェクトパネルの Slider0 の現在値(整数) [ReadOnly]
+        obj.slider1   : エフェクトパネルの Slider1 の現在値(整数) [ReadOnly]
+        obj.slider2   : エフェクトパネルの Slider2 の現在値(整数) [ReadOnly]
+        obj.slider3   : エフェクトパネルの Slider3 の現在値(整数) [ReadOnly]
+
+        ○文字列パラメータ
+        obj.text      : テキスト入力欄の文字列 [ReadOnly]
+        obj.font      : フォント選択欄のフォント名 [ReadOnly]
+        obj.dir       : フォルダ選択欄のパス [ReadOnly]
+        obj.file_video 〜 obj.file_shader : 各ファイル選択欄のパス [ReadOnly]
 
         ○レイヤー
         obj.layer     : オブジェクトが配置されているレイヤー番号 [ReadOnly]

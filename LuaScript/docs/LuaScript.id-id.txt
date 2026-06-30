@@ -96,6 +96,33 @@
           rentang nilai di dalam skrip. Header --track / --check / --color AviUtl tetap
           berfungsi seperti sebelumnya.
 
+        Ada 4 slider numerik, direferensikan sebagai obj.slider0 hingga obj.slider3.
+        Nilainya berupa bilangan bulat dan tidak memuat desimal.
+
+        Slider0 : Slider bilangan bulat (Rentang: 1 ~ 10)
+        Slider1 : Slider bilangan bulat (Rentang: 0 ~ 100)
+        Slider2 : Slider bilangan bulat (Rentang: 0 ~ 1000)
+        Slider3 : Slider bilangan bulat (Rentang: -1000 ~ 1000)
+
+        Parameter string juga tersedia, direferensikan dengan nama berikut.
+
+        obj.text          : String dari kolom input teks
+        obj.font          : Nama font dari pemilih font
+        obj.dir           : Path dari pemilih folder
+        obj.file_video    : Path file video
+        obj.file_audio    : Path file audio
+        obj.file_image    : Path file gambar
+        obj.file_project  : Path file proyek
+        obj.file_mp4      : Path file MP4
+        obj.file_exo      : Path file EXO
+        obj.file_subtitle : Path file subtitle
+        obj.file_shader   : Path file shader
+
+        * Slider dan parameter string muncul di panel efek secara otomatis saat skrip
+          mereferensikannya.
+        * Path file dapat diteruskan ke obj.load untuk memuat gambar atau video.
+        * Parameter ini tersedia pada mesin MoonSharp maupun native.
+
 
 - Variabel Global -
 
@@ -215,6 +242,18 @@
         obj.track1    : Nilai saat ini Track1 di panel efek [Hanya Baca]
         obj.track2    : Nilai saat ini Track2 di panel efek [Hanya Baca]
         obj.track3    : Nilai saat ini Track3 di panel efek [Hanya Baca]
+
+        o Slider
+        obj.slider0   : Nilai saat ini Slider0 di panel efek (bilangan bulat) [Hanya Baca]
+        obj.slider1   : Nilai saat ini Slider1 di panel efek (bilangan bulat) [Hanya Baca]
+        obj.slider2   : Nilai saat ini Slider2 di panel efek (bilangan bulat) [Hanya Baca]
+        obj.slider3   : Nilai saat ini Slider3 di panel efek (bilangan bulat) [Hanya Baca]
+
+        o Parameter string
+        obj.text      : String dari kolom input teks [Hanya Baca]
+        obj.font      : Nama font dari pemilih font [Hanya Baca]
+        obj.dir       : Path dari pemilih folder [Hanya Baca]
+        obj.file_video ~ obj.file_shader : Path dari setiap pemilih file [Hanya Baca]
 
         o Layer
         obj.layer     : Nomor layer tempat objek ditempatkan [Hanya Baca]

@@ -89,6 +89,32 @@
           自動顯示於特效面板中（軌道條始終顯示）。此通用用法不帶範圍・預設值宣告，
           因此請在腳本內處理取值範圍。AviUtl 的 --track / --check / --color 標頭宣告顯示仍可照常使用。
 
+        共有 4 個數值滑桿，各值可透過 obj.slider0 ～ obj.slider3 參照。
+        取值為整數，不處理小數。
+
+        Slider0 : 整數滑桿 (範圍: 1 ～ 10)
+        Slider1 : 整數滑桿 (範圍: 0 ～ 100)
+        Slider2 : 整數滑桿 (範圍: 0 ～ 1000)
+        Slider3 : 整數滑桿 (範圍: -1000 ～ 1000)
+
+        亦可使用字串參數，各值透過以下名稱參照。
+
+        obj.text          : 文字輸入框的字串
+        obj.font          : 字型選擇框的字型名
+        obj.dir           : 資料夾選擇框的路徑
+        obj.file_video    : 影片檔案的路徑
+        obj.file_audio    : 音訊檔案的路徑
+        obj.file_image    : 圖片檔案的路徑
+        obj.file_project  : 專案檔案的路徑
+        obj.file_mp4      : MP4 檔案的路徑
+        obj.file_exo      : EXO 檔案的路徑
+        obj.file_subtitle : 字幕檔案的路徑
+        obj.file_shader   : 著色器檔案的路徑
+
+        ※滑桿與字串參數在腳本本體參照它們時會自動顯示於特效面板中。
+        ※檔案選擇的路徑可傳給 obj.load 用於載入圖片・影片。
+        ※這些參數在 MoonSharp 與原生兩種引擎中皆可參照。
+
 
 - 全域變數 -
 
@@ -208,6 +234,18 @@
         obj.track1    : 特效面板 Track1 的當前值 [唯讀]
         obj.track2    : 特效面板 Track2 的當前值 [唯讀]
         obj.track3    : 特效面板 Track3 的當前值 [唯讀]
+
+        ○ 滑桿
+        obj.slider0   : 特效面板 Slider0 的當前值(整數) [唯讀]
+        obj.slider1   : 特效面板 Slider1 的當前值(整數) [唯讀]
+        obj.slider2   : 特效面板 Slider2 的當前值(整數) [唯讀]
+        obj.slider3   : 特效面板 Slider3 的當前值(整數) [唯讀]
+
+        ○ 字串參數
+        obj.text      : 文字輸入框的字串 [唯讀]
+        obj.font      : 字型選擇框的字型名 [唯讀]
+        obj.dir       : 資料夾選擇框的路徑 [唯讀]
+        obj.file_video ～ obj.file_shader : 各檔案選擇框的路徑 [唯讀]
 
         ○ 圖層
         obj.layer     : 物件所在的圖層編號 [唯讀]

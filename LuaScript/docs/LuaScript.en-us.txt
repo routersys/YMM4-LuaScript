@@ -97,6 +97,33 @@
           value ranges within the script. The AviUtl --track / --check / --color headers
           still work as before.
 
+        There are 4 numeric sliders, referenced as obj.slider0 through obj.slider3.
+        The values are integers and do not hold decimals.
+
+        Slider0 : Integer slider (Range: 1 ~ 10)
+        Slider1 : Integer slider (Range: 0 ~ 100)
+        Slider2 : Integer slider (Range: 0 ~ 1000)
+        Slider3 : Integer slider (Range: -1000 ~ 1000)
+
+        String parameters are also available, referenced by the following names.
+
+        obj.text          : String from the text input field
+        obj.font          : Font name from the font selector
+        obj.dir           : Path from the folder selector
+        obj.file_video    : Path of a video file
+        obj.file_audio    : Path of an audio file
+        obj.file_image    : Path of an image file
+        obj.file_project  : Path of a project file
+        obj.file_mp4      : Path of an MP4 file
+        obj.file_exo      : Path of an EXO file
+        obj.file_subtitle : Path of a subtitle file
+        obj.file_shader   : Path of a shader file
+
+        * The sliders and string parameters appear in the effect panel automatically
+          when the script references them.
+        * A file path can be passed to obj.load to load an image or movie.
+        * These parameters are available in both the MoonSharp and native engines.
+
 
 - Global Variables -
 
@@ -219,6 +246,18 @@
         obj.track1    : Current value of Track1 in the effect panel [ReadOnly]
         obj.track2    : Current value of Track2 in the effect panel [ReadOnly]
         obj.track3    : Current value of Track3 in the effect panel [ReadOnly]
+
+        o Sliders
+        obj.slider0   : Current value of Slider0 in the effect panel (integer) [ReadOnly]
+        obj.slider1   : Current value of Slider1 in the effect panel (integer) [ReadOnly]
+        obj.slider2   : Current value of Slider2 in the effect panel (integer) [ReadOnly]
+        obj.slider3   : Current value of Slider3 in the effect panel (integer) [ReadOnly]
+
+        o String parameters
+        obj.text      : String from the text input field [ReadOnly]
+        obj.font      : Font name from the font selector [ReadOnly]
+        obj.dir       : Path from the folder selector [ReadOnly]
+        obj.file_video ~ obj.file_shader : Path from each file selector [ReadOnly]
 
         o Layer
         obj.layer     : Layer number where the object is placed [ReadOnly]

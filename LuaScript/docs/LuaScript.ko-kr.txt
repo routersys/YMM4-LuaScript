@@ -91,6 +91,32 @@
           선언을 동반하지 않으므로 값의 범위는 스크립트 내에서 처리하세요. AviUtl의
           --track / --check / --color 헤더 선언 표시도 기존과 동일하게 사용할 수 있습니다.
 
+        숫자 슬라이더가 4개 있으며, 각 값은 obj.slider0 ～ obj.slider3으로 참조할 수 있습니다.
+        값은 정수이며 소수는 다루지 않습니다.
+
+        Slider0 : 정수 슬라이더 (범위: 1 ～ 10)
+        Slider1 : 정수 슬라이더 (범위: 0 ～ 100)
+        Slider2 : 정수 슬라이더 (범위: 0 ～ 1000)
+        Slider3 : 정수 슬라이더 (범위: -1000 ～ 1000)
+
+        문자열 파라미터도 사용할 수 있으며, 각 값은 다음 이름으로 참조합니다.
+
+        obj.text          : 텍스트 입력란의 문자열
+        obj.font          : 글꼴 선택란의 글꼴 이름
+        obj.dir           : 폴더 선택란의 경로
+        obj.file_video    : 동영상 파일의 경로
+        obj.file_audio    : 음성 파일의 경로
+        obj.file_image    : 이미지 파일의 경로
+        obj.file_project  : 프로젝트 파일의 경로
+        obj.file_mp4      : MP4 파일의 경로
+        obj.file_exo      : EXO 파일의 경로
+        obj.file_subtitle : 자막 파일의 경로
+        obj.file_shader   : 셰이더 파일의 경로
+
+        ※슬라이더와 문자열 파라미터는 스크립트 본문에서 참조하면 이펙트 패널에 자동으로 표시됩니다.
+        ※파일 선택 경로는 obj.load에 전달해 이미지・동영상을 불러오는 데 사용할 수 있습니다.
+        ※이 파라미터들은 MoonSharp과 네이티브 두 엔진에서 모두 참조할 수 있습니다.
+
 
 - 전역 변수 -
 
@@ -210,6 +236,18 @@
         obj.track1    : 이펙트 패널의 Track1 현재값 [읽기 전용]
         obj.track2    : 이펙트 패널의 Track2 현재값 [읽기 전용]
         obj.track3    : 이펙트 패널의 Track3 현재값 [읽기 전용]
+
+        ○ 슬라이더
+        obj.slider0   : 이펙트 패널의 Slider0 현재값(정수) [읽기 전용]
+        obj.slider1   : 이펙트 패널의 Slider1 현재값(정수) [읽기 전용]
+        obj.slider2   : 이펙트 패널의 Slider2 현재값(정수) [읽기 전용]
+        obj.slider3   : 이펙트 패널의 Slider3 현재값(정수) [읽기 전용]
+
+        ○ 문자열 파라미터
+        obj.text      : 텍스트 입력란의 문자열 [읽기 전용]
+        obj.font      : 글꼴 선택란의 글꼴 이름 [읽기 전용]
+        obj.dir       : 폴더 선택란의 경로 [읽기 전용]
+        obj.file_video ～ obj.file_shader : 각 파일 선택란의 경로 [읽기 전용]
 
         ○ 레이어
         obj.layer     : 오브젝트가 배치된 레이어 번호 [읽기 전용]

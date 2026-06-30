@@ -97,6 +97,33 @@
           así que gestione los rangos dentro del script. Las cabeceras --track / --check /
           --color de AviUtl siguen funcionando como antes.
 
+        Hay 4 deslizadores numéricos, referenciados como obj.slider0 ~ obj.slider3.
+        Los valores son enteros y no contienen decimales.
+
+        Slider0 : Deslizador entero (Rango: 1 ~ 10)
+        Slider1 : Deslizador entero (Rango: 0 ~ 100)
+        Slider2 : Deslizador entero (Rango: 0 ~ 1000)
+        Slider3 : Deslizador entero (Rango: -1000 ~ 1000)
+
+        También hay parámetros de cadena, referenciados por los siguientes nombres.
+
+        obj.text          : Cadena del campo de entrada de texto
+        obj.font          : Nombre de fuente del selector de fuentes
+        obj.dir           : Ruta del selector de carpetas
+        obj.file_video    : Ruta de un archivo de video
+        obj.file_audio    : Ruta de un archivo de audio
+        obj.file_image    : Ruta de un archivo de imagen
+        obj.file_project  : Ruta de un archivo de proyecto
+        obj.file_mp4      : Ruta de un archivo MP4
+        obj.file_exo      : Ruta de un archivo EXO
+        obj.file_subtitle : Ruta de un archivo de subtítulos
+        obj.file_shader   : Ruta de un archivo de sombreador
+
+        * Los deslizadores y los parámetros de cadena aparecen en el panel de efectos
+          automáticamente cuando el script los referencia.
+        * Una ruta de archivo puede pasarse a obj.load para cargar una imagen o un video.
+        * Estos parámetros están disponibles en los motores MoonSharp y nativo.
+
 
 - Variables globales -
 
@@ -216,6 +243,18 @@
         obj.track1    : Valor actual de Track1 en el panel de efectos [Solo lectura]
         obj.track2    : Valor actual de Track2 en el panel de efectos [Solo lectura]
         obj.track3    : Valor actual de Track3 en el panel de efectos [Solo lectura]
+
+        o Deslizadores
+        obj.slider0   : Valor actual de Slider0 en el panel de efectos (entero) [Solo lectura]
+        obj.slider1   : Valor actual de Slider1 en el panel de efectos (entero) [Solo lectura]
+        obj.slider2   : Valor actual de Slider2 en el panel de efectos (entero) [Solo lectura]
+        obj.slider3   : Valor actual de Slider3 en el panel de efectos (entero) [Solo lectura]
+
+        o Parámetros de cadena
+        obj.text      : Cadena del campo de entrada de texto [Solo lectura]
+        obj.font      : Nombre de fuente del selector de fuentes [Solo lectura]
+        obj.dir       : Ruta del selector de carpetas [Solo lectura]
+        obj.file_video ~ obj.file_shader : Ruta de cada selector de archivos [Solo lectura]
 
         o Capa
         obj.layer     : Número de capa donde se encuentra el objeto [Solo lectura]

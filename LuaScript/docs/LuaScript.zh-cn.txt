@@ -89,6 +89,32 @@
           自动显示在特效面板中（轨道条始终显示）。该通用用法不带范围・默认值声明，
           因此请在脚本内处理取值范围。AviUtl 的 --track / --check / --color 头声明显示仍可照常使用。
 
+        共有 4 个数值滑块，各值可通过 obj.slider0 ～ obj.slider3 引用。
+        取值为整数，不处理小数。
+
+        Slider0 : 整数滑块 (范围: 1 ～ 10)
+        Slider1 : 整数滑块 (范围: 0 ～ 100)
+        Slider2 : 整数滑块 (范围: 0 ～ 1000)
+        Slider3 : 整数滑块 (范围: -1000 ～ 1000)
+
+        还可使用字符串参数，各值通过以下名称引用。
+
+        obj.text          : 文本输入框的字符串
+        obj.font          : 字体选择框的字体名
+        obj.dir           : 文件夹选择框的路径
+        obj.file_video    : 视频文件的路径
+        obj.file_audio    : 音频文件的路径
+        obj.file_image    : 图像文件的路径
+        obj.file_project  : 项目文件的路径
+        obj.file_mp4      : MP4 文件的路径
+        obj.file_exo      : EXO 文件的路径
+        obj.file_subtitle : 字幕文件的路径
+        obj.file_shader   : 着色器文件的路径
+
+        ※滑块与字符串参数在脚本本体引用它们时会自动显示在特效面板中。
+        ※文件选择的路径可传给 obj.load 用于加载图像・视频。
+        ※这些参数在 MoonSharp 与原生两种引擎中均可引用。
+
 
 - 全局变量 -
 
@@ -208,6 +234,18 @@
         obj.track1    : 特效面板 Track1 的当前值 [只读]
         obj.track2    : 特效面板 Track2 的当前值 [只读]
         obj.track3    : 特效面板 Track3 的当前值 [只读]
+
+        ○ 滑块
+        obj.slider0   : 特效面板 Slider0 的当前值(整数) [只读]
+        obj.slider1   : 特效面板 Slider1 的当前值(整数) [只读]
+        obj.slider2   : 特效面板 Slider2 的当前值(整数) [只读]
+        obj.slider3   : 特效面板 Slider3 的当前值(整数) [只读]
+
+        ○ 字符串参数
+        obj.text      : 文本输入框的字符串 [只读]
+        obj.font      : 字体选择框的字体名 [只读]
+        obj.dir       : 文件夹选择框的路径 [只读]
+        obj.file_video ～ obj.file_shader : 各文件选择框的路径 [只读]
 
         ○ 图层
         obj.layer     : 对象所在的图层编号 [只读]
