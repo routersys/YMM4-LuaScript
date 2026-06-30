@@ -80,7 +80,8 @@ namespace LuaScript.Engine
                 return false;
             }
 
-            EnsureWorker(width, height, NativeProtocol.MinStringParamsCapacity);
+            int stringCapacity = ResolveStringCapacity(_stringParamsCapacity, MeasureStringParameters(stringParameters));
+            EnsureWorker(width, height, stringCapacity);
             var view = _view!;
 
             view.WriteArray(NativeProtocol.FieldsOffset, fields, 0, NativeProtocol.FieldCount);
@@ -151,6 +152,31 @@ namespace LuaScript.Engine
             }
 
             return true;
+        }
+
+        private static int MeasureStringParameters(IReadOnlyDictionary<string, string> stringParameters)
+        {
+            int total = 4;
+            foreach (var pair in stringParameters)
+                total += 8 + Encoding.UTF8.GetByteCount(pair.Key) + Encoding.UTF8.GetByteCount(pair.Value ?? string.Empty);
+            return total;
+        }
+
+        private static int ResolveStringCapacity(int current, int required)
+        {
+            int capacity = current;
+            while (capacity < required)
+            {
+                if (capacity > int.MaxValue / 2)
+                {
+                    capacity = required;
+                    break;
+                }
+                capacity *= 2;
+            }
+            while (capacity > NativeProtocol.MinStringParamsCapacity && required <= capacity / 2)
+                capacity /= 2;
+            return capacity;
         }
 
         private void WriteStringParameters(MemoryMappedViewAccessor view, IReadOnlyDictionary<string, string> stringParameters)

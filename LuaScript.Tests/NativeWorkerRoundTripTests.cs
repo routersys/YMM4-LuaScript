@@ -72,6 +72,31 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void StringParameters_GrowAndShrinkAroundCapacity()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            string big = new string('x', 100 * 1024);
+
+            var large = new System.Collections.Generic.Dictionary<string, string> { ["text"] = big };
+            var fieldsLarge = Fields(2, 2, 0d);
+            bool ok = _worker.Execute(
+                "obj.x = string.len(obj.text)",
+                fieldsLarge, large, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out string? error);
+            Assert.True(ok, error);
+            Assert.Equal(big.Length, fieldsLarge[NativeProtocol.X]);
+
+            var small = new System.Collections.Generic.Dictionary<string, string> { ["text"] = "ok" };
+            var fieldsSmall = Fields(2, 2, 0d);
+            ok = _worker.Execute(
+                "obj.x = string.len(obj.text)",
+                fieldsSmall, small, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, out _, out _, out _, out _, out _, out error);
+            Assert.True(ok, error);
+            Assert.Equal(2d, fieldsSmall[NativeProtocol.X]);
+        }
+
+        [Fact]
         public void PixelScript_MatchesExpectedGrayscale()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
