@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Reflection;
 using System.Windows.Media;
@@ -18,11 +19,14 @@ namespace LuaScript
         {
             public required IVideoEffect Model;
             public required IVideoEffectProcessor Processor;
-            public required AviUtlEffectMapping Mapping;
+            public required AviUtlEffectMapping? Mapping;
             public required int RequestIndex;
         }
 
-        private static Dictionary<string, Type>? _registry;
+        private static readonly AviUtlParameterMapping Identity = new(string.Empty, string.Empty, 1d, 0d);
+
+        private static Dictionary<string, Type>? _typeRegistry;
+        private static Dictionary<string, Type>? _nameRegistry;
         private static readonly Dictionary<Type, Dictionary<string, PropertyInfo>> _propertyCache = [];
 
         private readonly IGraphicsDevicesAndContext _devices;
@@ -81,10 +85,19 @@ namespace LuaScript
 
             for (int i = 0; i < requests.Count; i++)
             {
-                if (!AviUtlCompatMap.Default.TryResolve(requests[i].Name, target, out var mapping))
-                    continue;
-
-                var type = Resolve(mapping.TargetType);
+                Type? type;
+                AviUtlEffectMapping? mapping;
+                if (AviUtlCompatMap.Default.TryResolve(requests[i].Name, target, out var resolved) &&
+                    ResolveType(resolved.TargetType) is { } mappedType)
+                {
+                    mapping = resolved;
+                    type = mappedType;
+                }
+                else
+                {
+                    mapping = null;
+                    type = ResolveName(requests[i].Name);
+                }
                 if (type is null)
                     continue;
 
@@ -125,18 +138,25 @@ namespace LuaScript
             return true;
         }
 
-        private static Type? Resolve(string targetType)
+        private static Type? ResolveType(string targetType)
         {
-            var registry = GetRegistry();
-            return registry.TryGetValue(Normalize(targetType), out var type) ? type : null;
+            EnsureRegistries();
+            return _typeRegistry!.TryGetValue(Normalize(targetType), out var type) ? type : null;
         }
 
-        private static Dictionary<string, Type> GetRegistry()
+        private static Type? ResolveName(string name)
         {
-            if (_registry is not null)
-                return _registry;
+            EnsureRegistries();
+            return _nameRegistry!.TryGetValue(Normalize(name), out var type) ? type : null;
+        }
 
-            var map = new Dictionary<string, Type>(StringComparer.Ordinal);
+        private static void EnsureRegistries()
+        {
+            if (_typeRegistry is not null && _nameRegistry is not null)
+                return;
+
+            var byType = new Dictionary<string, Type>(StringComparer.Ordinal);
+            var byName = new Dictionary<string, Type>(StringComparer.Ordinal);
             try
             {
                 foreach (var factory in EffectFactories.VideoEffectFactories)
@@ -144,24 +164,35 @@ namespace LuaScript
                     try
                     {
                         var type = factory.EffectType;
-                        if (type is not null)
-                            map.TryAdd(Normalize(type.Name), type);
+                        if (type is null)
+                            continue;
+                        byType.TryAdd(Normalize(type.Name), type);
+                        Register(byName, factory.Name, type);
+                        foreach (var keyword in factory.Keywords)
+                            Register(byName, keyword, type);
                     }
                     catch
                     {
                     }
                 }
-                _registry = map;
             }
             catch
             {
             }
-            return map;
+            _typeRegistry = byType;
+            _nameRegistry = byName;
+        }
+
+        private static void Register(Dictionary<string, Type> map, string? key, Type type)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return;
+            map.TryAdd(Normalize(key), type);
         }
 
         private static string Normalize(string value) => value.Trim().ToLowerInvariant();
 
-        private static void ApplyParameters(IVideoEffect model, AviUtlEffectMapping mapping, IReadOnlyList<KeyValuePair<string, object>> arguments)
+        private static void ApplyParameters(IVideoEffect model, AviUtlEffectMapping? mapping, IReadOnlyList<KeyValuePair<string, object>> arguments)
         {
             if (arguments.Count == 0)
                 return;
@@ -169,10 +200,21 @@ namespace LuaScript
             var properties = GetProperties(model.GetType());
             foreach (var (key, value) in arguments)
             {
-                if (!mapping.TryGetParameter(key, out var parameter))
-                    continue;
-                if (!properties.TryGetValue(Normalize(parameter.Property), out var property))
-                    continue;
+                PropertyInfo? property;
+                AviUtlParameterMapping parameter;
+                if (mapping is not null)
+                {
+                    if (!mapping.TryGetParameter(key, out parameter) ||
+                        !properties.TryGetValue(Normalize(parameter.Property), out property))
+                        continue;
+                }
+                else
+                {
+                    if (!properties.TryGetValue(Normalize(key), out property))
+                        continue;
+                    parameter = Identity;
+                }
+
                 try
                 {
                     SetValue(model, property, value, parameter);
@@ -198,6 +240,15 @@ namespace LuaScript
                     continue;
 
                 map.TryAdd(Normalize(property.Name), property);
+                try
+                {
+                    var display = property.GetCustomAttribute<DisplayAttribute>()?.GetName();
+                    if (!string.IsNullOrWhiteSpace(display))
+                        map.TryAdd(Normalize(display), property);
+                }
+                catch
+                {
+                }
             }
 
             _propertyCache[type] = map;
