@@ -337,6 +337,8 @@ namespace LuaScript
                 _objTable!["slider1"] = ctx.Slider1;
                 _objTable!["slider2"] = ctx.Slider2;
                 _objTable!["slider3"] = ctx.Slider3;
+                foreach (var parameter in ctx.StringParameters)
+                    _objTable![parameter.Key] = parameter.Value;
                 _objTable!["check0"] = ctx.Check0;
                 _objTable!["check1"] = ctx.Check1;
                 _objTable!["check2"] = ctx.Check2;
