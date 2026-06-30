@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<aviUtlCompat>
+  <effect engine="both" names="ぼかし" target="GaussianBlurEffect">
+    <param name="範囲" property="Blur" scale="0.5" />
+    <param name="サイズ固定" property="IsHardBorderMode" />
+  </effect>
+  <effect engine="both" names="境界ぼかし" target="BorderBlurEffect">
+    <param name="範囲" property="Blur" />
+  </effect>
+  <effect engine="both" names="方向ブラー" target="DirectionalBlurEffect">
+    <param name="範囲" property="StandardDeviation" scale="0.5" />
+    <param name="角度" property="Angle" />
+    <param name="サイズ固定" property="IsHardBorderMode" />
+  </effect>
+  <effect engine="both" names="放射ブラー" target="RadialBlurEffect">
+    <param name="範囲" property="Blur" />
+    <param name="X" property="X" />
+    <param name="Y" property="Y" />
+    <param name="サイズを固定" property="IsHardBorderMode" />
+  </effect>
+  <effect engine="both" names="閃光" target="RadialLightEffect">
+    <param name="範囲" property="Value" />
+    <param name="X" property="X" />
+    <param name="Y" property="Y" />
+    <param name="サイズを固定" property="IsHardBorderMode" />
+  </effect>
+  <effect engine="both" names="クロマキー" target="ChromaKeyEffect">
+    <param name="色相範囲" property="Tolerance" scale="0.390625" />
+    <param name="境界補正" property="Feather" />
+  </effect>
+  <effect engine="both" names="クリッピング" target="CropEffect">
+    <param name="上" property="Top" />
+    <param name="下" property="Bottom" />
+    <param name="左" property="Left" />
+    <param name="右" property="Right" />
+    <param name="中心の位置を変更" property="IsCentering" />
+  </effect>
+  <effect engine="both" names="斜めクリッピング" target="CropByAngleEffect">
+    <param name="中心X" property="X" />
+    <param name="中心Y" property="Y" />
+    <param name="角度" property="Angle" />
+    <param name="ぼかし" property="Blur" scale="0.5" />
+    <param name="幅" property="Width" />
+  </effect>
+  <effect engine="both" names="領域拡張" target="MarginEffect">
+    <param name="上" property="Top" />
+    <param name="下" property="Bottom" />
+    <param name="左" property="Left" />
+    <param name="右" property="Right" />
+  </effect>
+  <effect engine="both" names="座標" target="DrawPositionEffect">
+    <param name="X" property="X" />
+    <param name="Y" property="Y" />
+    <param name="Z" property="Z" />
+  </effect>
+  <effect engine="both" names="回転" target="RotateEffect">
+    <param name="X" property="X" />
+    <param name="Y" property="Y" />
+    <param name="Z" property="Z" />
+  </effect>
+  <effect engine="both" names="リサイズ" target="ZoomEffect">
+    <param name="拡大率" property="Zoom" />
+    <param name="X" property="ZoomX" />
+    <param name="Y" property="ZoomY" />
+    <param name="補間なし" property="IsNearestNeighbor" />
+  </effect>
+  <effect engine="both" names="画像ループ" target="TilingEffect">
+    <param name="横回数" property="X" />
+    <param name="縦回数" property="Y" />
+  </effect>
+  <effect engine="both" names="極座標変換" target="PolarTransformEffect">
+    <param name="中心幅" property="CoreWidth" />
+    <param name="渦巻" property="TwistAngle" scale="360" />
+  </effect>
+  <effect engine="both" names="グラデーション" target="GradientEffect">
+    <param name="強さ" property="Opacity" />
+    <param name="中心X" property="X" />
+    <param name="中心Y" property="Y" />
+    <param name="角度" property="Rotation" />
+    <param name="幅" property="Size" />
+  </effect>
+  <effect engine="both" names="単色化" target="MonocolorizationEffect">
+    <param name="強さ" property="Strength" />
+    <param name="輝度を保持する" property="KeepBrightness" />
+  </effect>
+  <effect engine="both" names="縁取り" target="OutlineEffect">
+    <param name="サイズ" property="StrokeThickness" />
+    <param name="ぼかし" property="Blur" />
+  </effect>
+  <effect engine="both" names="反転" target="InvertEffect" />
+  <effect engine="both" names="モザイク" target="MosaicEffect">
+    <param name="サイズ" property="Size" />
+  </effect>
+  <effect engine="both" names="ディスプレイスメントマップ" target="DisplacementMapEffect">
+    <param name="ぼかし" property="Blur" scale="0.5" />
+  </effect>
+  <effect engine="both" names="動画ファイル合成" target="TextureEffect">
+    <param name="X" property="X" />
+    <param name="Y" property="Y" />
+    <param name="拡大率" property="Zoom" />
+  </effect>
+  <effect engine="both" names="色調補正" target="ColorCorrectionEffect">
+    <param name="明るさ" property="Lightness" />
+    <param name="ｺﾝﾄﾗｽﾄ" property="Contrast" />
+    <param name="色相" property="HueRotation" />
+    <param name="輝度" property="Brightness" />
+    <param name="彩度" property="Saturation" />
+  </effect>
+  <effect engine="both" names="色ずれ" target="ColorShiftEffect">
+    <param name="ずれ幅" property="Shift" />
+    <param name="角度" property="Angle" />
+    <param name="強さ" property="Strength" />
+  </effect>
+</aviUtlCompat>
