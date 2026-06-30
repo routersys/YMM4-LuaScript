@@ -121,6 +121,10 @@ namespace LuaScript.Engine
         public const int Check2 = 55;
         public const int Check3 = 56;
         public const int Color = 57;
+        public const int Slider0 = 58;
+        public const int Slider1 = 59;
+        public const int Slider2 = 60;
+        public const int Slider3 = 61;
 
         public const int FirstWritableField = X;
         public const int LastWritableField = Rzr;

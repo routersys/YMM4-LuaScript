@@ -38,6 +38,10 @@ namespace LuaScript.Engine
             f[NativeProtocol.Track1] = ctx.Track1;
             f[NativeProtocol.Track2] = ctx.Track2;
             f[NativeProtocol.Track3] = ctx.Track3;
+            f[NativeProtocol.Slider0] = ctx.Slider0;
+            f[NativeProtocol.Slider1] = ctx.Slider1;
+            f[NativeProtocol.Slider2] = ctx.Slider2;
+            f[NativeProtocol.Slider3] = ctx.Slider3;
             f[NativeProtocol.Check0] = ctx.Check0 ? 1d : 0d;
             f[NativeProtocol.Check1] = ctx.Check1 ? 1d : 0d;
             f[NativeProtocol.Check2] = ctx.Check2 ? 1d : 0d;

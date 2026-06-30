@@ -483,6 +483,7 @@ local function loadFields()
     obj.rx = f64[20]; obj.ry = f64[21]; obj.rz = f64[22]
     obj.rxr = f64[23]; obj.ryr = f64[24]; obj.rzr = f64[25]
     obj.track0 = f64[26]; obj.track1 = f64[27]; obj.track2 = f64[28]; obj.track3 = f64[29]
+    obj.slider0 = f64[58]; obj.slider1 = f64[59]; obj.slider2 = f64[60]; obj.slider3 = f64[61]
     obj.time = f64[30]; obj.frame = f64[31]; obj.totalframe = f64[32]; obj.totaltime = f64[33]
     obj.t = f64[34]; obj.framerate = f64[35]; obj.layer = f64[36]; obj.index = f64[37]; obj.num = f64[38]
     scene.width = f64[39]; scene.height = f64[40]; scene.cx = f64[41]; scene.cy = f64[42]
