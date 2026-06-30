@@ -116,6 +116,19 @@
 <pre><code>--param:local speed = 90
 obj.rz = time * speed</code></pre>
 
+<h2>AviUtl 互換マップの対象エンジン</h2>
+
+<p>
+<code>obj.effect</code> が参照する互換マップの対象エンジンを切り替えます。
+指定子 <code>--!aviutl</code> または <code>--!aviutl2</code> を書くと、
+そのエンジンに対応するエフェクトだけを解決します。
+指定子を書かないときは <code>--!aviutl</code> として扱います。詳細は
+<a href="obj-functions.html">obj の関数</a>を参照してください。
+</p>
+
+<pre><code>--!aviutl2
+obj.effect("ぼかし", "範囲", 20)</code></pre>
+
 <div class="pager">
 <a href="engines.html">← エンジンと高速化</a>
 <a href="samples.html">サンプル集 →</a>
