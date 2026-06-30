@@ -29,6 +29,11 @@ namespace LuaScript
         public double Track2 { get; set; }
         public double Track3 { get; set; }
 
+        public double Slider0 { get; set; }
+        public double Slider1 { get; set; }
+        public double Slider2 { get; set; }
+        public double Slider3 { get; set; }
+
         public bool Check0 { get; set; }
         public bool Check1 { get; set; }
         public bool Check2 { get; set; }
