@@ -652,6 +652,41 @@
                 obj.getvalue, and obj.setoption / obj.getoption / obj.pixeloption are
                 supported. See "obj Table - Functions" for details.
 
+        o AviUtl / AviUtl2 compatibility map for obj.effect
+                obj.effect("effect name", "parameter name", value, ...) is resolved
+                through a declarative compatibility map. Only effects and parameters
+                declared in the map are resolved, and values pass through the declared
+                scale/offset conversion before reaching the YMM4 properties. The map is
+                built as the inverse of YMM4's own AviUtl export (.exo output), so it
+                round-trips exactly. The target engine is selected with --!aviutl
+                (default) / --!aviutl2.
+                The effect names declared in the map and their main parameters are as
+                follows.
+                  ぼかし: 範囲, サイズ固定
+                  境界ぼかし: 範囲
+                  方向ブラー: 範囲, 角度, サイズ固定
+                  放射ブラー: 範囲, X, Y, サイズを固定
+                  閃光: 範囲, X, Y, サイズを固定
+                  クロマキー: 色相範囲, 境界補正
+                  クリッピング: 上, 下, 左, 右, 中心の位置を変更
+                  斜めクリッピング: 中心X, 中心Y, 角度, ぼかし, 幅
+                  領域拡張: 上, 下, 左, 右
+                  座標: X, Y, Z
+                  回転: X, Y, Z
+                  リサイズ: 拡大率, X, Y, 補間なし
+                  画像ループ: 横回数, 縦回数
+                  極座標変換: 中心幅, 渦巻
+                  グラデーション: 強さ, 中心X, 中心Y, 角度, 幅
+                  単色化: 強さ, 輝度を保持する
+                  縁取り: サイズ, ぼかし
+                  反転: -
+                  モザイク: サイズ
+                  ディスプレイスメントマップ: ぼかし
+                  動画ファイル合成: X, Y, 拡大率
+                  色調補正: 明るさ, ｺﾝﾄﾗｽﾄ, 色相, 輝度, 彩度
+                  色ずれ: ずれ幅, 角度, 強さ
+                色調補正 and 色ずれ correspond to community plugin effects.
+
         The following are out of scope for this layer. Scripts that call them will not
         behave as intended.
                 x Module loading via require, and arbitrary file access such as io /

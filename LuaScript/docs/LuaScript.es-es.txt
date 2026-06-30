@@ -653,6 +653,42 @@
                 obj.getvalue y obj.setoption / obj.getoption / obj.pixeloption.
                 Consulte "Tabla obj - Funciones" para más detalles.
 
+        o Mapa de compatibilidad AviUtl / AviUtl2 para obj.effect
+                obj.effect("nombre de efecto", "nombre de parámetro", valor, ...) se
+                resuelve mediante un mapa de compatibilidad declarativo. Solo se
+                resuelven los efectos y parámetros declarados en el mapa, y los valores
+                pasan por la conversión de escala/desplazamiento declarada antes de
+                llegar a las propiedades de YMM4. El mapa se construye como la inversa de
+                la propia exportación de AviUtl de YMM4 (salida .exo), por lo que es
+                reversible de forma exacta. El motor de destino se selecciona con
+                --!aviutl (predeterminado) / --!aviutl2.
+                Los nombres de efecto declarados en el mapa y sus parámetros principales
+                son los siguientes.
+                  ぼかし: 範囲, サイズ固定
+                  境界ぼかし: 範囲
+                  方向ブラー: 範囲, 角度, サイズ固定
+                  放射ブラー: 範囲, X, Y, サイズを固定
+                  閃光: 範囲, X, Y, サイズを固定
+                  クロマキー: 色相範囲, 境界補正
+                  クリッピング: 上, 下, 左, 右, 中心の位置を変更
+                  斜めクリッピング: 中心X, 中心Y, 角度, ぼかし, 幅
+                  領域拡張: 上, 下, 左, 右
+                  座標: X, Y, Z
+                  回転: X, Y, Z
+                  リサイズ: 拡大率, X, Y, 補間なし
+                  画像ループ: 横回数, 縦回数
+                  極座標変換: 中心幅, 渦巻
+                  グラデーション: 強さ, 中心X, 中心Y, 角度, 幅
+                  単色化: 強さ, 輝度を保持する
+                  縁取り: サイズ, ぼかし
+                  反転: -
+                  モザイク: サイズ
+                  ディスプレイスメントマップ: ぼかし
+                  動画ファイル合成: X, Y, 拡大率
+                  色調補正: 明るさ, ｺﾝﾄﾗｽﾄ, 色相, 輝度, 彩度
+                  色ずれ: ずれ幅, 角度, 強さ
+                色調補正 y 色ずれ corresponden a efectos del complemento de la comunidad.
+
         Lo siguiente queda fuera del alcance de esta capa. Los scripts que lo llamen no
         se comportarán como se espera.
                 x Carga de módulos mediante require y acceso arbitrario a archivos como
