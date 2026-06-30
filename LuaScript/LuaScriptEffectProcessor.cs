@@ -412,6 +412,18 @@ namespace LuaScript
             yield return new("text", item.Text);
             yield return new("font", item.Font);
             yield return new("dir", item.Directory);
+            yield return new("file_video", item.FileVideo);
+            yield return new("file_audio", item.FileAudio);
+            yield return new("file_image", item.FileImage);
+            yield return new("file_project", item.FileProject);
+            yield return new("file_mp4", item.FileMp4);
+            yield return new("file_exo", item.FileExo);
+            yield return new("file_transition", item.FileTransition);
+            yield return new("file_tachie", item.FileTachie);
+            yield return new("file_texture", item.FileTexture);
+            yield return new("file_thumbnail", item.FileThumbnail);
+            yield return new("file_subtitle", item.FileSubtitle);
+            yield return new("file_shader", item.FileShader);
         }
 
         private string BuildStringSignature()

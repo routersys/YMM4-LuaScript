@@ -11,6 +11,7 @@ using YukkuriMovieMaker.ItemEditor.CustomVisibilityAttributes;
 using YukkuriMovieMaker.Player.Video;
 using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Plugin.Effects;
+using YukkuriMovieMaker.Settings;
 
 namespace LuaScript
 {
@@ -139,6 +140,78 @@ namespace LuaScript
         public string Directory { get => _directory; set => Set(ref _directory, value); }
         string _directory = string.Empty;
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileVideo), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.VideoItem)]
+        [ShowPropertyEditorWhen(nameof(IsFileVideoVisible), true)]
+        public string FileVideo { get => _fileVideo; set => Set(ref _fileVideo, value); }
+        string _fileVideo = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileAudio), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.AudioItem)]
+        [ShowPropertyEditorWhen(nameof(IsFileAudioVisible), true)]
+        public string FileAudio { get => _fileAudio; set => Set(ref _fileAudio, value); }
+        string _fileAudio = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileImage), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.ImageItem)]
+        [ShowPropertyEditorWhen(nameof(IsFileImageVisible), true)]
+        public string FileImage { get => _fileImage; set => Set(ref _fileImage, value); }
+        string _fileImage = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileProject), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Project)]
+        [ShowPropertyEditorWhen(nameof(IsFileProjectVisible), true)]
+        public string FileProject { get => _fileProject; set => Set(ref _fileProject, value); }
+        string _fileProject = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileMp4), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.MP4)]
+        [ShowPropertyEditorWhen(nameof(IsFileMp4Visible), true)]
+        public string FileMp4 { get => _fileMp4; set => Set(ref _fileMp4, value); }
+        string _fileMp4 = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileExo), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Exo)]
+        [ShowPropertyEditorWhen(nameof(IsFileExoVisible), true)]
+        public string FileExo { get => _fileExo; set => Set(ref _fileExo, value); }
+        string _fileExo = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTransition), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Transition)]
+        [ShowPropertyEditorWhen(nameof(IsFileTransitionVisible), true)]
+        public string FileTransition { get => _fileTransition; set => Set(ref _fileTransition, value); }
+        string _fileTransition = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTachie), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.TachieParts)]
+        [ShowPropertyEditorWhen(nameof(IsFileTachieVisible), true)]
+        public string FileTachie { get => _fileTachie; set => Set(ref _fileTachie, value); }
+        string _fileTachie = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTexture), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Texture)]
+        [ShowPropertyEditorWhen(nameof(IsFileTextureVisible), true)]
+        public string FileTexture { get => _fileTexture; set => Set(ref _fileTexture, value); }
+        string _fileTexture = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileThumbnail), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Thumbnail)]
+        [ShowPropertyEditorWhen(nameof(IsFileThumbnailVisible), true)]
+        public string FileThumbnail { get => _fileThumbnail; set => Set(ref _fileThumbnail, value); }
+        string _fileThumbnail = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileSubtitle), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.Subtitle)]
+        [ShowPropertyEditorWhen(nameof(IsFileSubtitleVisible), true)]
+        public string FileSubtitle { get => _fileSubtitle; set => Set(ref _fileSubtitle, value); }
+        string _fileSubtitle = string.Empty;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileShader), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
+        [FileSelector(FileGroupType.PixelShaderSource)]
+        [ShowPropertyEditorWhen(nameof(IsFileShaderVisible), true)]
+        public string FileShader { get => _fileShader; set => Set(ref _fileShader, value); }
+        string _fileShader = string.Empty;
+
         [JsonIgnore] public bool IsSlider0Visible { get => _isSlider0Visible; private set => Set(ref _isSlider0Visible, value); }
         [JsonIgnore] public bool IsSlider1Visible { get => _isSlider1Visible; private set => Set(ref _isSlider1Visible, value); }
         [JsonIgnore] public bool IsSlider2Visible { get => _isSlider2Visible; private set => Set(ref _isSlider2Visible, value); }
@@ -155,6 +228,18 @@ namespace LuaScript
         [JsonIgnore] public bool IsTextVisible { get => _isTextVisible; private set => Set(ref _isTextVisible, value); }
         [JsonIgnore] public bool IsFontVisible { get => _isFontVisible; private set => Set(ref _isFontVisible, value); }
         [JsonIgnore] public bool IsDirectoryVisible { get => _isDirectoryVisible; private set => Set(ref _isDirectoryVisible, value); }
+        [JsonIgnore] public bool IsFileVideoVisible { get => _isFileVideoVisible; private set => Set(ref _isFileVideoVisible, value); }
+        [JsonIgnore] public bool IsFileAudioVisible { get => _isFileAudioVisible; private set => Set(ref _isFileAudioVisible, value); }
+        [JsonIgnore] public bool IsFileImageVisible { get => _isFileImageVisible; private set => Set(ref _isFileImageVisible, value); }
+        [JsonIgnore] public bool IsFileProjectVisible { get => _isFileProjectVisible; private set => Set(ref _isFileProjectVisible, value); }
+        [JsonIgnore] public bool IsFileMp4Visible { get => _isFileMp4Visible; private set => Set(ref _isFileMp4Visible, value); }
+        [JsonIgnore] public bool IsFileExoVisible { get => _isFileExoVisible; private set => Set(ref _isFileExoVisible, value); }
+        [JsonIgnore] public bool IsFileTransitionVisible { get => _isFileTransitionVisible; private set => Set(ref _isFileTransitionVisible, value); }
+        [JsonIgnore] public bool IsFileTachieVisible { get => _isFileTachieVisible; private set => Set(ref _isFileTachieVisible, value); }
+        [JsonIgnore] public bool IsFileTextureVisible { get => _isFileTextureVisible; private set => Set(ref _isFileTextureVisible, value); }
+        [JsonIgnore] public bool IsFileThumbnailVisible { get => _isFileThumbnailVisible; private set => Set(ref _isFileThumbnailVisible, value); }
+        [JsonIgnore] public bool IsFileSubtitleVisible { get => _isFileSubtitleVisible; private set => Set(ref _isFileSubtitleVisible, value); }
+        [JsonIgnore] public bool IsFileShaderVisible { get => _isFileShaderVisible; private set => Set(ref _isFileShaderVisible, value); }
 
         bool _isSlider0Visible;
         bool _isSlider1Visible;
@@ -172,6 +257,18 @@ namespace LuaScript
         bool _isTextVisible;
         bool _isFontVisible;
         bool _isDirectoryVisible;
+        bool _isFileVideoVisible;
+        bool _isFileAudioVisible;
+        bool _isFileImageVisible;
+        bool _isFileProjectVisible;
+        bool _isFileMp4Visible;
+        bool _isFileExoVisible;
+        bool _isFileTransitionVisible;
+        bool _isFileTachieVisible;
+        bool _isFileTextureVisible;
+        bool _isFileThumbnailVisible;
+        bool _isFileSubtitleVisible;
+        bool _isFileShaderVisible;
 
         private void UpdateLayout()
         {
@@ -197,6 +294,18 @@ namespace LuaScript
             IsTextVisible = usage.Uses("text");
             IsFontVisible = usage.Uses("font");
             IsDirectoryVisible = usage.Uses("dir");
+            IsFileVideoVisible = usage.Uses("file_video");
+            IsFileAudioVisible = usage.Uses("file_audio");
+            IsFileImageVisible = usage.Uses("file_image");
+            IsFileProjectVisible = usage.Uses("file_project");
+            IsFileMp4Visible = usage.Uses("file_mp4");
+            IsFileExoVisible = usage.Uses("file_exo");
+            IsFileTransitionVisible = usage.Uses("file_transition");
+            IsFileTachieVisible = usage.Uses("file_tachie");
+            IsFileTextureVisible = usage.Uses("file_texture");
+            IsFileThumbnailVisible = usage.Uses("file_thumbnail");
+            IsFileSubtitleVisible = usage.Uses("file_subtitle");
+            IsFileShaderVisible = usage.Uses("file_shader");
 
             SeedDefaults(layout);
         }
