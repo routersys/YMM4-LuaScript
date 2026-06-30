@@ -500,6 +500,20 @@ local function loadFields()
     sandbox.color = (f64[57] >= 0) and f64[57] or nil
 end
 
+local function loadStringParams()
+    if i32[OFF_STRING_PARAMS_LEN] <= 0 then return end
+    local p = base + STRING_PARAMS_OFFSET
+    local count = ffi.cast("int32_t*", p)[0]
+    local pos = 4
+    for _ = 1, count do
+        local nameLen = ffi.cast("int32_t*", p + pos)[0]; pos = pos + 4
+        local name = ffi.string(p + pos, nameLen); pos = pos + nameLen
+        local valLen = ffi.cast("int32_t*", p + pos)[0]; pos = pos + 4
+        local val = ffi.string(p + pos, valLen); pos = pos + valLen
+        obj[name] = val
+    end
+end
+
 local function storeFields()
     for i = FIRST_WRITABLE, LAST_WRITABLE do
         local key
@@ -538,6 +552,7 @@ while true do
 
     if compiledChunk and code == compiledCode then
         loadFields()
+        loadStringParams()
         cacheTag = nil
         for k in pairs(options) do options[k] = nil end
         for k in pairs(pixeloptions) do pixeloptions[k] = nil end

@@ -621,7 +621,7 @@ namespace LuaScript
             byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
 
             bool ok = _nativeWorker.Execute(
-                script, _nativeFields, buffer, imgW, imgH, NativeTimeoutMilliseconds,
+                script, _nativeFields, ctx.StringParameters, buffer, imgW, imgH, NativeTimeoutMilliseconds,
                 (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
                 NativeLoadFigure,
                 NativeLoadText,

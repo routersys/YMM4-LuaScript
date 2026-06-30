@@ -43,6 +43,7 @@ namespace LuaScript.Engine
         public bool Execute(
             string script,
             double[] fields,
+            IReadOnlyDictionary<string, string> stringParameters,
             byte[] pixels,
             int width,
             int height,
@@ -79,6 +80,7 @@ namespace LuaScript.Engine
             var view = _view!;
 
             view.WriteArray(NativeProtocol.FieldsOffset, fields, 0, NativeProtocol.FieldCount);
+            WriteStringParameters(view, stringParameters);
             view.Write(NativeProtocol.OffWidth, width);
             view.Write(NativeProtocol.OffHeight, height);
             view.Write(NativeProtocol.OffScriptLen, scriptBytes.Length);
@@ -145,6 +147,28 @@ namespace LuaScript.Engine
             }
 
             return true;
+        }
+
+        private static void WriteStringParameters(MemoryMappedViewAccessor view, IReadOnlyDictionary<string, string> stringParameters)
+        {
+            long basePos = NativeProtocol.StringParamsOffset;
+            long limit = basePos + NativeProtocol.StringParamsMax;
+            long pos = basePos + 4;
+            int count = 0;
+            foreach (var pair in stringParameters)
+            {
+                byte[] name = Encoding.UTF8.GetBytes(pair.Key);
+                byte[] value = Encoding.UTF8.GetBytes(pair.Value ?? string.Empty);
+                if (pos + 8 + name.Length + value.Length > limit)
+                    break;
+                view.Write(pos, name.Length); pos += 4;
+                view.WriteArray(pos, name, 0, name.Length); pos += name.Length;
+                view.Write(pos, value.Length); pos += 4;
+                view.WriteArray(pos, value, 0, value.Length); pos += value.Length;
+                count++;
+            }
+            view.Write(basePos, count);
+            view.Write(NativeProtocol.OffStringParamsLen, (int)(pos - basePos));
         }
 
         private void DispatchCallback(
