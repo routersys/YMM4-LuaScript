@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>obj の関数 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>obj の関数</h1>
+
+<p>
+<code>obj</code> には値だけでなく関数も用意されています。他アイテムの参照、ピクセル操作、
+図形やテキストの生成、他エフェクトの適用などができます。座標などの値メンバーは
+<a href="obj.html">obj オブジェクト</a> を参照してください。
+</p>
+
+<h2>obj.getobject — 他アイテムの参照</h2>
+
+<p>
+<code>obj.getobject(tag [, frame])</code> は、対象アイテムの「備考」欄に入力した文字列を <code>tag</code> として、
+そのアイテムの描画情報を取得します。備考欄はプロパティエリアの上側にあります。
+第 2 引数 <code>frame</code> を指定すると、そのタイムラインフレーム時点の値を取得します（省略時は現在フレーム）。
+一致するアイテムが無い場合は <code>nil</code> を返します。
+</p>
+
+<p>
+返り値は対象アイテム自身の座標・回転・拡大率であり、グループ制御・カメラ制御による変形は含みません。
+同じタグのアイテムが複数あるときは、対象フレームで表示中のものが優先されます。
+</p>
+
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>exist</code></td><td>対象フレームが表示期間内か（boolean）</td></tr>
+<tr><td><code>x</code> / <code>y</code> / <code>z</code></td><td>描画位置（ピクセル）</td></tr>
+<tr><td><code>zoom</code> / <code>sx</code> / <code>sy</code></td><td>拡大率（1.0 で等倍）。<code>sx</code>・<code>sy</code> は <code>zoom</code> と同じ値</td></tr>
+<tr><td><code>rz</code> / <code>rzr</code></td><td>Z 軸回転角（度 / ラジアン）</td></tr>
+<tr><td><code>rx</code> / <code>ry</code> / <code>rxr</code> / <code>ryr</code></td><td>常に 0（X・Y 軸回転は取得しません）</td></tr>
+<tr><td><code>alpha</code></td><td>不透明度（0.0 ～ 255.0）</td></tr>
+<tr><td><code>layer</code></td><td>レイヤー番号</td></tr>
+</table>
+
+<h3>発射元の座標に合わせる</h3>
+<pre><code>local src = obj.getobject("routersys")
+if src then
+    obj.x = src.x
+    obj.y = src.y
+end</code></pre>
+
+<h3>発射元へ向かって移動する</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local p = anim.ease_in_out(obj.t)
+    obj.x = anim.lerp(obj.x, target.x, p)
+    obj.y = anim.lerp(obj.y, target.y, p)
+end</code></pre>
+
+<h3>表示中のときだけ追従する</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target and target.exist then
+    obj.x = target.x
+    obj.y = target.y
+end</code></pre>
+
+<h3>発射時の座標に固定する</h3>
+<p>
+弾の発射フレーム（弾アイテムの開始フレーム）は <code>timelineframe - frame</code> で求まります。
+そのフレーム時点の発射元座標を取得すれば、発射元が動いても原点は発射位置に固定されます。
+</p>
+<pre><code>local fire = timelineframe - frame
+local src = obj.getobject("routersys", fire)
+if src then
+    obj.x = src.x
+    obj.y = src.y
+end</code></pre>
+
+<h2>ピクセル操作</h2>
+
+<p>
+<code>obj.getpixel</code> / <code>obj.setpixel</code> / <code>obj.getpixeldata</code> は画像を直接読み書きします。
+座標・チャンネル・アルファの扱いといった詳細は <a href="pixels.html">ピクセル操作</a> を参照してください。
+ここでは関数の概要だけ示します。
+</p>
+
+<table>
+<tr><th>関数</th><th>戻り値</th><th>説明</th></tr>
+<tr><td><code>obj.getpixel(x, y)</code></td><td>r, g, b, a</td><td>指定座標のピクセルを取得（各成分 0 ～ 255）</td></tr>
+<tr><td><code>obj.setpixel(x, y, r, g, b [, a])</code></td><td>なし</td><td>指定座標へ書き込み（a 既定 255）</td></tr>
+<tr><td><code>obj.getpixeldata()</code></td><td>プロキシ</td><td>全ピクセルへ直接アクセスするプロキシを返す</td></tr>
+<tr><td><code>obj.putpixeldata()</code></td><td>なし</td><td>AviUtl 互換用の空実装（呼ぶ必要はない）</td></tr>
+</table>
+
+<h2>obj.rand — 整数の安定した乱数</h2>
+
+<p>
+<code>obj.rand(a, b [, seed [, frame]])</code> は <code>a</code> ～ <code>b</code> の範囲の整数を返します
+（端点を含みます）。同じ <code>seed</code> と <code>frame</code> の組では常に同じ値になります。
+<code>seed</code> の既定値は 0、<code>frame</code> の既定値は現在フレームです。
+</p>
+
+<table>
+<tr><th>関数</th><th>戻り値</th><th>用途</th></tr>
+<tr><td><code>obj.rand(a, b)</code></td><td>整数</td><td>毎フレーム変わる乱数</td></tr>
+<tr><td><code>obj.rand(a, b, seed)</code></td><td>整数</td><td>シードで固定。レイヤー番号などを渡す</td></tr>
+<tr><td><code>obj.rand(a, b, seed, frame)</code></td><td>整数</td><td>フレームも固定して完全に決定的にする</td></tr>
+</table>
+
+<div class="note">
+小数を含む乱数や、ベクトル・色のゆらぎが欲しいときは <a href="anim.html"><code>anim.rand</code></a> や
+<code>anim.noise</code> が便利です。<code>obj.rand</code> は整数を返す AviUtl 互換の乱数です。
+</div>
+
+<h2>obj.load — 図形・テキスト・画像・動画の読み込み</h2>
+
+<p>
+<code>obj.load(種類, ...)</code> は、対象の画像バッファを生成した内容で置き換えます。
+読み込み後は <code>obj.w</code> / <code>obj.h</code> などの寸法も更新されます。
+</p>
+
+<table>
+<tr><th>呼び出し</th><th>説明</th></tr>
+<tr><td><code>obj.load("figure", name, color, size [, line [, aspect]])</code></td><td>図形を生成。<code>color</code> は <code>0xRRGGBB</code>、<code>size</code> は大きさ（px）、<code>line</code> は 0 以下で塗りつぶし・正で輪郭の太さ、<code>aspect</code> は -1.0 ～ 1.0</td></tr>
+<tr><td><code>obj.load("text", str)</code></td><td>文字列を描画。フォントは <code>obj.setfont</code> の設定を使う</td></tr>
+<tr><td><code>obj.load("image", path)</code></td><td>画像ファイルを読み込む</td></tr>
+<tr><td><code>obj.load("movie", path [, time])</code></td><td>動画の指定時刻のフレームを読み込む（既定は現在時刻）</td></tr>
+</table>
+
+<p><code>obj.load("figure", ...)</code> で指定できる図形名は次のとおりです。</p>
+
+<table>
+<tr><th>図形</th><th>名前</th></tr>
+<tr><td>円・楕円</td><td><code>円</code> / <code>楕円</code> / <code>circle</code> / <code>ellipse</code></td></tr>
+<tr><td>三角形</td><td><code>三角形</code> / <code>triangle</code></td></tr>
+<tr><td>五角形</td><td><code>五角形</code> / <code>pentagon</code></td></tr>
+<tr><td>六角形</td><td><code>六角形</code> / <code>hexagon</code></td></tr>
+<tr><td>星形</td><td><code>星形</code> / <code>star</code></td></tr>
+<tr><td>四角形</td><td>上記以外の名前（既定）</td></tr>
+</table>
+
+<pre><code>obj.load("figure", "star", 0xFFCC00, 200, 0, 0)</code></pre>
+
+<h2>obj.setfont — フォント設定</h2>
+
+<p>
+<code>obj.setfont(name [, size [, type [, color]]])</code> は、続く <code>obj.load("text", ...)</code> で使う
+フォントを設定します。<code>type</code> はビットフラグで、ビット 0 が太字、ビット 1 が斜体です
+（太字+斜体は 3）。既定の大きさは 34、既定色は <code>0xFFFFFF</code> です。
+</p>
+
+<pre><code>obj.setfont("Yu Gothic UI", 48, 1, 0xFFFFFF)
+obj.load("text", "サンプル")</code></pre>
+
+<h2>AviUtl 互換の描画・効果関数（上級）</h2>
+
+<p>
+次の関数は AviUtl のスクリプト制御に近い使い勝手で用意されています。
+<code>obj.effect</code> は YMM4 に登録された映像エフェクトを名前で呼び出します。
+</p>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>obj.effect(name, key1, val1, ...)</code></td><td>YMM4 のエフェクトを名前またはキーワードで適用する。<code>key, val</code> の組でプロパティ（プロパティ名または表示名）を設定する</td></tr>
+<tr><td><code>obj.draw([ox, oy, oz, zoom, alpha, aspect])</code></td><td>現在のバッファをオフセット・拡大率・不透明度を指定して描画する</td></tr>
+<tr><td><code>obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, u0,v0, ... ,u3,v3] [, alpha])</code></td><td>4 頂点のテクスチャ付きポリゴンを描画する。UV を省略すると画像全体を使う</td></tr>
+<tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファ間でコピーする。ID は <code>obj</code>（作業画像）・<code>tmp</code>・<code>cache:名前</code>。書き込み先が <code>obj</code> のときのみ作業画像を置き換える</td></tr>
+<tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される</td></tr>
+<tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
+<tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
+<tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
+</table>
+
+<div class="note">
+<code>obj.effect</code> が呼べるエフェクトは、YMM4 に読み込まれている映像エフェクトです。
+名前は各エフェクトの名称または検索キーワードと照合され、見つからない場合や適用に失敗した場合は
+そのフレームでは元の映像がそのまま使われます（ログに一度だけ警告が出ます）。
+</div>
+
+<div class="pager">
+<a href="obj.html">← obj オブジェクト</a>
+<a href="anim.html">anim ライブラリ →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scene と ymm4 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>scene と ymm4</h1>
+
+<p>
+<code>scene</code> はシーンの解像度を、<code>ymm4</code> はグループ・タイムライン・再生状態などの
+環境情報を提供します。どちらも読み取り専用です。
+</p>
+
+<h2>scene — シーン情報</h2>
+
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>scene.width</code></td><td>シーンの横解像度（ピクセル）</td></tr>
+<tr><td><code>scene.height</code></td><td>シーンの縦解像度（ピクセル）</td></tr>
+<tr><td><code>scene.cx</code></td><td>横解像度の半分（<code>scene.width / 2</code>）</td></tr>
+<tr><td><code>scene.cy</code></td><td>縦解像度の半分（<code>scene.height / 2</code>）</td></tr>
+</table>
+
+<div class="note">
+このプラグインで使える <code>scene</code> は解像度の読み取りのみです。
+AviUtl の <code>scene.set()</code> / <code>scene.get()</code> のような機能はありません。
+</div>
+
+<h3>シーンサイズに対する相対配置</h3>
+<pre><code>obj.x = scene.cx * obj.track0 / 100</code></pre>
+
+<h2>ymm4 — 環境・メタ情報</h2>
+
+<table>
+<tr><th>メンバー</th><th>型</th><th>説明</th></tr>
+<tr><td><code>ymm4.group_index</code></td><td>整数</td><td>グループ制御内の現在のインデックス（0 始まり）</td></tr>
+<tr><td><code>ymm4.group_count</code></td><td>整数</td><td>グループ制御内の総アイテム数</td></tr>
+<tr><td><code>ymm4.group_ratio</code></td><td>数値</td><td>グループ内の進行割合（<code>group_index / group_count</code>）</td></tr>
+<tr><td><code>ymm4.timeline_totalframe</code></td><td>整数</td><td>タイムライン全体の総フレーム数</td></tr>
+<tr><td><code>ymm4.timeline_totaltime</code></td><td>数値</td><td>タイムライン全体の総時間（秒）</td></tr>
+<tr><td><code>ymm4.time_ratio</code></td><td>数値</td><td>現在の再生位置の割合（0.0 ～ 1.0）</td></tr>
+<tr><td><code>ymm4.is_saving</code></td><td>真偽値</td><td>動画出力中のみ true</td></tr>
+<tr><td><code>ymm4.is_playing</code></td><td>真偽値</td><td>再生中のみ true</td></tr>
+<tr><td><code>ymm4.is_paused</code></td><td>真偽値</td><td>一時停止中のみ true</td></tr>
+<tr><td><code>ymm4.scene_id</code></td><td>文字列</td><td>現在のシーンを識別する文字列（GUID）</td></tr>
+</table>
+
+<h3>グループ内のインデックスで時間差をつける</h3>
+<pre><code>local d = ymm4.group_index * 0.1
+local p = anim.duration(anim.delay(time, d), 0.5)
+obj.alpha = p * 255</code></pre>
+
+<h3>グループ内の進行割合で配置をずらす</h3>
+<pre><code>obj.x = obj.x + ymm4.group_ratio * 400</code></pre>
+
+<h3>出力時のみ挙動を変える</h3>
+<pre><code>if ymm4.is_saving then
+    obj.alpha = 255
+else
+    obj.alpha = 128
+end</code></pre>
+
+<div class="pager">
+<a href="anim.html">← anim ライブラリ</a>
+<a href="pixels.html">ピクセル操作 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

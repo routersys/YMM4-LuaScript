@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>パラメータ指定子 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>パラメータ指定子</h1>
+
+<p>
+スクリプトの先頭などにコメント形式の指定子を書くと、パラメータパネルのトラックバーや
+チェックボックス、色の名前・範囲・既定値を定義できます。指定子は <code>--</code> で始まる
+コメント行なので、Lua の実行には影響しません。
+</p>
+
+<div class="note">
+指定子は必須ではありません。<code>--</code> の行を書かなくても、
+トラックバーの値は <code>obj.track0</code> ～ <code>obj.track3</code> で読めます。
+チェックボックスの <code>obj.check0</code> ～ <code>obj.check3</code> と <code>color</code> も、
+スクリプト中で参照すればパネルに現れて使えます。指定子は、名前や範囲・既定値を整えたいときに使います。
+</div>
+
+<div class="note">
+エンジンを選ぶ <code>--!native</code> などの指定子は別物です。先頭が <code>--!</code> で始まります。
+エンジンの指定は<a href="engines.html">エンジンと高速化</a>を参照してください。
+</div>
+
+<h2>トラックバー</h2>
+
+<p>
+<code>--track0:</code> ～ <code>--track3:</code> で、各トラックバーの名前・範囲・既定値・増分を指定します。
+書式はカンマ区切りです。
+</p>
+
+<pre><code>--track0:振幅,0,200,50
+--track1:周波数,0,10,1,0.1</code></pre>
+
+<table>
+<tr><th>項目</th><th>位置</th><th>省略時</th></tr>
+<tr><td>名前</td><td>1 番目</td><td>空</td></tr>
+<tr><td>最小値</td><td>2 番目</td><td>0</td></tr>
+<tr><td>最大値</td><td>3 番目</td><td>100</td></tr>
+<tr><td>既定値</td><td>4 番目</td><td>最小値</td></tr>
+<tr><td>増分</td><td>5 番目</td><td>0</td></tr>
+</table>
+
+<p>
+最大値が最小値より小さい場合は自動で入れ替わり、既定値は範囲内にクランプされます。
+値はスクリプトから <code>obj.track0</code> ～ <code>obj.track3</code> で読めます。
+</p>
+
+<h2>チェックボックス</h2>
+
+<p>
+<code>--check0:</code> ～ <code>--check3:</code> で、名前と既定値（0 で off、0 以外で on）を指定します。
+値は <code>obj.check0</code> ～ <code>obj.check3</code> で読めます。
+</p>
+
+<pre><code>--check0:反転を有効にする,0</code></pre>
+
+<table>
+<tr><th>項目</th><th>位置</th><th>省略時</th></tr>
+<tr><td>名前</td><td>1 番目</td><td>空</td></tr>
+<tr><td>既定値</td><td>2 番目</td><td>0（off）</td></tr>
+</table>
+
+<h2>色</h2>
+
+<p>
+<code>--color:</code> で Color パラメータの既定色を指定します。
+<code>0xRRGGBB</code> 形式または 10 進整数で書けます。値はグローバルの <code>color</code> で読めます。
+</p>
+
+<pre><code>--color:0xFF8800</code></pre>
+
+<h2>表示条件</h2>
+
+<p>パラメータの表示・非表示は次のルールで決まります。</p>
+
+<ul>
+<li>トラックバー: 指定子がまったく無い場合は 4 本すべて表示。
+  いずれかの <code>--track@:</code> を書いた場合は、宣言したトラックのみ表示。</li>
+<li>チェックボックス: <code>--check@:</code> を書いた場合、または指定子がまったく無く
+  スクリプト中で <code>obj.check@</code> を使っている場合に表示。</li>
+<li>色: <code>--color:</code> を書いた場合、または指定子がまったく無く
+  スクリプト中で <code>color</code> を使っている場合に表示。</li>
+</ul>
+
+<h2>セクション（@）</h2>
+
+<p>
+行頭が <code>@</code> の行はセクションの区切りです。セクションを使う場合、
+指定子と本文は最初のセクションから読み取られます。通常のスクリプトでは <code>@</code> を使わず、
+指定子をスクリプト先頭にコメントとして並べれば十分です。
+</p>
+
+<h2>AviUtl 互換の宣言（dialog / param）</h2>
+
+<p>
+<code>--dialog:</code> と <code>--param:</code> は、AviUtl のダイアログ変数に近い書き方で、
+本文の先頭に Lua の宣言を差し込みます。差し込まれた行は本体より前に実行されます。
+</p>
+
+<table>
+<tr><th>指定子</th><th>説明</th></tr>
+<tr><td><code>--param:宣言</code></td><td>指定した宣言を本文の先頭に追加する</td></tr>
+<tr><td><code>--dialog:ラベル,宣言; ...</code></td><td><code>;</code> 区切りの各項目について、最初の <code>,</code> の後ろを宣言として先頭に追加する</td></tr>
+</table>
+
+<pre><code>--param:local speed = 90
+obj.rz = time * speed</code></pre>
+
+<div class="pager">
+<a href="engines.html">← エンジンと高速化</a>
+<a href="samples.html">サンプル集 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>グローバル変数 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>グローバル変数</h1>
+
+<p>
+スクリプトのグローバルスコープから直接参照できる変数です。
+これらは毎フレーム、実行前にプラグインが設定します。値は読み取り専用です
+（書き換えても描画には反映されません。描画を変えるには <a href="obj.html"><code>obj</code></a> を使います）。
+</p>
+
+<h2>時間とフレーム</h2>
+
+<table>
+<tr><th>変数</th><th>型</th><th>説明</th></tr>
+<tr><td><code>time</code></td><td>数値</td><td>アイテム先頭からの経過時間（秒）。<code>obj.time</code> と同じ</td></tr>
+<tr><td><code>frame</code></td><td>整数</td><td>アイテム先頭からの現在フレーム番号。<code>obj.frame</code> と同じ</td></tr>
+<tr><td><code>totalframe</code></td><td>整数</td><td>アイテムの総フレーム数。<code>obj.totalframe</code> と同じ</td></tr>
+<tr><td><code>framerate</code></td><td>整数</td><td>フレームレート（fps）。<code>obj.framerate</code> と同じ</td></tr>
+<tr><td><code>timelineframe</code></td><td>整数</td><td>タイムライン先頭からの絶対フレーム番号</td></tr>
+<tr><td><code>timelinetime</code></td><td>数値</td><td>タイムライン基準の現在時間（秒）</td></tr>
+<tr><td><code>layer</code></td><td>整数</td><td>配置されているレイヤー番号。<code>obj.layer</code> と同じ</td></tr>
+</table>
+
+<p>
+<code>time</code> はアニメーションの基準としてもっともよく使います。
+アイテム内の進行割合（0.0 ～ 1.0）が欲しいときは <a href="obj.html"><code>obj.t</code></a> を使います。
+</p>
+
+<pre><code>obj.rz = time * 90
+obj.alpha = obj.t * 255</code></pre>
+
+<h2>色</h2>
+
+<table>
+<tr><th>変数</th><th>型</th><th>説明</th></tr>
+<tr><td><code>color</code></td><td>数値</td><td>Color パラメータの色を <code>0xRRGGBB</code> の整数で表す</td></tr>
+</table>
+
+<p>
+<code>color</code> は、Color パラメータが表示されているとき（スクリプトで <code>color</code> を使うか、
+<a href="directives.html"><code>--color@</code></a> 指定子で宣言したとき）にのみ設定されます。
+各成分は次のように取り出せます。
+</p>
+
+<pre><code>local r = bit32.rshift(bit32.band(color, 0xFF0000), 16)
+local g = bit32.rshift(bit32.band(color, 0x00FF00), 8)
+local b = bit32.band(color, 0x0000FF)</code></pre>
+
+<h2>テーブル</h2>
+
+<p>主要な機能は、グローバルに置かれた次のテーブルにまとまっています。</p>
+
+<table>
+<tr><th>テーブル</th><th>役割</th><th>参照</th></tr>
+<tr><td><code>obj</code></td><td>描画対象の座標・回転・拡大率・不透明度と各種関数</td><td><a href="obj.html">obj</a> / <a href="obj-functions.html">obj の関数</a></td></tr>
+<tr><td><code>anim</code></td><td>補間・波・ノイズ・色変換などのアニメーション関数</td><td><a href="anim.html">anim</a></td></tr>
+<tr><td><code>scene</code></td><td>シーンの解像度</td><td><a href="scene-ymm4.html">scene</a></td></tr>
+<tr><td><code>ymm4</code></td><td>グループ・タイムライン・再生状態などの環境情報</td><td><a href="scene-ymm4.html">ymm4</a></td></tr>
+</table>
+
+<p>標準ライブラリのテーブルもグローバルに置かれています。</p>
+
+<table>
+<tr><th>テーブル</th><th>役割</th></tr>
+<tr><td><code>math</code></td><td>数学関数</td></tr>
+<tr><td><code>string</code></td><td>文字列操作</td></tr>
+<tr><td><code>table</code></td><td>テーブル操作</td></tr>
+<tr><td><code>bit32</code></td><td>ビット演算</td></tr>
+</table>
+
+<p>これらの中身は <a href="stdlib.html">標準ライブラリ</a> にまとめています。</p>
+
+<div class="pager">
+<a href="stdlib.html">← 標準ライブラリ</a>
+<a href="obj.html">obj オブジェクト →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

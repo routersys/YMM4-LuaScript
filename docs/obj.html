@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>obj オブジェクト | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>obj オブジェクト</h1>
+
+<p>
+<code>obj</code> は描画対象を表す中心的なテーブルです。座標・回転・拡大率・不透明度などの値を持ち、
+これらを書き換えると描画に反映されます。実行前に現在の値が入り、実行後に書き換えた値が読み戻されます。
+関数（ピクセル操作・読み込みなど）は <a href="obj-functions.html">obj の関数</a> にまとめています。
+</p>
+
+<h2>変更可能なメンバー</h2>
+
+<p>これらに代入すると描画が変わります。実行後にプラグインが読み戻します。</p>
+
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>obj.x</code> / <code>obj.y</code> / <code>obj.z</code></td><td>描画位置（ピクセル）</td></tr>
+<tr><td><code>obj.ox</code> / <code>obj.oy</code> / <code>obj.oz</code></td><td>中心点のオフセット（ピクセル）。回転・拡大の基準がずれる</td></tr>
+<tr><td><code>obj.zoom</code></td><td>拡大率（sx と sy の平均、1.0 で等倍）</td></tr>
+<tr><td><code>obj.aspect</code></td><td>縦横比（-1.0 ～ 1.0）。正で横を縮小、負で縦を縮小</td></tr>
+<tr><td><code>obj.sx</code> / <code>obj.sy</code></td><td>X / Y 方向の独立した拡大率</td></tr>
+<tr><td><code>obj.alpha</code></td><td>不透明度（0.0 ～ 255.0）</td></tr>
+<tr><td><code>obj.rx</code> / <code>obj.ry</code> / <code>obj.rz</code></td><td>X / Y / Z 軸の回転角（度）</td></tr>
+<tr><td><code>obj.rxr</code> / <code>obj.ryr</code> / <code>obj.rzr</code></td><td>X / Y / Z 軸の回転角（ラジアン）</td></tr>
+</table>
+
+<h3>拡大率（zoom / aspect と sx / sy）</h3>
+
+<p>
+拡大率には 2 通りの指定方法があり、片方を変えるともう片方は自動で計算されます。
+入力時点では <code>zoom</code> は <code>sx</code> と <code>sy</code> の平均、
+<code>aspect</code> は <code>(sx - sy) / (sx + sy)</code> です。
+</p>
+
+<ul>
+<li><code>sx</code> / <code>sy</code> を変更した場合 … その値がそのまま使われます。</li>
+<li><code>sx</code> / <code>sy</code> を変更せず <code>zoom</code> / <code>aspect</code> だけを変更した場合 …
+  <code>sx = zoom * (1 + aspect)</code>、<code>sy = zoom * (1 - aspect)</code> として反映されます。</li>
+</ul>
+
+<pre><code>obj.zoom = obj.zoom * 1.5
+
+local s = math.sin(time * anim.tau * 2) * 0.2
+obj.sx = 1 + s
+obj.sy = 1 - s</code></pre>
+
+<h3>回転（度とラジアン）</h3>
+
+<p>
+回転は度（<code>rx</code> / <code>ry</code> / <code>rz</code>）とラジアン（<code>rxr</code> / <code>ryr</code> / <code>rzr</code>）の
+両方で指定できます。ラジアン版を変更した場合はラジアン版が優先され、
+変更しなければ度の値が使われます。
+</p>
+
+<pre><code>obj.rz = time * 90
+obj.rzr = time * anim.tau</code></pre>
+
+<h2>読み取り専用メンバー</h2>
+
+<p>入力画像の寸法や時間情報など、書き換えても反映されない値です。</p>
+
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>obj.w</code> / <code>obj.h</code></td><td>入力画像の幅 / 高さ（ピクセル）</td></tr>
+<tr><td><code>obj.hw</code> / <code>obj.hh</code></td><td>幅 / 高さの半分</td></tr>
+<tr><td><code>obj.cx</code> / <code>obj.cy</code></td><td>画像中心（幅 / 高さの半分に等しい）</td></tr>
+<tr><td><code>obj.cz</code></td><td>常に 0</td></tr>
+<tr><td><code>obj.sz</code></td><td>常に 1</td></tr>
+<tr><td><code>obj.diagonal</code></td><td>対角線の長さ（<code>sqrt(w^2 + h^2)</code>）</td></tr>
+<tr><td><code>obj.time</code></td><td>アイテム先頭からの経過時間（秒）</td></tr>
+<tr><td><code>obj.frame</code></td><td>現在フレーム番号</td></tr>
+<tr><td><code>obj.totalframe</code></td><td>総フレーム数</td></tr>
+<tr><td><code>obj.totaltime</code></td><td>総時間（秒）</td></tr>
+<tr><td><code>obj.t</code></td><td>アイテム内の進行割合（0.0 ～ 1.0、<code>frame / totalframe</code>）</td></tr>
+<tr><td><code>obj.framerate</code></td><td>フレームレート（fps）</td></tr>
+<tr><td><code>obj.layer</code></td><td>レイヤー番号</td></tr>
+<tr><td><code>obj.index</code></td><td>入力のインデックス</td></tr>
+<tr><td><code>obj.num</code></td><td>入力の総数</td></tr>
+<tr><td><code>obj.track0</code> ～ <code>obj.track3</code></td><td>トラックバーの値（数値）</td></tr>
+<tr><td><code>obj.check0</code> ～ <code>obj.check3</code></td><td>チェックボックスの値（真偽値）</td></tr>
+</table>
+
+<div class="note">
+<code>obj.t</code> はアイテムの長さに対する進行割合なので、イージング関数の入力に最適です。
+一方 <code>time</code> は実時間（秒）なので、速度や周波数の指定に向いています。
+</div>
+
+<h2>パラメータ（track / check）</h2>
+
+<p>
+<code>obj.track0</code> ～ <code>obj.track3</code> はパラメータパネルのトラックバーの値です。
+<code>obj.check0</code> ～ <code>obj.check3</code> はチェックボックスの値（true / false）です。
+名前・範囲・既定値・表示条件は <a href="directives.html">パラメータ指定子</a> で定義できます。
+</p>
+
+<pre><code>local amp = obj.track0
+local freq = obj.track1
+obj.x = obj.x + math.sin(time * anim.tau * freq) * amp
+
+if obj.check0 then
+    obj.alpha = 255
+end</code></pre>
+
+<h2>よく使う例</h2>
+
+<h3>中心を基準に振り子のように揺らす</h3>
+<pre><code>obj.oy = -obj.hh
+obj.rz = math.sin(time * anim.tau) * 30</code></pre>
+
+<h3>画面サイズに対する相対配置</h3>
+<pre><code>obj.x = scene.cx * obj.track0 / 100</code></pre>
+
+<div class="pager">
+<a href="globals.html">← グローバル変数</a>
+<a href="obj-functions.html">obj の関数 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

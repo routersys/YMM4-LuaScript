@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>制限事項とトラブル | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>制限事項とトラブル</h1>
+
+<h2>実行に関する制限</h2>
+
+<ul>
+<li>タイムアウト 5 秒: 1 フレームのスクリプト実行が 5 秒を超えると中断され、そのフレームは
+  元の映像のままになります。無限ループや極端に重い処理に注意してください。</li>
+<li>フレーム間で状態は保持されない: 組み込み以外のグローバル変数は毎フレームリセットされます。
+  前フレームの計算結果を変数に貯めることはできません。時間変化は <code>time</code> や <code>obj.t</code> から計算します。</li>
+<li>ファイルアクセス不可: <code>require</code>・<code>dofile</code>・<code>io</code> などは使えません。</li>
+<li>使えない標準ライブラリ: <code>io</code>・<code>os</code>・<code>debug</code>・<code>coroutine</code>・
+  <code>package</code>・<code>ffi</code> は無効です（<a href="stdlib.html">標準ライブラリ</a>）。</li>
+</ul>
+
+<h2>乱数について</h2>
+
+<p>
+<code>math.random</code> の結果はフレームごとに決まります。シードの仕組みは
+<a href="stdlib.html">標準ライブラリ</a>の <code>math</code> で説明しています。
+オブジェクトやフレームに対して安定した乱数が欲しいときは、
+<a href="anim.html"><code>anim.rand</code></a> や <code>anim.noise</code>、
+<a href="obj-functions.html"><code>obj.rand</code></a> を使ってください。
+</p>
+
+<h2>非対応の機能</h2>
+
+<ul>
+<li><code>scene.set()</code> や <code>scene.get()</code> はありません。<code>scene</code> は解像度の読み取りだけに対応します。</li>
+<li><code>obj.setanchor()</code> など、本ドキュメントに記載のない AviUtl 関数は対応していません。</li>
+<li><code>obj.effect</code> が呼べるのは YMM4 に読み込まれている映像エフェクトに限られます。
+  名前が見つからない・適用に失敗した場合は、そのフレームでは元の映像がそのまま使われます。</li>
+</ul>
+
+<h2>エラー表示</h2>
+
+<p>
+構文エラー・実行時エラー・タイムアウトが起きると、スクリプトエディタの該当行に赤い波線で
+警告が表示されます。まずはエラーメッセージと行番号を確認してください。
+</p>
+
+<h2>困ったときは</h2>
+
+<table>
+<tr><th>症状</th><th>確認すること</th></tr>
+<tr><td>スクリプトを書いても見た目が変わらない</td><td>値を <code>obj</code> に代入しているか（グローバル変数に入れても反映されません）。
+  例: <code>obj.x = ...</code>。読み取り専用メンバーに代入していないか。</td></tr>
+<tr><td>トラックバーや色が表示されない</td><td>指定子や使用状況によって表示が決まります。<a href="directives.html">パラメータ指定子</a> の表示条件を確認してください。</td></tr>
+<tr><td>前のフレームの値が消える</td><td>仕様です。グローバル変数はフレーム間で保持されません。</td></tr>
+<tr><td>処理が中断される / フレームが描画されない</td><td>5 秒のタイムアウトに達している可能性があります。ループ回数を減らすか、
+  ピクセル処理を <a href="engines.html">カーネルやネイティブ</a>に任せられる形にしてください。</td></tr>
+<tr><td><code>--!native</code> を指定しても速くならない</td><td>プラグインの隣に <code>native</code> フォルダが配置されていないと MoonSharp で実行されます。
+  配置を確認してください（ログに一度だけ警告が出ます）。</td></tr>
+<tr><td>GPU でわずかに結果が違う</td><td>GPU カーネルは float32 精度です。厳密一致が必要なら CPU カーネルかネイティブを使ってください。</td></tr>
+</table>
+
+<hr>
+
+<p>
+Lua スクリプト for YMM4 / MIT License /
+<a href="https://github.com/routersys/YMM4-LuaScript">https://github.com/routersys/YMM4-LuaScript</a>
+</p>
+
+<div class="pager">
+<a href="reference.html">← クイックリファレンス</a>
+<a href="index.html">概要 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

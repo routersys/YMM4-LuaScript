@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>クイックリファレンス | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>クイックリファレンス</h1>
+
+<p>すべての変数・関数・指定子を一覧でまとめます。詳細は各ページを参照してください。</p>
+
+<h2>グローバル変数</h2>
+<table>
+<tr><th>変数</th><th>説明</th></tr>
+<tr><td><code>time</code></td><td>アイテム基準の経過時間（秒）</td></tr>
+<tr><td><code>frame</code></td><td>アイテム基準の現在フレーム</td></tr>
+<tr><td><code>totalframe</code></td><td>アイテムの総フレーム数</td></tr>
+<tr><td><code>framerate</code></td><td>フレームレート（fps）</td></tr>
+<tr><td><code>timelineframe</code></td><td>タイムライン先頭からの絶対フレーム</td></tr>
+<tr><td><code>timelinetime</code></td><td>タイムライン基準の時間（秒）</td></tr>
+<tr><td><code>layer</code></td><td>レイヤー番号</td></tr>
+<tr><td><code>color</code></td><td>Color パラメータの色（0xRRGGBB）</td></tr>
+<tr><td><code>obj</code> / <code>scene</code> / <code>anim</code> / <code>ymm4</code></td><td>各テーブル</td></tr>
+<tr><td><code>math</code> / <code>string</code> / <code>table</code> / <code>bit32</code></td><td>標準ライブラリ</td></tr>
+</table>
+
+<h2>obj（変更可能）</h2>
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>obj.x</code> / <code>obj.y</code> / <code>obj.z</code></td><td>描画位置</td></tr>
+<tr><td><code>obj.ox</code> / <code>obj.oy</code> / <code>obj.oz</code></td><td>中心点オフセット</td></tr>
+<tr><td><code>obj.zoom</code></td><td>拡大率（sx と sy の平均）</td></tr>
+<tr><td><code>obj.aspect</code></td><td>縦横比（-1.0 ～ 1.0）</td></tr>
+<tr><td><code>obj.sx</code> / <code>obj.sy</code></td><td>独立した拡大率</td></tr>
+<tr><td><code>obj.alpha</code></td><td>不透明度（0.0 ～ 255.0）</td></tr>
+<tr><td><code>obj.rx</code> / <code>obj.ry</code> / <code>obj.rz</code></td><td>回転角（度）</td></tr>
+<tr><td><code>obj.rxr</code> / <code>obj.ryr</code> / <code>obj.rzr</code></td><td>回転角（ラジアン、優先）</td></tr>
+</table>
+
+<h2>obj（読み取り専用）</h2>
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>obj.w</code> / <code>obj.h</code></td><td>入力画像の幅 / 高さ</td></tr>
+<tr><td><code>obj.hw</code> / <code>obj.hh</code></td><td>幅 / 高さの半分</td></tr>
+<tr><td><code>obj.cx</code> / <code>obj.cy</code></td><td>画像中心</td></tr>
+<tr><td><code>obj.cz</code> / <code>obj.sz</code></td><td>常に 0 / 常に 1</td></tr>
+<tr><td><code>obj.diagonal</code></td><td>対角線長</td></tr>
+<tr><td><code>obj.time</code> / <code>obj.frame</code></td><td>経過時間 / フレーム</td></tr>
+<tr><td><code>obj.totalframe</code> / <code>obj.totaltime</code></td><td>総フレーム数 / 総時間</td></tr>
+<tr><td><code>obj.t</code></td><td>進行割合（0.0 ～ 1.0）</td></tr>
+<tr><td><code>obj.framerate</code></td><td>フレームレート</td></tr>
+<tr><td><code>obj.layer</code></td><td>レイヤー番号</td></tr>
+<tr><td><code>obj.index</code> / <code>obj.num</code></td><td>入力のインデックス / 総数</td></tr>
+<tr><td><code>obj.track0</code> ～ <code>obj.track3</code></td><td>トラックバーの値</td></tr>
+<tr><td><code>obj.check0</code> ～ <code>obj.check3</code></td><td>チェックボックスの値</td></tr>
+</table>
+
+<h2>obj 関数</h2>
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>obj.getobject(tag [, frame])</code></td><td>他アイテムの描画情報を取得</td></tr>
+<tr><td><code>obj.getpixel(x, y)</code></td><td>ピクセル取得</td></tr>
+<tr><td><code>obj.setpixel(x, y, r, g, b [, a])</code></td><td>ピクセル書き込み</td></tr>
+<tr><td><code>obj.getpixeldata()</code></td><td>ピクセル直接アクセスプロキシ</td></tr>
+<tr><td><code>obj.putpixeldata()</code></td><td>互換用の空実装</td></tr>
+<tr><td><code>obj.rand(a, b [, seed [, frame]])</code></td><td>整数の安定した乱数</td></tr>
+<tr><td><code>obj.load(種類, ...)</code></td><td>図形 / テキスト / 画像 / 動画の読み込み</td></tr>
+<tr><td><code>obj.setfont(name [, size [, type [, color]]])</code></td><td>フォント設定</td></tr>
+<tr><td><code>obj.effect(name, key, val, ...)</code></td><td>YMM4 エフェクトの適用</td></tr>
+<tr><td><code>obj.draw([ox, oy, oz, zoom, alpha, aspect])</code></td><td>バッファの描画</td></tr>
+<tr><td><code>obj.drawpoly(...)</code></td><td>4 頂点ポリゴンの描画</td></tr>
+<tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファのコピー</td></tr>
+<tr><td><code>obj.setoption(name [, value])</code> / <code>obj.getoption(name)</code></td><td>オプションの設定 / 取得</td></tr>
+<tr><td><code>obj.getvalue(name)</code></td><td>obj の数値メンバーを名前で取得</td></tr>
+<tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理オプション</td></tr>
+</table>
+
+<h2>anim（定数）</h2>
+<table>
+<tr><th>定数</th><th>説明</th></tr>
+<tr><td><code>anim.tau</code></td><td>math.pi * 2</td></tr>
+<tr><td><code>anim.e</code></td><td>ネイピア数</td></tr>
+<tr><td><code>anim.phi</code></td><td>黄金比</td></tr>
+<tr><td><code>anim.sqrt2</code></td><td>2 の平方根</td></tr>
+</table>
+
+<h2>anim（関数）</h2>
+<table>
+<tr><th>分類</th><th>関数</th></tr>
+<tr><td>補間・イージング</td><td><code>lerp, smoothstep, smootherstep, ease_in, ease_out, ease_in_out, elastic, back, bounce, step, bezier</code></td></tr>
+<tr><td>範囲・周期</td><td><code>clamp, map, norm, wrap, pingpong, sign, fract, oscillate, triangle, square, duration, delay</code></td></tr>
+<tr><td>ベクトル・幾何</td><td><code>len, dist, dot, normalize, polar, rotate</code></td></tr>
+<tr><td>ノイズ・乱数</td><td><code>noise, rand</code></td></tr>
+<tr><td>色変換</td><td><code>hsv_to_rgb, rgb_to_hsv</code></td></tr>
+</table>
+
+<h2>scene</h2>
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>scene.width</code> / <code>scene.height</code></td><td>シーンの解像度</td></tr>
+<tr><td><code>scene.cx</code> / <code>scene.cy</code></td><td>解像度の半分</td></tr>
+</table>
+
+<h2>ymm4</h2>
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>ymm4.group_index</code> / <code>group_count</code> / <code>group_ratio</code></td><td>グループ制御の情報</td></tr>
+<tr><td><code>ymm4.timeline_totalframe</code> / <code>timeline_totaltime</code></td><td>タイムライン全体の長さ</td></tr>
+<tr><td><code>ymm4.time_ratio</code></td><td>再生位置の割合</td></tr>
+<tr><td><code>ymm4.is_saving</code> / <code>is_playing</code> / <code>is_paused</code></td><td>再生・出力状態</td></tr>
+<tr><td><code>ymm4.scene_id</code></td><td>シーン識別子（GUID）</td></tr>
+</table>
+
+<h2>指定子</h2>
+<table>
+<tr><th>指定子</th><th>説明</th></tr>
+<tr><td><code>--track0:</code> ～ <code>--track3:</code></td><td>トラックバーの定義</td></tr>
+<tr><td><code>--check0:</code> ～ <code>--check3:</code></td><td>チェックボックスの定義</td></tr>
+<tr><td><code>--color:</code></td><td>色パラメータの既定色</td></tr>
+<tr><td><code>--param:</code> / <code>--dialog:</code></td><td>本文先頭への宣言の追加</td></tr>
+<tr><td><code>--!moonsharp</code> / <code>--!native</code> / <code>--!cpu</code> / <code>--!gpu</code></td><td>実行エンジンの指定</td></tr>
+</table>
+
+<div class="pager">
+<a href="samples.html">← サンプル集</a>
+<a href="limits.html">制限事項とトラブル →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

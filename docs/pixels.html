@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ピクセル操作 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>ピクセル操作</h1>
+
+<p>
+入力画像を 1 ピクセルずつ読み書きできます。色の反転・グレースケール・ビネットなど、
+座標や色に基づく加工はピクセル操作で実現します。
+</p>
+
+<h2>座標と色の約束</h2>
+
+<ul>
+<li>座標は画像の左上を <code>(0, 0)</code> とし、右方向・下方向が正です。</li>
+<li>有効範囲は <code>0 ≦ x &lt; obj.w</code>、<code>0 ≦ y &lt; obj.h</code> です。
+  範囲外を <code>getpixel</code> で読むと <code>(0, 0, 0, 0)</code> が返り、<code>setpixel</code> は無視されます。</li>
+<li>取得・設定する色は、アルファを乗算していないストレートな RGB です。各成分は 0 ～ 255 で、内部表現との変換は自動で行われます。</li>
+</ul>
+
+<div class="note">
+ピクセル操作は実際の入力画像へアクセスするため、初回アクセス時に画像データの転送が発生します。
+転送は最初の 1 回だけです。
+</div>
+
+<h2>getpixel / setpixel</h2>
+
+<table>
+<tr><th>関数</th><th>戻り値</th><th>説明</th></tr>
+<tr><td><code>obj.getpixel(x, y)</code></td><td>r, g, b, a</td><td>指定座標の色を取得（各成分 0 ～ 255）</td></tr>
+<tr><td><code>obj.setpixel(x, y, r, g, b [, a])</code></td><td>なし</td><td>指定座標へ書き込み（<code>a</code> 既定 255）</td></tr>
+</table>
+
+<h3>赤成分を反転する</h3>
+<pre><code>for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        obj.setpixel(x, y, 255 - r, g, b, a)
+    end
+end</code></pre>
+
+<h2>getpixeldata — 直接アクセス（高速）</h2>
+
+<p>
+<code>obj.getpixeldata()</code> は、全ピクセルへ直接アクセスできるプロキシを返します。
+1 ピクセルずつ関数を呼ぶ <code>getpixel</code> / <code>setpixel</code> より高速です。
+</p>
+
+<table>
+<tr><th>メンバー</th><th>説明</th></tr>
+<tr><td><code>pd.width</code> / <code>pd.height</code></td><td>画像の幅 / 高さ</td></tr>
+<tr><td><code>pd:get(index)</code></td><td>指定インデックスのチャンネル値を取得（0 ～ 255）</td></tr>
+<tr><td><code>pd:set(index, value)</code></td><td>指定インデックスのチャンネル値を設定（0 ～ 255 にクランプ）</td></tr>
+</table>
+
+<p>
+インデックスは 1 始まりで、各ピクセルにつき R, G, B, A の 4 チャンネルが順に並びます。
+座標 <code>(x, y)</code> の R チャンネルのインデックスは <code>(y * pd.width + x) * 4 + 1</code> です。
+続く +1, +2, +3 がそれぞれ G, B, A になります。
+</p>
+
+<div class="note">
+プロキシのメンバーアクセスはコロン記法（<code>pd:get(i)</code> / <code>pd:set(i, v)</code>）で呼びます。
+幅・高さはドット記法（<code>pd.width</code> / <code>pd.height</code>）で読みます。
+</div>
+
+<h3>グレースケール化</h3>
+<pre><code>local pd = obj.getpixeldata()
+local w = pd.width
+local h = pd.height
+for y = 0, h - 1 do
+    for x = 0, w - 1 do
+        local base = (y * w + x) * 4
+        local r = pd:get(base + 1)
+        local g = pd:get(base + 2)
+        local b = pd:get(base + 3)
+        local gray = r * 0.299 + g * 0.587 + b * 0.114
+        pd:set(base + 1, gray)
+        pd:set(base + 2, gray)
+        pd:set(base + 3, gray)
+    end
+end</code></pre>
+
+<h3>中心からの距離でフェード（円形ビネット）</h3>
+<pre><code>local pd = obj.getpixeldata()
+local w = pd.width
+local h = pd.height
+local cx = w / 2
+local cy = h / 2
+local maxd = anim.len(cx, cy)
+for y = 0, h - 1 do
+    for x = 0, w - 1 do
+        local base = (y * w + x) * 4
+        local d = anim.len(x - cx, y - cy)
+        local k = anim.clamp(1 - d / maxd, 0, 1)
+        pd:set(base + 4, pd:get(base + 4) * k)
+    end
+end</code></pre>
+
+<h2>アルファの扱い</h2>
+
+<p>
+A チャンネル（インデックス <code>base + 4</code>）を変更すると、不透明度が変わります。
+このとき RGB はストレートな色味を保ったまま再計算されます。アルファを 0 にすると、そのピクセルは透明になります。
+</p>
+
+<h2>putpixeldata について</h2>
+
+<p>
+<code>obj.putpixeldata()</code> は AviUtl との互換のために存在しますが、このプラグインでは
+変更が自動的に反映されるため、呼び出す必要はありません（何もしません）。
+</p>
+
+<h2>性能とエンジン</h2>
+
+<p>
+ピクセル処理は重くなりがちです。このプラグインは <code>getpixel</code> / <code>setpixel</code> を含むスクリプトを
+自動的に高速なネイティブレーンへ振り分けます（利用できる場合）。さらに、二重ループで
+<code>getpixel</code> → 計算 → <code>setpixel</code> という決まった形のスクリプトは、CPU / GPU カーネルへ
+変換されてさらに高速に実行できます。詳しくは <a href="engines.html">エンジンと高速化</a> を参照してください。
+</p>
+
+<div class="pager">
+<a href="scene-ymm4.html">← scene と ymm4</a>
+<a href="engines.html">エンジンと高速化 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

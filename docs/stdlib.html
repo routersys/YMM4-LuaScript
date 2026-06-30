@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>標準ライブラリ | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>標準ライブラリ</h1>
+
+<p>
+利用できる標準ライブラリは次のモジュールに限定されています:
+基本関数・math・string・table・bit32、
+そしてテーブル反復子（<code>pairs</code> / <code>ipairs</code> / <code>next</code>）・メタテーブル・エラー処理です。
+</p>
+
+<div class="warn">
+<code>io</code>・<code>os</code>・<code>debug</code>・<code>coroutine</code>・<code>package</code>・<code>require</code>・
+<code>dofile</code>・<code>ffi</code> などは使えません。ファイルアクセスは無効化されています。
+</div>
+
+<h2>基本関数</h2>
+
+<p>グローバルに直接呼べる関数です。</p>
+
+<pre><code>type, tostring, tonumber, select, error, assert, print,
+ipairs, pairs, next, unpack,
+setmetatable, getmetatable, rawget, rawset, rawequal, rawlen,
+pcall, xpcall</code></pre>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>type(v)</code></td><td>値の型名を文字列で返す</td></tr>
+<tr><td><code>tostring(v)</code></td><td>文字列へ変換</td></tr>
+<tr><td><code>tonumber(v [, base])</code></td><td>数値へ変換。変換できなければ nil</td></tr>
+<tr><td><code>select(n, ...)</code></td><td>可変長引数の n 番目以降、または <code>"#"</code> で個数</td></tr>
+<tr><td><code>error(msg)</code></td><td>エラーを発生させる</td></tr>
+<tr><td><code>assert(v [, msg])</code></td><td>v が偽ならエラー</td></tr>
+<tr><td><code>pcall(f, ...)</code></td><td>f を保護モードで呼び、成否と結果を返す</td></tr>
+<tr><td><code>xpcall(f, handler, ...)</code></td><td>エラーハンドラ付きの保護呼び出し</td></tr>
+<tr><td><code>ipairs(t)</code> / <code>pairs(t)</code></td><td>テーブルの反復子</td></tr>
+<tr><td><code>setmetatable</code> / <code>getmetatable</code></td><td>メタテーブルの設定・取得</td></tr>
+<tr><td><code>rawget</code> / <code>rawset</code> / <code>rawequal</code> / <code>rawlen</code></td><td>メタメソッドを介さない素の操作</td></tr>
+</table>
+
+<h2>math</h2>
+
+<pre><code>abs, ceil, cos, exp, floor, fmod, huge, log, max, min, modf, pi,
+random, randomseed, sin, sqrt, tan, atan, atan2, deg, rad,
+ldexp, frexp, sinh, cosh, tanh, type, tointeger, maxinteger, mininteger</code></pre>
+
+<table>
+<tr><th>関数 / 定数</th><th>説明</th></tr>
+<tr><td><code>math.pi</code></td><td>円周率</td></tr>
+<tr><td><code>math.huge</code></td><td>正の無限大</td></tr>
+<tr><td><code>math.abs(x)</code></td><td>絶対値</td></tr>
+<tr><td><code>math.floor(x)</code> / <code>math.ceil(x)</code></td><td>切り捨て / 切り上げ</td></tr>
+<tr><td><code>math.min(...)</code> / <code>math.max(...)</code></td><td>最小 / 最大</td></tr>
+<tr><td><code>math.sqrt(x)</code></td><td>平方根</td></tr>
+<tr><td><code>math.sin/cos/tan(x)</code></td><td>三角関数（引数はラジアン）</td></tr>
+<tr><td><code>math.atan(x)</code> / <code>math.atan2(y, x)</code></td><td>逆正接</td></tr>
+<tr><td><code>math.deg(x)</code> / <code>math.rad(x)</code></td><td>ラジアン↔度</td></tr>
+<tr><td><code>math.exp(x)</code> / <code>math.log(x)</code></td><td>指数 / 自然対数</td></tr>
+<tr><td><code>math.fmod(x, y)</code></td><td>剰余</td></tr>
+<tr><td><code>math.modf(x)</code></td><td>整数部と小数部を返す</td></tr>
+<tr><td><code>math.ldexp(m, e)</code> / <code>math.frexp(x)</code></td><td>仮数・指数の操作</td></tr>
+<tr><td><code>math.sinh/cosh/tanh(x)</code></td><td>双曲線関数</td></tr>
+<tr><td><code>math.random([m [, n]])</code></td><td>乱数。後述の注意あり</td></tr>
+<tr><td><code>math.randomseed(x)</code></td><td>乱数シードの設定</td></tr>
+<tr><td><code>math.type(x)</code></td><td>数値の種別を返す</td></tr>
+<tr><td><code>math.tointeger(x)</code></td><td>整数化できれば整数、できなければ nil</td></tr>
+<tr><td><code>math.maxinteger</code> / <code>math.mininteger</code></td><td>整数の上限・下限</td></tr>
+</table>
+
+<div class="note">
+<code>math.random</code> は実行のたびに現在のフレーム番号でシードが設定されます。
+そのため同じフレームの再描画では同じ結果になりますが、1 回の実行の中で連続して呼ぶと値は進みます。
+オブジェクトやフレームに対して安定した乱数が必要なときは
+<a href="anim.html"><code>anim.rand</code></a>・<code>anim.noise</code>・<code>obj.rand</code> を使ってください。
+</div>
+
+<h2>string</h2>
+
+<pre><code>format, len, sub, upper, lower, rep, reverse, find, match,
+gmatch, gsub, byte, char, dump, pack, unpack, packsize</code></pre>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>string.format(fmt, ...)</code></td><td>書式付き文字列。例: <code>string.format("%.2f", x)</code></td></tr>
+<tr><td><code>string.len(s)</code></td><td>長さ（<code>#s</code> と同じ）</td></tr>
+<tr><td><code>string.sub(s, i [, j])</code></td><td>部分文字列</td></tr>
+<tr><td><code>string.upper(s)</code> / <code>string.lower(s)</code></td><td>大文字 / 小文字</td></tr>
+<tr><td><code>string.rep(s, n)</code></td><td>n 回繰り返した文字列</td></tr>
+<tr><td><code>string.reverse(s)</code></td><td>反転</td></tr>
+<tr><td><code>string.find(s, pat)</code></td><td>パターン検索</td></tr>
+<tr><td><code>string.match(s, pat)</code></td><td>パターンに一致した部分を返す</td></tr>
+<tr><td><code>string.gmatch(s, pat)</code></td><td>一致を順に返す反復子</td></tr>
+<tr><td><code>string.gsub(s, pat, repl)</code></td><td>置換</td></tr>
+<tr><td><code>string.byte(s [, i])</code> / <code>string.char(...)</code></td><td>文字コード↔文字</td></tr>
+<tr><td><code>string.pack/unpack/packsize</code></td><td>バイナリのパック・アンパック</td></tr>
+</table>
+
+<h2>table</h2>
+
+<pre><code>insert, remove, sort, concat, unpack, move</code></pre>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>table.insert(t, [pos,] v)</code></td><td>要素を追加・挿入</td></tr>
+<tr><td><code>table.remove(t [, pos])</code></td><td>要素を削除して返す</td></tr>
+<tr><td><code>table.sort(t [, comp])</code></td><td>並べ替え</td></tr>
+<tr><td><code>table.concat(t [, sep])</code></td><td>文字列に連結</td></tr>
+<tr><td><code>table.unpack(t)</code></td><td>テーブルを複数の値に展開</td></tr>
+<tr><td><code>table.move(a1, f, e, t [, a2])</code></td><td>要素の移動・コピー</td></tr>
+</table>
+
+<h2>bit32</h2>
+
+<p>32 ビット整数のビット演算ライブラリです。</p>
+
+<pre><code>band, bor, bxor, bnot, lshift, rshift, arshift,
+extract, replace, btest, countlz, countrz</code></pre>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>bit32.band(...)</code></td><td>ビット積</td></tr>
+<tr><td><code>bit32.bor(...)</code></td><td>ビット和</td></tr>
+<tr><td><code>bit32.bxor(...)</code></td><td>排他的論理和</td></tr>
+<tr><td><code>bit32.bnot(x)</code></td><td>ビット反転</td></tr>
+<tr><td><code>bit32.lshift(x, n)</code> / <code>bit32.rshift(x, n)</code></td><td>左 / 右シフト</td></tr>
+<tr><td><code>bit32.arshift(x, n)</code></td><td>算術右シフト</td></tr>
+<tr><td><code>bit32.extract(n, f [, w])</code></td><td>ビット列の取り出し</td></tr>
+<tr><td><code>bit32.replace(n, v, f [, w])</code></td><td>ビット列の置き換え</td></tr>
+<tr><td><code>bit32.btest(...)</code></td><td>ビット積が 0 でないか</td></tr>
+<tr><td><code>bit32.countlz(x)</code> / <code>bit32.countrz(x)</code></td><td>先頭 / 末尾の 0 ビット数</td></tr>
+</table>
+
+<div class="pager">
+<a href="lua-basics.html">← Lua の基礎</a>
+<a href="globals.html">グローバル変数 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

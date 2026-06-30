@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lua の基礎 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>Lua の基礎</h1>
+
+<p>
+このページは、Lua をはじめて触る人向けの入門です。Lua スクリプトエフェクトで使える範囲に絞って、
+言語そのものの書き方を学びます。エンジンは Lua 5.2 互換の MoonSharp です。
+ファイル入出力やコルーチンなど一部の機能は使えません。詳しくは<a href="stdlib.html">標準ライブラリ</a>を参照してください。
+</p>
+
+<h2>コメント</h2>
+
+<p>
+Lua のコメントは <code>--</code> から行末までです。複数行コメントは <code>--[[</code> から <code>]]</code> までです。
+コメントは実行に影響しません。なお、行頭の <code>--track:</code> や <code>--!native</code> のような特定の書式は
+プラグインが解釈する<a href="directives.html">指定子</a>として扱われます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>-- text</code></td><td>1 行コメント</td></tr>
+<tr><td><code>--[[ text ]]</code></td><td>複数行コメント</td></tr>
+</table>
+
+<h2>値と型</h2>
+
+<p>Lua の値には次の型があります。スクリプトでよく使うのは数値・文字列・真偽値・テーブルです。</p>
+
+<table>
+<tr><th>型</th><th>例</th><th>説明</th></tr>
+<tr><td>nil</td><td><code>nil</code></td><td>値が無いことを表す。未定義の変数も nil</td></tr>
+<tr><td>boolean</td><td><code>true</code>, <code>false</code></td><td>真偽値。条件分岐で使う</td></tr>
+<tr><td>number</td><td><code>10</code>, <code>3.14</code>, <code>-0.5</code></td><td>数値。内部は倍精度浮動小数点</td></tr>
+<tr><td>string</td><td><code>"hello"</code>, <code>'abc'</code></td><td>文字列</td></tr>
+<tr><td>table</td><td><code>{1, 2, 3}</code></td><td>配列や連想配列に使う唯一の構造体</td></tr>
+<tr><td>function</td><td><code>function(x) return x end</code></td><td>関数も値として扱える</td></tr>
+</table>
+
+<div class="note">
+条件式で「偽」とみなされるのは <code>false</code> と <code>nil</code> だけです。
+<code>0</code> も <code>""</code>（空文字列）も「真」です。これは C や JavaScript と違うので注意してください。
+</div>
+
+<h2>変数</h2>
+
+<p>
+変数は <code>local</code> を付けて宣言します。<code>local</code> を付けるとそのブロック内だけで有効な
+ローカル変数になります。付けないとグローバル変数になります。スクリプトでは原則 <code>local</code> を使ってください。
+</p>
+
+<pre><code>local a = 10
+local b = 20
+local sum = a + b
+obj.x = sum</code></pre>
+
+<p>複数の変数を一度に宣言・代入できます。</p>
+
+<pre><code>local x, y = 100, 200
+x, y = y, x</code></pre>
+
+<div class="warn">
+このエフェクトでは、グローバル変数の状態はフレーム間で保持されません。
+毎フレーム独立に実行されるため、「前のフレームの値」を変数に貯めることはできません。
+</div>
+
+<h2>演算子</h2>
+
+<table>
+<tr><th>分類</th><th>演算子</th></tr>
+<tr><td>算術</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code>（剰余） <code>^</code>（べき乗）</td></tr>
+<tr><td>比較</td><td><code>==</code> <code>~=</code>（等しくない） <code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td></tr>
+<tr><td>論理</td><td><code>and</code> <code>or</code> <code>not</code></td></tr>
+<tr><td>連結</td><td><code>..</code>（文字列の連結）</td></tr>
+<tr><td>長さ</td><td><code>#</code>（文字列やテーブルの長さ）</td></tr>
+</table>
+
+<p>
+<code>and</code> と <code>or</code> は値を返します。<code>a and b</code> は <code>a</code> が偽なら <code>a</code>、
+真なら <code>b</code> を返します。<code>a or b</code> は <code>a</code> が真なら <code>a</code>、偽なら <code>b</code> を返します。
+これを使うと既定値を簡潔に書けます。
+</p>
+
+<pre><code>local amp = obj.track0
+local v = amp ~= 0 and amp or 50
+obj.x = obj.x + v</code></pre>
+
+<h2>条件分岐</h2>
+
+<pre><code>if obj.t < 0.5 then
+    obj.alpha = 255
+elseif obj.t < 0.8 then
+    obj.alpha = 128
+else
+    obj.alpha = 0
+end</code></pre>
+
+<p>三項演算子の代わりに <code>and</code> / <code>or</code> を使うのが定番です。</p>
+
+<pre><code>obj.alpha = obj.check0 and 255 or 0</code></pre>
+
+<h2>繰り返し</h2>
+
+<h3>数値 for</h3>
+<p><code>for 変数 = 開始, 終了 [, 増分] do ... end</code> です。終了値も含みます。</p>
+
+<pre><code>local total = 0
+for i = 1, 10 do
+    total = total + i
+end</code></pre>
+
+<p>ピクセル処理では 0 始まりで幅・高さ分ループするのが基本形です。</p>
+
+<pre><code>for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        obj.setpixel(x, y, 255 - r, g, b, a)
+    end
+end</code></pre>
+
+<h3>汎用 for（ipairs / pairs）</h3>
+<p>配列を順に走査するなら <code>ipairs</code> を、すべてのキーを走査するなら <code>pairs</code> を使います。</p>
+
+<pre><code>local points = {10, 20, 30}
+local sum = 0
+for index, value in ipairs(points) do
+    sum = sum + value
+end</code></pre>
+
+<h3>while と repeat</h3>
+<pre><code>local i = 0
+while i < 5 do
+    i = i + 1
+end
+
+local j = 0
+repeat
+    j = j + 1
+until j >= 5</code></pre>
+
+<div class="warn">
+ループの終了条件は必ず満たされるようにしてください。
+無限ループになると 5 秒で実行が打ち切られ、そのフレームは描画されません。
+</div>
+
+<h2>関数</h2>
+
+<p>関数は <code>function</code> で定義します。スクリプト内で定義した関数は入力補完にも出ます。</p>
+
+<pre><code>local function ease(t)
+    return t * t * (3 - 2 * t)
+end
+
+obj.alpha = ease(obj.t) * 255</code></pre>
+
+<h3>複数の戻り値</h3>
+<p>Lua の関数は複数の値を返せます。<code>anim.polar</code> など多くの組み込み関数がこれを使います。</p>
+
+<pre><code>local function offset()
+    return 10, -20
+end
+
+local dx, dy = offset()
+obj.x = obj.x + dx
+obj.y = obj.y + dy</code></pre>
+
+<h3>可変長引数</h3>
+<pre><code>local function sum(...)
+    local total = 0
+    for _, v in ipairs({...}) do
+        total = total + v
+    end
+    return total
+end</code></pre>
+
+<h2>テーブル</h2>
+
+<p>テーブルは Lua で唯一の複合データ構造で、配列にも連想配列にも使えます。</p>
+
+<h3>配列として</h3>
+<pre><code>local list = {5, 10, 15}
+local first = list[1]
+local count = #list</code></pre>
+
+<div class="note">
+配列のインデックスは 1 始まりです。多くの言語と違って 0 ではありません。
+ただし <code>obj.getpixel(x, y)</code> の座標や、数値 for を 0 から回す処理は別物です。
+ピクセルデータプロキシのインデックスは 1 始まりです（<a href="pixels.html">ピクセル操作</a>）。
+</div>
+
+<h3>連想配列として</h3>
+<pre><code>local config = { speed = 90, radius = 100 }
+obj.rz = time * config.speed</code></pre>
+
+<h3>テーブル操作</h3>
+<p><code>table</code> ライブラリで挿入・削除・連結・並べ替えができます。</p>
+
+<pre><code>local t = {}
+table.insert(t, 1)
+table.insert(t, 2)
+table.sort(t)
+local joined = table.concat(t, ",")</code></pre>
+
+<h2>文字列</h2>
+
+<p>文字列は <code>string</code> ライブラリで整形・検索できます。連結は <code>..</code> です。</p>
+
+<pre><code>local label = string.format("%.1f", obj.t)
+local upper = string.upper("abc")
+local n = string.len(label)</code></pre>
+
+<h2>標準で使える数学関数</h2>
+
+<p><code>math</code> ライブラリに基本的な数学関数があります。よく使うものだけ挙げます。</p>
+
+<pre><code>local r = math.sqrt(obj.x * obj.x + obj.y * obj.y)
+local angle = math.atan2(obj.y, obj.x)
+obj.rz = math.deg(angle)
+obj.zoom = math.max(0.1, 1 + math.sin(time))</code></pre>
+
+<p>
+全関数の一覧は <a href="stdlib.html">標準ライブラリ</a> を参照してください。
+アニメーション向けの高度な補間や波・ノイズは <a href="anim.html">anim ライブラリ</a> にまとまっています。
+</p>
+
+<h2>このエフェクト特有の注意点</h2>
+
+<p>
+標準 Lua との違いとして、使える標準ライブラリの範囲、乱数の扱い、5 秒の実行時間制限などの制約があります。
+これらは<a href="limits.html">制限事項とトラブル</a>にまとめています。
+</p>
+
+<div class="pager">
+<a href="getting-started.html">← 導入と使い方</a>
+<a href="stdlib.html">標準ライブラリ →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

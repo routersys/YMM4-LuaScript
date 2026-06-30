@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>エンジンと高速化 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>エンジンと高速化</h1>
+
+<p>
+このプラグインには複数の実行エンジンがあります。標準は MoonSharp ですが、重いピクセル処理のために
+LuaJIT ネイティブレーンや、CPU / GPU カーネルへ変換するレーンを選べます。
+座標などを動かすだけのスクリプトでは MoonSharp で十分速く、エンジンを意識する必要はありません。
+</p>
+
+<h2>エンジンの種類</h2>
+
+<table>
+<tr><th>エンジン</th><th>指定子</th><th>特徴</th></tr>
+<tr><td>MoonSharp</td><td><code>--!moonsharp</code>（既定）</td><td>Lua 5.2 互換。全機能が使える標準エンジン</td></tr>
+<tr><td>ネイティブ（LuaJIT）</td><td><code>--!native</code></td><td>別プロセスの LuaJIT で実行。ピクセル処理が大幅に高速</td></tr>
+<tr><td>CPU カーネル</td><td><code>--!cpu</code></td><td>決まった形のピクセルループを並列実行に変換。MoonSharp と一致する結果</td></tr>
+<tr><td>GPU カーネル</td><td><code>--!gpu</code></td><td>ピクセルループを GPU シェーダーに変換。最速だが float32 精度（明示指定のみ）</td></tr>
+</table>
+
+<h2>指定子の書き方</h2>
+
+<p>
+エンジンの指定子は <code>--!</code> で始まる 1 行です。トークンの前後の空白以外に文字があってはいけません。
+スクリプトのどの行に書いても構いません。
+</p>
+
+<pre><code>--!native
+for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        obj.setpixel(x, y, 255 - r, 255 - g, 255 - b, a)
+    end
+end</code></pre>
+
+<h2>自動振り分け</h2>
+
+<p>指定子が無いときは、スクリプトの内容から自動でエンジンが選ばれます。</p>
+
+<ul>
+<li>後述のカーネル条件に当てはまるピクセルループは、CPU カーネルで実行します。結果は MoonSharp と一致します。</li>
+<li><code>obj.setoption</code> を使う描画系のスクリプトは、MoonSharp で実行します。</li>
+<li>カーネル条件には当てはまらないものの <code>getpixel</code> や <code>setpixel</code> を使うスクリプトは、ネイティブが使えればネイティブで実行します。</li>
+<li>それ以外は MoonSharp で実行します。</li>
+</ul>
+
+<div class="note">
+明示した指定子は自動振り分けより優先されます。
+<code>--!gpu</code> は明示したときだけ使われ、自動では選ばれません（精度が float32 のため）。
+</div>
+
+<h2>カーネルに変換できる形</h2>
+
+<p>
+CPU / GPU カーネルは、次の決まった形のスクリプトだけを変換します。条件に合わないスクリプトは
+カーネルにならず、自動でほかのエンジンへフォールバックします（結果は変わりません）。
+</p>
+
+<ul>
+<li>先頭に <code>local</code> 宣言を置いてもよい。</li>
+<li>本体は二重の数値 for ループ 1 組だけ。外側と内側で <code>obj.h</code> と <code>obj.w</code> をそれぞれ
+  <code>0</code> から <code>-1</code> まで回す。</li>
+<li>内側ループの最初が <code>local r, g, b[, a] = obj.getpixel(x, y)</code>、最後が
+  <code>obj.setpixel(x, y, ...)</code>。</li>
+<li>その間は <code>local</code> 宣言と代入のみ。</li>
+</ul>
+
+<p>カーネル内で使える要素は限られます。</p>
+
+<table>
+<tr><th>分類</th><th>使えるもの</th></tr>
+<tr><td>演算子</td><td><code>+</code> <code>-</code> <code>*</code> <code>/</code> <code>%</code> <code>^</code>、単項マイナス、条件式 <code>cond and a or b</code></td></tr>
+<tr><td>math 関数</td><td><code>abs, floor, ceil, sqrt, sin, cos, tan, asin, acos, atan, atan2, exp, log, pow, fmod, min, max</code></td></tr>
+<tr><td>math 定数</td><td><code>math.pi</code>, <code>math.huge</code></td></tr>
+<tr><td>条件</td><td>比較（<code>&lt; &gt; &lt;= &gt;= == ~=</code>）、<code>and</code> / <code>or</code> / <code>not</code>、<code>obj.check0</code> ～ <code>obj.check3</code></td></tr>
+<tr><td>参照できる値</td><td>座標 <code>x</code> / <code>y</code>、<code>obj</code> の各フィールド、<code>scene.width/height/cx/cy</code>、
+  <code>time, frame, totalframe, framerate, timelineframe, timelinetime, layer, color</code></td></tr>
+</table>
+
+<h3>カーネルになるグレースケールの例</h3>
+<pre><code>for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        local gray = r * 0.299 + g * 0.587 + b * 0.114
+        obj.setpixel(x, y, gray, gray, gray, a)
+    end
+end</code></pre>
+
+<h2>フォールバックの動き</h2>
+
+<ul>
+<li><code>--!native</code> を指定しても、プラグインの隣に <code>native</code> フォルダが配置されていない場合は
+  MoonSharp で実行されます（ログに一度だけ警告が出ます）。期待した高速化が得られないときは、
+  ビルド・配置に <code>native</code> フォルダが含まれているか確認してください。</li>
+<li><code>--!gpu</code> を指定しても、GPU カーネルを初期化できない場合は CPU カーネル、さらに MoonSharp の順で
+  フォールバックします。</li>
+<li><code>--!cpu</code> を指定してもカーネル条件に合わないスクリプトは、ほかのエンジンで実行されます。</li>
+</ul>
+
+<div class="warn">
+GPU カーネルは float32 精度で計算するため、MoonSharp / CPU カーネルとわずかに結果が異なることがあります。
+厳密に一致させたい場合は CPU カーネルかネイティブを使ってください。
+</div>
+
+<div class="pager">
+<a href="pixels.html">← ピクセル操作</a>
+<a href="directives.html">パラメータ指定子 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

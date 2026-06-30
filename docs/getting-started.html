@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>導入と使い方 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>導入と使い方</h1>
+
+<p>
+「Lua スクリプト」は映像エフェクトの一種です。アイテム（テキスト・画像・図形など）に対して、
+他のエフェクトと同じように追加して使います。
+</p>
+
+<h2>エフェクトを追加する</h2>
+
+<ol>
+<li>タイムライン上のアイテムを選択します。</li>
+<li>プロパティエリアのエフェクト欄で、フィルタ効果の追加から「Lua スクリプト」を選びます。
+  検索欄では <code>lua</code> / <code>script</code> / <code>スクリプト</code> / <code>アニメーション効果</code> などのキーワードでも見つかります。</li>
+<li>追加すると、スクリプト入力欄と、トラックバーやチェックボックスなどのパラメータが表示されます。</li>
+</ol>
+
+<h2>スクリプトエディタ</h2>
+
+<p>スクリプト欄はコードエディタになっており、次の機能があります。</p>
+
+<ul>
+<li>シンタックスハイライト: Lua の構文に色が付きます。</li>
+<li>入力補完: 識別子を入力すると候補が表示されます。<code>obj.</code> や <code>anim.</code> のように
+  ドットを入力すると、そのテーブルのメンバーだけが候補に出ます。スクリプト内で定義した関数も補完されます。</li>
+<li>折りたたみ: <code>function ... end</code> などのブロックを折りたためます。</li>
+<li>エラー表示: 構文エラー・実行時エラー・タイムアウトが起きると、該当行に赤い波線で警告が表示されます。</li>
+</ul>
+
+<h2>実行のしくみ</h2>
+
+<p>
+スクリプトは表示中の各フレームで 1 回ずつ実行されます。
+プラグインは実行前に <code>obj</code>・<code>scene</code>・<code>ymm4</code> などへ現在の値を流し込み、
+スクリプトの実行後に <code>obj</code> の値を読み戻して描画へ反映します。
+</p>
+
+<div class="note">
+グローバル変数（自分で <code>x = 1</code> のように作った変数）の状態はフレームをまたいで保持されません。
+毎フレーム、組み込み以外のグローバルはリセットされます。前のフレームの値を覚えておくことはできません。
+時間に応じた変化は <code>time</code> や <code>obj.t</code> から計算してください。
+</div>
+
+<h2>はじめてのスクリプト</h2>
+
+<p>既定のフェードインを、少しずつ拡張してみます。</p>
+
+<h3>1. 不透明度を変える</h3>
+<pre><code>obj.alpha = math.min(time * 255, 255)</code></pre>
+
+<h3>2. 横に動かす</h3>
+<pre><code>obj.alpha = math.min(time * 255, 255)
+obj.x = obj.x + math.sin(time * anim.tau) * 100</code></pre>
+
+<h3>3. トラックバーで振幅を変える</h3>
+<p>
+パラメータパネルの <code>Track0</code> スライダーの値が <code>obj.track0</code> として読めます。
+スライダーを動かすと、揺れの大きさが変わります。
+</p>
+<pre><code>obj.alpha = math.min(time * 255, 255)
+obj.x = obj.x + math.sin(time * anim.tau) * obj.track0</code></pre>
+
+<h2>パラメータパネル</h2>
+
+<p>
+既定では <code>Track0</code> ～ <code>Track3</code> の 4 本のトラックバーが表示されます。
+チェックボックス（<code>Check0</code> ～ <code>Check3</code>）と色（<code>Color</code>）は、
+スクリプトでそれらを使うか、指定子で宣言したときに表示されます。
+表示条件と既定値・名前・範囲の指定方法は <a href="directives.html">パラメータ指定子</a> を参照してください。
+</p>
+
+<table>
+<tr><th>UI</th><th>スクリプトでの読み取り</th><th>型</th></tr>
+<tr><td>Track0 ～ Track3</td><td><code>obj.track0</code> ～ <code>obj.track3</code></td><td>数値</td></tr>
+<tr><td>Check0 ～ Check3</td><td><code>obj.check0</code> ～ <code>obj.check3</code></td><td>真偽値</td></tr>
+<tr><td>Color</td><td><code>color</code></td><td>数値 (0xRRGGBB)</td></tr>
+</table>
+
+<div class="warn">
+スクリプトの実行には 5 秒のタイムアウトがあります。無限ループや非常に重い処理は中断されます。
+詳しくは <a href="limits.html">制限事項とトラブル</a> を参照してください。
+</div>
+
+<div class="pager">
+<a href="index.html">← 概要</a>
+<a href="lua-basics.html">Lua の基礎 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>

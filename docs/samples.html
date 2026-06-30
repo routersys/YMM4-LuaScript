@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サンプル集 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>サンプル集</h1>
+
+<p>
+各サンプルはエフェクトのスクリプト欄にそのまま貼り付けて使えます。
+<code>Track0</code> ～ <code>Track3</code> はパラメータパネルのトラックバーで調整できます。
+使われている変数・関数の意味は各リファレンスページを参照してください。
+</p>
+
+<h2>基本</h2>
+
+<h3>フェードイン（既定スクリプト）</h3>
+<pre><code>obj.alpha = math.min(time * 255, 255)</code></pre>
+
+<h3>フェードアウト</h3>
+<pre><code>obj.alpha = math.max((obj.totalframe - obj.frame) / obj.framerate * 255, 0)</code></pre>
+
+<h3>Track0 で不透明度を制御</h3>
+<pre><code>obj.alpha = obj.track0</code></pre>
+
+<h3>時間に応じて回転</h3>
+<pre><code>obj.rz = time * 90</code></pre>
+
+<h3>Track0 でズームを制御</h3>
+<pre><code>obj.zoom = obj.zoom * (1 + obj.track0 / 100)</code></pre>
+
+<h2>座標と動き</h2>
+
+<h3>左右の揺れ</h3>
+<p>Track0 を振幅、Track1 を 1 秒あたりの周波数として使います。振幅の単位はピクセルです。</p>
+<pre><code>local amp = obj.track0
+local freq = obj.track1
+obj.x = obj.x + math.sin(time * anim.tau * freq) * amp</code></pre>
+
+<h3>円運動</h3>
+<pre><code>local r = obj.track0
+local dx, dy = anim.polar(r, time * 90)
+obj.x = obj.x + dx
+obj.y = obj.y + dy</code></pre>
+
+<h3>バウンド（跳ねる）</h3>
+<pre><code>local h = obj.track0
+obj.y = obj.y - anim.bounce(anim.pingpong(time, 1)) * h</code></pre>
+
+<h3>ゆらぎ（ノイズによる手ぶれ風）</h3>
+<pre><code>obj.x = obj.x + (anim.noise(time * 2, 0, 0) - 0.5) * 20
+obj.y = obj.y + (anim.noise(0, time * 2, 0) - 0.5) * 20
+obj.rz = (anim.noise(0, 0, time * 2) - 0.5) * 10</code></pre>
+
+<h2>回転</h2>
+
+<h3>度とラジアン</h3>
+<pre><code>obj.rzr = time * anim.tau</code></pre>
+
+<h3>加速しながら回転</h3>
+<pre><code>obj.rz = anim.ease_in(obj.t) * 360</code></pre>
+
+<h2>拡大・変形</h2>
+
+<h3>弾むように登場（スケールイン）</h3>
+<pre><code>local p = anim.duration(time, 0.3)
+obj.zoom = obj.zoom * anim.elastic(p)</code></pre>
+
+<h3>ぷにぷに（独立スケール）</h3>
+<pre><code>local s = math.sin(time * anim.tau * 2) * 0.2
+obj.sx = 1 + s
+obj.sy = 1 - s</code></pre>
+
+<h2>不透明度・フェード</h2>
+
+<h3>遅延フェードイン</h3>
+<pre><code>local p = anim.duration(anim.delay(time, 0.5), 1)
+obj.alpha = p * 255</code></pre>
+
+<h3>点滅（矩形波）</h3>
+<pre><code>obj.alpha = anim.square(time, 4) * 255</code></pre>
+
+<h3>滑らかな明滅（正弦波）</h3>
+<pre><code>obj.alpha = anim.oscillate(time, 64, 255, 1)</code></pre>
+
+<h2>イージングと範囲</h2>
+
+<h3>2 点間をイージングで移動</h3>
+<pre><code>local tx, ty = 200, -100
+local p = anim.ease_in_out(obj.t)
+obj.x = anim.lerp(obj.x, tx, p)
+obj.y = anim.lerp(obj.y, ty, p)</code></pre>
+
+<h3>行き過ぎてから戻る</h3>
+<pre><code>obj.x = obj.x + anim.back(obj.t) * 200</code></pre>
+
+<h3>しきい値で切り替え</h3>
+<pre><code>obj.alpha = anim.smoothstep(0, 0.5, obj.t) * 255</code></pre>
+
+<h2>他オブジェクトの参照</h2>
+
+<h3>発射元へ向きながら移動する（ファンネル風）</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local p = anim.ease_in_out(obj.t)
+    local nx = anim.lerp(obj.x, target.x, p)
+    local ny = anim.lerp(obj.y, target.y, p)
+    obj.rz = math.deg(math.atan2(target.y - obj.y, target.x - obj.x))
+    obj.x = nx
+    obj.y = ny
+end</code></pre>
+
+<h3>一定速度で接近し、到達したら停止</h3>
+<pre><code>local target = obj.getobject("routersys")
+if target then
+    local dx = target.x - obj.x
+    local dy = target.y - obj.y
+    local dist = anim.len(dx, dy)
+    if dist > 0 then
+        local step = math.min(dist, obj.track0 * obj.time)
+        obj.x = obj.x + dx / dist * step
+        obj.y = obj.y + dy / dist * step
+    end
+end</code></pre>
+
+<h2>ピクセル操作</h2>
+
+<h3>色の反転</h3>
+<pre><code>for y = 0, obj.h - 1 do
+    for x = 0, obj.w - 1 do
+        local r, g, b, a = obj.getpixel(x, y)
+        obj.setpixel(x, y, 255 - r, 255 - g, 255 - b, a)
+    end
+end</code></pre>
+
+<h3>グレースケール（高速）</h3>
+<pre><code>local pd = obj.getpixeldata()
+local w = pd.width
+local h = pd.height
+for y = 0, h - 1 do
+    for x = 0, w - 1 do
+        local base = (y * w + x) * 4
+        local r = pd:get(base + 1)
+        local g = pd:get(base + 2)
+        local b = pd:get(base + 3)
+        local gray = r * 0.299 + g * 0.587 + b * 0.114
+        pd:set(base + 1, gray)
+        pd:set(base + 2, gray)
+        pd:set(base + 3, gray)
+    end
+end</code></pre>
+
+<h3>時間で色相を回す（虹色）</h3>
+<pre><code>local hue = anim.wrap(time * 60, 0, 360)
+local cr, cg, cb = anim.hsv_to_rgb(hue, 1, 1)
+local pd = obj.getpixeldata()
+local n = pd.width * pd.height
+for i = 0, n - 1 do
+    local base = i * 4
+    pd:set(base + 1, pd:get(base + 1) * cr / 255)
+    pd:set(base + 2, pd:get(base + 2) * cg / 255)
+    pd:set(base + 3, pd:get(base + 3) * cb / 255)
+end</code></pre>
+
+<h2>図形・テキスト</h2>
+
+<h3>星形を生成して回す</h3>
+<pre><code>obj.load("figure", "star", 0xFFCC00, 200, 0, 0)
+obj.rz = time * 90</code></pre>
+
+<h3>テキストを生成する</h3>
+<pre><code>obj.setfont("Yu Gothic UI", 48, 1, 0xFFFFFF)
+obj.load("text", "サンプル")</code></pre>
+
+<h2>環境に応じた制御</h2>
+
+<h3>グループ内のインデックスで時間差をつける</h3>
+<pre><code>local d = ymm4.group_index * 0.1
+local p = anim.duration(anim.delay(time, d), 0.5)
+obj.alpha = p * 255</code></pre>
+
+<h3>出力時のみ挙動を変える</h3>
+<pre><code>if ymm4.is_saving then
+    obj.alpha = 255
+else
+    obj.alpha = 128
+end</code></pre>
+
+<div class="pager">
+<a href="directives.html">← パラメータ指定子</a>
+<a href="reference.html">クイックリファレンス →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>
