@@ -39,6 +39,7 @@ namespace LuaScript
                 "obj.rx", "obj.ry", "obj.rz",
                 "obj.rxr", "obj.ryr", "obj.rzr",
                 "obj.track0", "obj.track1", "obj.track2", "obj.track3",
+                "obj.slider0", "obj.slider1", "obj.slider2", "obj.slider3",
                 "obj.check0", "obj.check1", "obj.check2", "obj.check3",
                 "obj.time", "obj.totaltime", "obj.t", "obj.frame", "obj.totalframe",
                 "obj.framerate", "obj.layer", "obj.index", "obj.num",
