@@ -45,7 +45,7 @@ namespace LuaScript.Engine
         public const int CallbackResultCount = 8;
 
         public const int StringParamsOffset = CallbackResultOffset + CallbackResultCount * 8;
-        public const int StringParamsMax = 64 * 1024;
+        public const int MinStringParamsCapacity = 64 * 1024;
 
         public const int CbKindGetObject = 0;
         public const int CbKindLoadFigure = 1;
@@ -65,7 +65,7 @@ namespace LuaScript.Engine
         public const int CbAlpha = 6;
         public const int CbLayer = 7;
 
-        public const int PixelOffset = StringParamsOffset + StringParamsMax;
+        public static int PixelOffset(int stringCapacity) => StringParamsOffset + stringCapacity;
 
         public const int W = 0;
         public const int H = 1;
@@ -135,7 +135,7 @@ namespace LuaScript.Engine
 
         public const int MaxPixelBufferSize = 3840 * 2160 * 4;
 
-        public static long BufferSize(int width, int height) =>
-            PixelOffset + Math.Max((long)width * height * 4, MaxPixelBufferSize);
+        public static long BufferSize(int width, int height, int stringCapacity) =>
+            PixelOffset(stringCapacity) + Math.Max((long)width * height * 4, MaxPixelBufferSize);
     }
 }

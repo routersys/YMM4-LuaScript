@@ -22,6 +22,7 @@ local mapSize = tonumber(arg[2])
 local workEventName = arg[3]
 local doneEventName = arg[4]
 local shimPath = arg[5]
+local stringParamsCap = tonumber(arg[6])
 
 local hMap = k32.OpenFileMappingA(FILE_MAP_ALL_ACCESS, 0, mapName)
 assert(hMap ~= nil, "OpenFileMapping failed")
@@ -56,8 +57,7 @@ local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
 local CB_TAG_MAX = 4096
 local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
 local STRING_PARAMS_OFFSET = CB_RESULT_OFFSET + 8 * 8
-local STRING_PARAMS_MAX = 64 * 1024
-local PIXEL_OFFSET = STRING_PARAMS_OFFSET + STRING_PARAMS_MAX
+local PIXEL_OFFSET = STRING_PARAMS_OFFSET + stringParamsCap
 local FIRST_WRITABLE = 8
 local LAST_WRITABLE = 25
 local STATUS_CALLBACK = 3
