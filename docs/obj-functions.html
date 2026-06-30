@@ -158,12 +158,12 @@ obj.load("text", "サンプル")</code></pre>
 
 <p>
 次の関数は AviUtl のスクリプト制御に近い使い勝手で用意されています。
-<code>obj.effect</code> は YMM4 に登録された映像エフェクトを名前で呼び出します。
+<code>obj.effect</code> は AviUtl／AviUtl2 のエフェクト名とパラメータ名で、対応する YMM4 の映像エフェクトを適用します。
 </p>
 
 <table>
 <tr><th>関数</th><th>説明</th></tr>
-<tr><td><code>obj.effect(name, key1, val1, ...)</code></td><td>YMM4 のエフェクトを名前またはキーワードで適用する。<code>key, val</code> の組でプロパティ（プロパティ名または表示名）を設定する</td></tr>
+<tr><td><code>obj.effect(name, key1, val1, ...)</code></td><td>AviUtl／AviUtl2 のエフェクト名で YMM4 の映像エフェクトを適用する。<code>key, val</code> の組は AviUtl のパラメータ名で指定し、互換マップを通じて YMM4 のプロパティへ変換される</td></tr>
 <tr><td><code>obj.draw([ox, oy, oz, zoom, alpha, aspect])</code></td><td>現在のバッファをオフセット・拡大率・不透明度を指定して描画する</td></tr>
 <tr><td><code>obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, u0,v0, ... ,u3,v3] [, alpha])</code></td><td>4 頂点のテクスチャ付きポリゴンを描画する。UV を省略すると画像全体を使う</td></tr>
 <tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファ間でコピーする。ID は <code>obj</code>（作業画像）・<code>tmp</code>・<code>cache:名前</code>。書き込み先が <code>obj</code> のときのみ作業画像を置き換える</td></tr>
@@ -173,10 +173,63 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
 </table>
 
+<h3>互換マップ</h3>
+
+<p>
+<code>obj.effect</code> の解決は宣言的な互換マップに従います。
+マップに宣言した AviUtl／AviUtl2 のエフェクトとパラメータだけを解決し、
+宣言が無いものは適用しません。
+パラメータの値を AviUtl と同じ尺度で渡すと、マップに定義した倍率とオフセットの変換を経て、
+YMM4 のプロパティへ反映します。たとえば <code>ぼかし</code> の <code>範囲</code> は YMM4 の
+<code>Blur</code> へ 0.5 倍で対応し、AviUtl と同じ見た目になります。
+この互換マップは、YMM4 自身が AviUtl の <code>.exo</code> へ書き出す変換を逆向きにたどって作っているため、
+往復しても結果が一致します。
+</p>
+
+<p>
+対象のエンジンは指定子 <code>--!aviutl</code> または <code>--!aviutl2</code> で切り替えます。
+指定子を書かないときは <code>--!aviutl</code> として扱います。
+各エントリは対応するエンジンを AviUtl・AviUtl2・両方のいずれかとして保持し、
+対象に一致するエントリだけを解決します。
+</p>
+
+<pre><code>--!aviutl
+obj.effect("ぼかし", "範囲", 20)
+obj.effect("方向ブラー", "範囲", 16, "角度", 45)</code></pre>
+
+<p>現在マップが宣言している AviUtl のエフェクト名は次のとおりです。</p>
+
+<table>
+<tr><th>エフェクト名</th><th>主なパラメータ</th></tr>
+<tr><td><code>ぼかし</code></td><td>範囲, サイズ固定</td></tr>
+<tr><td><code>境界ぼかし</code></td><td>範囲</td></tr>
+<tr><td><code>方向ブラー</code></td><td>範囲, 角度, サイズ固定</td></tr>
+<tr><td><code>放射ブラー</code></td><td>範囲, X, Y, サイズを固定</td></tr>
+<tr><td><code>閃光</code></td><td>範囲, X, Y, サイズを固定</td></tr>
+<tr><td><code>クロマキー</code></td><td>色相範囲, 境界補正</td></tr>
+<tr><td><code>クリッピング</code></td><td>上, 下, 左, 右, 中心の位置を変更</td></tr>
+<tr><td><code>斜めクリッピング</code></td><td>中心X, 中心Y, 角度, ぼかし, 幅</td></tr>
+<tr><td><code>領域拡張</code></td><td>上, 下, 左, 右</td></tr>
+<tr><td><code>座標</code></td><td>X, Y, Z</td></tr>
+<tr><td><code>回転</code></td><td>X, Y, Z</td></tr>
+<tr><td><code>リサイズ</code></td><td>拡大率, X, Y, 補間なし</td></tr>
+<tr><td><code>画像ループ</code></td><td>横回数, 縦回数</td></tr>
+<tr><td><code>極座標変換</code></td><td>中心幅, 渦巻</td></tr>
+<tr><td><code>グラデーション</code></td><td>強さ, 中心X, 中心Y, 角度, 幅</td></tr>
+<tr><td><code>単色化</code></td><td>強さ, 輝度を保持する</td></tr>
+<tr><td><code>縁取り</code></td><td>サイズ, ぼかし</td></tr>
+<tr><td><code>反転</code></td><td>—</td></tr>
+<tr><td><code>モザイク</code></td><td>サイズ</td></tr>
+<tr><td><code>ディスプレイスメントマップ</code></td><td>ぼかし</td></tr>
+<tr><td><code>動画ファイル合成</code></td><td>X, Y, 拡大率</td></tr>
+<tr><td><code>色調補正</code></td><td>明るさ, ｺﾝﾄﾗｽﾄ, 色相, 輝度, 彩度</td></tr>
+<tr><td><code>色ずれ</code></td><td>ずれ幅, 角度, 強さ</td></tr>
+</table>
+
 <div class="note">
-<code>obj.effect</code> が呼べるエフェクトは、YMM4 に読み込まれている映像エフェクトです。
-名前は各エフェクトの名称または検索キーワードと照合され、見つからない場合や適用に失敗した場合は
-そのフレームでは元の映像がそのまま使われます（ログに一度だけ警告が出ます）。
+対象のエフェクトが YMM4 やコミュニティプラグインに読み込まれていないとき、または適用に失敗したときは、
+そのフレームでは元の映像をそのまま使います。このときログへ警告を一度だけ出します。
+<code>色調補正</code> と <code>色ずれ</code> はコミュニティプラグインのエフェクトに対応します。
 </div>
 
 <div class="pager">
