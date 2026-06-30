@@ -34,10 +34,6 @@ FileImage,,画像ファイル,Image File,图像文件,圖片檔案,이미지 파
 FileProject,,プロジェクトファイル,Project File,项目文件,專案檔案,프로젝트 파일,Archivo de proyecto,ملف المشروع,File Proyek
 FileMp4,,MP4ファイル,MP4 File,MP4文件,MP4檔案,MP4 파일,Archivo MP4,ملف MP4,File MP4
 FileExo,,EXOファイル,EXO File,EXO文件,EXO檔案,EXO 파일,Archivo EXO,ملف EXO,File EXO
-FileTransition,,トランジションファイル,Transition File,转场文件,轉場檔案,트랜지션 파일,Archivo de transición,ملف الانتقال,File Transisi
-FileTachie,,立ち絵パーツファイル,Tachie Parts File,立绘部件文件,立繪部件檔案,입화 파츠 파일,Archivo de partes Tachie,ملف أجزاء Tachie,File Bagian Tachie
-FileTexture,,テクスチャファイル,Texture File,纹理文件,紋理檔案,텍스처 파일,Archivo de textura,ملف الملمس,File Tekstur
-FileThumbnail,,サムネイルファイル,Thumbnail File,缩略图文件,縮圖檔案,썸네일 파일,Archivo de miniatura,ملف الصورة المصغرة,File Thumbnail
 FileSubtitle,,字幕ファイル,Subtitle File,字幕文件,字幕檔案,자막 파일,Archivo de subtítulos,ملف الترجمة,File Subtitle
 FileShader,,シェーダーファイル,Shader File,着色器文件,著色器檔案,셰이더 파일,Archivo de sombreador,ملف التظليل,File Shader
 ToolBarImport,,インポート,Import,导入,導入,가져오기,Importar,استيراد,Impor

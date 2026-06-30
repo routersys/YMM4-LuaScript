@@ -94,10 +94,6 @@
 <data name="FileProject" xml:space="preserve"><value>Project File</value></data>
 <data name="FileMp4" xml:space="preserve"><value>MP4 File</value></data>
 <data name="FileExo" xml:space="preserve"><value>EXO File</value></data>
-<data name="FileTransition" xml:space="preserve"><value>Transition File</value></data>
-<data name="FileTachie" xml:space="preserve"><value>Tachie Parts File</value></data>
-<data name="FileTexture" xml:space="preserve"><value>Texture File</value></data>
-<data name="FileThumbnail" xml:space="preserve"><value>Thumbnail File</value></data>
 <data name="FileSubtitle" xml:space="preserve"><value>Subtitle File</value></data>
 <data name="FileShader" xml:space="preserve"><value>Shader File</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>Import</value></data>

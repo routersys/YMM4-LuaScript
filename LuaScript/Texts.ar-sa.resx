@@ -94,10 +94,6 @@
 <data name="FileProject" xml:space="preserve"><value>ملف المشروع</value></data>
 <data name="FileMp4" xml:space="preserve"><value>ملف MP4</value></data>
 <data name="FileExo" xml:space="preserve"><value>ملف EXO</value></data>
-<data name="FileTransition" xml:space="preserve"><value>ملف الانتقال</value></data>
-<data name="FileTachie" xml:space="preserve"><value>ملف أجزاء Tachie</value></data>
-<data name="FileTexture" xml:space="preserve"><value>ملف الملمس</value></data>
-<data name="FileThumbnail" xml:space="preserve"><value>ملف الصورة المصغرة</value></data>
 <data name="FileSubtitle" xml:space="preserve"><value>ملف الترجمة</value></data>
 <data name="FileShader" xml:space="preserve"><value>ملف التظليل</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>استيراد</value></data>

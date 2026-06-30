@@ -176,30 +176,6 @@ namespace LuaScript
         public string FileExo { get => _fileExo; set => Set(ref _fileExo, value); }
         string _fileExo = string.Empty;
 
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTransition), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
-        [FileSelector(FileGroupType.Transition)]
-        [ShowPropertyEditorWhen(nameof(IsFileTransitionVisible), true)]
-        public string FileTransition { get => _fileTransition; set => Set(ref _fileTransition, value); }
-        string _fileTransition = string.Empty;
-
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTachie), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
-        [FileSelector(FileGroupType.TachieParts)]
-        [ShowPropertyEditorWhen(nameof(IsFileTachieVisible), true)]
-        public string FileTachie { get => _fileTachie; set => Set(ref _fileTachie, value); }
-        string _fileTachie = string.Empty;
-
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileTexture), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
-        [FileSelector(FileGroupType.Texture)]
-        [ShowPropertyEditorWhen(nameof(IsFileTextureVisible), true)]
-        public string FileTexture { get => _fileTexture; set => Set(ref _fileTexture, value); }
-        string _fileTexture = string.Empty;
-
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileThumbnail), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
-        [FileSelector(FileGroupType.Thumbnail)]
-        [ShowPropertyEditorWhen(nameof(IsFileThumbnailVisible), true)]
-        public string FileThumbnail { get => _fileThumbnail; set => Set(ref _fileThumbnail, value); }
-        string _fileThumbnail = string.Empty;
-
         [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.FileSubtitle), Description = nameof(Texts.FileDesc), ResourceType = typeof(Texts))]
         [FileSelector(FileGroupType.Subtitle)]
         [ShowPropertyEditorWhen(nameof(IsFileSubtitleVisible), true)]
@@ -234,10 +210,6 @@ namespace LuaScript
         [JsonIgnore] public bool IsFileProjectVisible { get => _isFileProjectVisible; private set => Set(ref _isFileProjectVisible, value); }
         [JsonIgnore] public bool IsFileMp4Visible { get => _isFileMp4Visible; private set => Set(ref _isFileMp4Visible, value); }
         [JsonIgnore] public bool IsFileExoVisible { get => _isFileExoVisible; private set => Set(ref _isFileExoVisible, value); }
-        [JsonIgnore] public bool IsFileTransitionVisible { get => _isFileTransitionVisible; private set => Set(ref _isFileTransitionVisible, value); }
-        [JsonIgnore] public bool IsFileTachieVisible { get => _isFileTachieVisible; private set => Set(ref _isFileTachieVisible, value); }
-        [JsonIgnore] public bool IsFileTextureVisible { get => _isFileTextureVisible; private set => Set(ref _isFileTextureVisible, value); }
-        [JsonIgnore] public bool IsFileThumbnailVisible { get => _isFileThumbnailVisible; private set => Set(ref _isFileThumbnailVisible, value); }
         [JsonIgnore] public bool IsFileSubtitleVisible { get => _isFileSubtitleVisible; private set => Set(ref _isFileSubtitleVisible, value); }
         [JsonIgnore] public bool IsFileShaderVisible { get => _isFileShaderVisible; private set => Set(ref _isFileShaderVisible, value); }
 
@@ -263,10 +235,6 @@ namespace LuaScript
         bool _isFileProjectVisible;
         bool _isFileMp4Visible;
         bool _isFileExoVisible;
-        bool _isFileTransitionVisible;
-        bool _isFileTachieVisible;
-        bool _isFileTextureVisible;
-        bool _isFileThumbnailVisible;
         bool _isFileSubtitleVisible;
         bool _isFileShaderVisible;
 
@@ -300,10 +268,6 @@ namespace LuaScript
             IsFileProjectVisible = usage.Uses("file_project");
             IsFileMp4Visible = usage.Uses("file_mp4");
             IsFileExoVisible = usage.Uses("file_exo");
-            IsFileTransitionVisible = usage.Uses("file_transition");
-            IsFileTachieVisible = usage.Uses("file_tachie");
-            IsFileTextureVisible = usage.Uses("file_texture");
-            IsFileThumbnailVisible = usage.Uses("file_thumbnail");
             IsFileSubtitleVisible = usage.Uses("file_subtitle");
             IsFileShaderVisible = usage.Uses("file_shader");
 

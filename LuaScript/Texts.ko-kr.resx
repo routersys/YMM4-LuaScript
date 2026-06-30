@@ -94,10 +94,6 @@
 <data name="FileProject" xml:space="preserve"><value>프로젝트 파일</value></data>
 <data name="FileMp4" xml:space="preserve"><value>MP4 파일</value></data>
 <data name="FileExo" xml:space="preserve"><value>EXO 파일</value></data>
-<data name="FileTransition" xml:space="preserve"><value>트랜지션 파일</value></data>
-<data name="FileTachie" xml:space="preserve"><value>입화 파츠 파일</value></data>
-<data name="FileTexture" xml:space="preserve"><value>텍스처 파일</value></data>
-<data name="FileThumbnail" xml:space="preserve"><value>썸네일 파일</value></data>
 <data name="FileSubtitle" xml:space="preserve"><value>자막 파일</value></data>
 <data name="FileShader" xml:space="preserve"><value>셰이더 파일</value></data>
 <data name="ToolBarImport" xml:space="preserve"><value>가져오기</value></data>
