@@ -653,10 +653,11 @@
                 supported. See "obj Table - Functions" for details.
 
         o AviUtl / AviUtl2 compatibility map for obj.effect
-                obj.effect("effect name", "parameter name", value, ...) is resolved
-                through a declarative compatibility map. Only effects and parameters
-                declared in the map are resolved, and values pass through the declared
-                scale/offset conversion before reaching the YMM4 properties. The map is
+                obj.effect("effect name", "parameter name", value, ...) first consults
+                the compatibility map. Effects declared as AviUtl / AviUtl2 names pass
+                through the declared scale/offset conversion before reaching the YMM4
+                properties. Names not declared in the map are resolved directly by the
+                YMM4 effect name or keyword, so existing calls keep working. The map is
                 built as the inverse of YMM4's own AviUtl export (.exo output), so it
                 round-trips exactly. The target engine is selected with --!aviutl
                 (default) / --!aviutl2.

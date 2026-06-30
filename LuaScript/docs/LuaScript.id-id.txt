@@ -649,11 +649,12 @@
                 didukung. Lihat "Tabel obj - Fungsi" untuk detailnya.
 
         o Peta kompatibilitas AviUtl / AviUtl2 untuk obj.effect
-                obj.effect("nama efek", "nama parameter", nilai, ...) diselesaikan
-                melalui peta kompatibilitas deklaratif. Hanya efek dan parameter yang
-                dideklarasikan dalam peta yang diselesaikan, dan nilainya melewati
-                konversi skala/offset yang dideklarasikan sebelum mencapai properti
-                YMM4. Peta ini dibuat sebagai kebalikan dari ekspor AviUtl milik YMM4
+                obj.effect("nama efek", "nama parameter", nilai, ...) pertama-tama
+                merujuk peta kompatibilitas. Efek yang dideklarasikan sebagai nama
+                AviUtl / AviUtl2 melewati konversi skala/offset yang dideklarasikan
+                sebelum mencapai properti YMM4. Nama yang tidak dideklarasikan dalam peta
+                diselesaikan langsung melalui nama efek atau kata kunci YMM4, sehingga
+                pemanggilan yang sudah ada tetap berfungsi. Peta ini dibuat sebagai kebalikan dari ekspor AviUtl milik YMM4
                 sendiri (keluaran .exo), sehingga konsisten secara bolak-balik. Mesin
                 target dipilih dengan --!aviutl (bawaan) / --!aviutl2.
                 Nama efek yang dideklarasikan dalam peta beserta parameter utamanya

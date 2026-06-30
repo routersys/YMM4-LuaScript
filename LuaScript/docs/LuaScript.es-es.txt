@@ -654,11 +654,13 @@
                 Consulte "Tabla obj - Funciones" para más detalles.
 
         o Mapa de compatibilidad AviUtl / AviUtl2 para obj.effect
-                obj.effect("nombre de efecto", "nombre de parámetro", valor, ...) se
-                resuelve mediante un mapa de compatibilidad declarativo. Solo se
-                resuelven los efectos y parámetros declarados en el mapa, y los valores
-                pasan por la conversión de escala/desplazamiento declarada antes de
-                llegar a las propiedades de YMM4. El mapa se construye como la inversa de
+                obj.effect("nombre de efecto", "nombre de parámetro", valor, ...)
+                consulta primero el mapa de compatibilidad. Los efectos declarados como
+                nombres de AviUtl / AviUtl2 pasan por la conversión de
+                escala/desplazamiento declarada antes de llegar a las propiedades de
+                YMM4. Los nombres no declarados en el mapa se resuelven directamente por
+                el nombre de efecto o la palabra clave de YMM4, por lo que las llamadas
+                existentes siguen funcionando. El mapa se construye como la inversa de
                 la propia exportación de AviUtl de YMM4 (salida .exo), por lo que es
                 reversible de forma exacta. El motor de destino se selecciona con
                 --!aviutl (predeterminado) / --!aviutl2.
