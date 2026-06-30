@@ -133,6 +133,12 @@ namespace LuaScript
         public string Font { get => _font; set => Set(ref _font, value); }
         string _font = "メイリオ";
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Directory), Description = nameof(Texts.DirectoryDesc), ResourceType = typeof(Texts))]
+        [DirectorySelector(PropertyEditorSize = PropertyEditorSize.FullWidth)]
+        [ShowPropertyEditorWhen(nameof(IsDirectoryVisible), true)]
+        public string Directory { get => _directory; set => Set(ref _directory, value); }
+        string _directory = string.Empty;
+
         [JsonIgnore] public bool IsSlider0Visible { get => _isSlider0Visible; private set => Set(ref _isSlider0Visible, value); }
         [JsonIgnore] public bool IsSlider1Visible { get => _isSlider1Visible; private set => Set(ref _isSlider1Visible, value); }
         [JsonIgnore] public bool IsSlider2Visible { get => _isSlider2Visible; private set => Set(ref _isSlider2Visible, value); }
@@ -148,6 +154,7 @@ namespace LuaScript
         [JsonIgnore] public bool IsColorVisible { get => _isColorVisible; private set => Set(ref _isColorVisible, value); }
         [JsonIgnore] public bool IsTextVisible { get => _isTextVisible; private set => Set(ref _isTextVisible, value); }
         [JsonIgnore] public bool IsFontVisible { get => _isFontVisible; private set => Set(ref _isFontVisible, value); }
+        [JsonIgnore] public bool IsDirectoryVisible { get => _isDirectoryVisible; private set => Set(ref _isDirectoryVisible, value); }
 
         bool _isSlider0Visible;
         bool _isSlider1Visible;
@@ -164,6 +171,7 @@ namespace LuaScript
         bool _isColorVisible;
         bool _isTextVisible;
         bool _isFontVisible;
+        bool _isDirectoryVisible;
 
         private void UpdateLayout()
         {
@@ -188,6 +196,7 @@ namespace LuaScript
             IsColorVisible = layout.HasColor || (!hasAny && usage.Color);
             IsTextVisible = usage.Uses("text");
             IsFontVisible = usage.Uses("font");
+            IsDirectoryVisible = usage.Uses("dir");
 
             SeedDefaults(layout);
         }

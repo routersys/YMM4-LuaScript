@@ -411,6 +411,7 @@ namespace LuaScript
         {
             yield return new("text", item.Text);
             yield return new("font", item.Font);
+            yield return new("dir", item.Directory);
         }
 
         private string BuildStringSignature()
