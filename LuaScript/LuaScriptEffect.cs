@@ -127,6 +127,12 @@ namespace LuaScript
         public string Text { get => _text; set => Set(ref _text, value); }
         string _text = string.Empty;
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.Font), Description = nameof(Texts.FontDesc), ResourceType = typeof(Texts))]
+        [FontComboBox]
+        [ShowPropertyEditorWhen(nameof(IsFontVisible), true)]
+        public string Font { get => _font; set => Set(ref _font, value); }
+        string _font = "メイリオ";
+
         [JsonIgnore] public bool IsSlider0Visible { get => _isSlider0Visible; private set => Set(ref _isSlider0Visible, value); }
         [JsonIgnore] public bool IsSlider1Visible { get => _isSlider1Visible; private set => Set(ref _isSlider1Visible, value); }
         [JsonIgnore] public bool IsSlider2Visible { get => _isSlider2Visible; private set => Set(ref _isSlider2Visible, value); }
@@ -141,6 +147,7 @@ namespace LuaScript
         [JsonIgnore] public bool IsCheck3Visible { get => _isCheck3Visible; private set => Set(ref _isCheck3Visible, value); }
         [JsonIgnore] public bool IsColorVisible { get => _isColorVisible; private set => Set(ref _isColorVisible, value); }
         [JsonIgnore] public bool IsTextVisible { get => _isTextVisible; private set => Set(ref _isTextVisible, value); }
+        [JsonIgnore] public bool IsFontVisible { get => _isFontVisible; private set => Set(ref _isFontVisible, value); }
 
         bool _isSlider0Visible;
         bool _isSlider1Visible;
@@ -156,6 +163,7 @@ namespace LuaScript
         bool _isCheck3Visible;
         bool _isColorVisible;
         bool _isTextVisible;
+        bool _isFontVisible;
 
         private void UpdateLayout()
         {
@@ -179,6 +187,7 @@ namespace LuaScript
             IsCheck3Visible = layout.HasCheck(3) || (!hasAny && usage.Check3);
             IsColorVisible = layout.HasColor || (!hasAny && usage.Color);
             IsTextVisible = usage.Uses("text");
+            IsFontVisible = usage.Uses("font");
 
             SeedDefaults(layout);
         }

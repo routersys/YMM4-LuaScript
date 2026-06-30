@@ -410,6 +410,7 @@ namespace LuaScript
         private IEnumerable<KeyValuePair<string, string>> EnumerateStringParameters()
         {
             yield return new("text", item.Text);
+            yield return new("font", item.Font);
         }
 
         private string BuildStringSignature()
