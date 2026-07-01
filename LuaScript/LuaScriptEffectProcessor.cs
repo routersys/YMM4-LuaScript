@@ -303,6 +303,8 @@ namespace LuaScript
                         }
                     }
 
+                    ApplyDrawState(ctx, bounds);
+
                     outDesc = BuildOutputDesc(inDesc, ctx);
 
                     if (ctx.EffectRequests.Count > 0)
@@ -464,6 +466,7 @@ namespace LuaScript
             ctx.ClearQueries();
             ctx.ClearEffects();
             ctx.ClearDraws();
+            ctx.DrawStateOverride = null;
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
@@ -522,6 +525,29 @@ namespace LuaScript
         private static double ClampTrack(double value, AviUtlParameterLayout layout, int index)
         {
             return layout.GetTrack(index) is { } p ? Math.Clamp(value, p.Min, p.Max) : value;
+        }
+
+        private void ApplyDrawState(AviUtlScriptContext ctx, RawRectF bounds)
+        {
+            if (ctx.DrawStateOverride is not { } drawn)
+                return;
+
+            if (!drawn)
+            {
+                effectOutput = null;
+                return;
+            }
+
+            if (effectOutput is not null)
+                return;
+
+            ctx.EnsurePixelBuffer();
+            var buffer = ctx.GetPixelBuffer();
+            if (buffer is null)
+                return;
+
+            _pixelManager!.WritePixelsToOutput(buffer, ctx.ImageWidth, ctx.ImageHeight);
+            effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
         }
 
         private static DrawDescription BuildOutputDesc(DrawDescription inDesc, AviUtlScriptContext ctx)
