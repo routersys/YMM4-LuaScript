@@ -19,6 +19,7 @@ namespace LuaScript
         private ID2D1Bitmap1? _target;
         private AffineTransform2D? _placement;
         private Opacity? _opacityEffect;
+        private ID2D1Image? _opacityOutput;
         private int _sourceWidth;
         private int _sourceHeight;
         private int _targetWidth;
@@ -123,18 +124,10 @@ namespace LuaScript
 
             var interp = ToImageInterpolation(interpolation);
             _opacityEffect!.Value = opacity;
-            var image = _opacityEffect.Output;
-            try
-            {
-                if (blend.IsCompositionEffect())
-                    _ctx.DeviceContext.DrawImage(image, interpolationMode: interp, compositeMode: blend.ToD2DCompositionMode());
-                else
-                    _ctx.DeviceContext.BlendImage(image, blend.ToD2DBlendMode(), null, null, interp);
-            }
-            finally
-            {
-                image.Dispose();
-            }
+            if (blend.IsCompositionEffect())
+                _ctx.DeviceContext.DrawImage(_opacityOutput!, interpolationMode: interp, compositeMode: blend.ToD2DCompositionMode());
+            else
+                _ctx.DeviceContext.BlendImage(_opacityOutput!, blend.ToD2DBlendMode(), null, null, interp);
         }
 
         private static InterpolationMode ToImageInterpolation(BitmapInterpolationMode mode) =>
@@ -150,7 +143,11 @@ namespace LuaScript
             _sourceWidth = width;
             _sourceHeight = height;
 
-            _opacityEffect ??= new Opacity(_ctx.DeviceContext);
+            if (_opacityEffect is null)
+            {
+                _opacityEffect = new Opacity(_ctx.DeviceContext);
+                _opacityOutput = _opacityEffect.Output;
+            }
             _opacityEffect.SetInput(0, _source, true);
         }
 
@@ -174,10 +171,12 @@ namespace LuaScript
         public void Dispose()
         {
             _placement?.Dispose();
+            _opacityOutput?.Dispose();
             _opacityEffect?.Dispose();
             _source?.Dispose();
             _target?.Dispose();
             _placement = null;
+            _opacityOutput = null;
             _opacityEffect = null;
             _source = null;
             _target = null;
