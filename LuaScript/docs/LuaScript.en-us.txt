@@ -550,8 +550,7 @@
                     "star" : connect each anchor point to the object center.
                     "arm"  : connect the object center to each anchor point in order.
                     "xyz"  : treat the anchor points as 3D coordinates. 2D by default.
-                Returns the number of anchor points. Because it involves editor
-                interaction, it runs on the MoonSharp engine.
+                Returns the number of anchor points. It works in both engines.
                 The "track" trackbar mode is not supported yet and returns 0.
                 Example:
                   num = obj.track0

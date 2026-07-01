@@ -553,8 +553,7 @@
                     "star" : une cada punto de anclaje con el centro del objeto.
                     "arm"  : une el centro del objeto con cada punto en orden.
                     "xyz"  : trata los puntos como coordenadas 3D. 2D por defecto.
-                Devuelve el número de puntos de anclaje. Como implica interacción
-                con el editor, se ejecuta en el motor MoonSharp.
+                Devuelve el número de puntos de anclaje. Funciona en ambos motores.
                 El modo de barra "track" aún no se admite y devuelve 0.
                 Ejemplo:
                   num = obj.track0

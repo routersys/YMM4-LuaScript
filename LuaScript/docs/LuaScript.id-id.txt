@@ -548,8 +548,7 @@
                     "star" : menghubungkan tiap titik jangkar ke pusat objek.
                     "arm"  : menghubungkan pusat objek ke tiap titik secara berurutan.
                     "xyz"  : memperlakukan titik sebagai koordinat 3D. Bawaan 2D.
-                Mengembalikan jumlah titik jangkar. Karena melibatkan interaksi
-                editor, berjalan pada mesin MoonSharp.
+                Mengembalikan jumlah titik jangkar. Bekerja pada kedua mesin.
                 Mode bilah "track" belum didukung dan mengembalikan 0.
                 Contoh:
                   num = obj.track0
