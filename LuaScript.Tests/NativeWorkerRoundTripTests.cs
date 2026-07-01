@@ -473,6 +473,44 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void DrawTarget_TempBuffer_CompositesAndCopiesBack()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[2 * 2 * 4];
+            var fields = Fields(2, 2, 0d);
+
+            string script =
+                "obj.setpixel(0,0,255,0,0,255)\n" +
+                "obj.setpixel(1,0,0,255,0,255)\n" +
+                "obj.setpixel(0,1,0,0,255,255)\n" +
+                "obj.setpixel(1,1,255,255,0,255)\n" +
+                "obj.setoption('drawtarget','tempbuffer',2,2)\n" +
+                "obj.draw(1,1,0,1,1,0)\n" +
+                "obj.setoption('drawtarget','framebuffer')\n" +
+                "obj.copybuffer('obj','tmp')";
+
+            bool ok = _worker.Execute(
+                script, fields, NoStringParams, pixels, 2, 2, 5000,
+                NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+
+            Assert.Equal(0, pixels[0]);
+            Assert.Equal(0, pixels[1]);
+            Assert.Equal(255, pixels[2]);
+            Assert.Equal(255, pixels[3]);
+
+            int i11 = (1 * 2 + 1) * 4;
+            Assert.Equal(0, pixels[i11]);
+            Assert.Equal(255, pixels[i11 + 1]);
+            Assert.Equal(255, pixels[i11 + 2]);
+            Assert.Equal(255, pixels[i11 + 3]);
+        }
+
+        [Fact]
         public void LoadText_RoundTripsThroughCallback()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
