@@ -56,6 +56,7 @@ namespace LuaScript.Engine
         public const int CbKindLoadImage = 6;
         public const int CbKindLoadMovie = 7;
         public const int CbKindSetAnchor = 8;
+        public const int CbKindRequestPixels = 9;
 
         public const int CbExist = 0;
         public const int CbX = 1;
