@@ -587,7 +587,7 @@ namespace LuaScript
                     double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
                     double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
 
-                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias(), CurrentBlend()));
+                    _activeContext.SubmitDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias(), CurrentBlend()));
                     return DynValue.Void;
                 });
 
@@ -623,7 +623,7 @@ namespace LuaScript
                         _ => 1d,
                     };
 
-                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias(), CurrentBlend()));
+                    _activeContext.SubmitDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias(), CurrentBlend()));
                     return DynValue.Void;
                 });
 
@@ -660,6 +660,20 @@ namespace LuaScript
                         _activeContext.DrawStateOverride = value.Type == DataType.Boolean
                             ? value.Boolean
                             : (value.CastToNumber() ?? 0d) != 0d;
+                    if (name == "drawtarget" && _activeContext is not null)
+                    {
+                        if (value.Type == DataType.String && value.String == "tempbuffer")
+                        {
+                            bool hasSize = args.Count > 3;
+                            int w = hasSize ? (int)(args[2].CastToNumber() ?? 0d) : 0;
+                            int h = hasSize ? (int)(args[3].CastToNumber() ?? 0d) : 0;
+                            _activeContext.SetDrawTarget(true, w, h, hasSize);
+                        }
+                        else
+                        {
+                            _activeContext.SetDrawTarget(false, 0, 0, false);
+                        }
+                    }
                     return DynValue.Void;
                 });
 
