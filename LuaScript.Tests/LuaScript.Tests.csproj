@@ -34,6 +34,8 @@
     <Compile Include="..\LuaScript\DrawCommand.cs" Link="Linked\DrawCommand.cs" />
     <Compile Include="..\LuaScript\DrawPolyMath.cs" Link="Linked\DrawPolyMath.cs" />
     <Compile Include="..\LuaScript\SoftwareCompositor.cs" Link="Linked\SoftwareCompositor.cs" />
+    <Compile Include="..\LuaScript\Anchor\LuaAnchorPoint.cs" Link="Linked\LuaAnchorPoint.cs" />
+    <Compile Include="..\LuaScript\Anchor\AnchorSupport.cs" Link="Linked\AnchorSupport.cs" />
     <Compile Include="..\LuaScript\SceneObjectInfo.cs" Link="Linked\SceneObjectInfo.cs" />
     <Compile Include="..\LuaScript\SceneObjectQuery.cs" Link="Linked\SceneObjectQuery.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
