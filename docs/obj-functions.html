@@ -171,6 +171,7 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
 <tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
+<tr><td><code>obj.setanchor(name, count [, option, ...])</code></td><td>プレビュー上にドラッグ可能なアンカーポイントを表示し、その座標を <code>name</code> の Lua 変数へ格納する。設置数を返す。詳細は下記の「アンカーポイント」を参照</td></tr>
 </table>
 
 <h3>合成モード</h3>
@@ -240,6 +241,36 @@ obj.draw()</code></pre>
 obj.draw()
 obj.setoption("drawtarget", "framebuffer")
 obj.copybuffer("obj", "tmp")</code></pre>
+
+<h3>アンカーポイント</h3>
+
+<p>
+<code>obj.setanchor(name, count [, option, ...])</code> は、プレビュー上にドラッグ可能なアンカーポイントを表示します。
+ドラッグで調整した座標はプロジェクトへ保存され、<code>name</code> で指定した Lua 変数へ格納されます。
+変数は <code>pos={x0,y0,x1,y1,…}</code> の並びで、<code>"xyz"</code> を指定すると <code>{x0,y0,z0,x1,y1,z1,…}</code> になります。
+座標はオブジェクトの中心が原点です。個数は最大 32 個です。
+</p>
+
+<table>
+<tr><th>オプション</th><th>意味</th></tr>
+<tr><td><code>"line"</code></td><td>アンカーポイントを線で結ぶ</td></tr>
+<tr><td><code>"loop"</code></td><td>アンカーポイントを線で結び一周させる</td></tr>
+<tr><td><code>"star"</code></td><td>各アンカーポイントとオブジェクトの中心を線で結ぶ</td></tr>
+<tr><td><code>"arm"</code></td><td>オブジェクトの中心から各アンカーポイントへ順に線で結ぶ</td></tr>
+<tr><td><code>"xyz"</code></td><td>アンカーポイントを 3D 座標で扱う。既定は 2D</td></tr>
+</table>
+
+<p>
+戻り値は設置したアンカーポイントの数です。
+エディタ上の操作を伴うため MoonSharp エンジンで動きます。
+<code>name</code> に <code>"track"</code> を指定するトラックバー連携は現在未対応で、<code>0</code> を返します。
+</p>
+
+<pre><code>num = obj.track0
+obj.setanchor("pos", num, "loop")
+for i = 0, num - 1 do
+  obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+end</code></pre>
 
 <h3>互換マップ</h3>
 
