@@ -70,6 +70,7 @@ local CB_KIND_LOADTEXT = 5
 local CB_KIND_LOADIMAGE = 6
 local CB_KIND_LOADMOVIE = 7
 local CB_KIND_SETANCHOR = 8
+local CB_KIND_REQUESTPIXELS = 9
 
 assert(loadfile(shimPath))()
 
@@ -88,7 +89,17 @@ local buffers = {}
 local options = {}
 local pixeloptions = {}
 local dirty = false
+local pixelsValid = false
 local drawTarget = "frame"
+
+local function ensurePixels()
+    if pixelsValid then return end
+    i32[OFF_CB_KIND] = CB_KIND_REQUESTPIXELS
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    pixelsValid = true
+end
 
 local function sampleSource(src, srcW, srcH, u, v, linear)
     if not linear then
@@ -233,6 +244,7 @@ local ymm4 = {}
 function obj.getpixel(x, y)
     x = math.floor(x); y = math.floor(y)
     if x < 0 or y < 0 or x >= width or y >= height then return 0, 0, 0, 0 end
+    ensurePixels()
     local p = pixels + (y * width + x) * 4
     local a = p[3]
     if a <= 0 then return 0, 0, 0, 0 end
@@ -243,6 +255,7 @@ end
 function obj.setpixel(x, y, r, g, b, a)
     x = math.floor(x); y = math.floor(y)
     if x < 0 or y < 0 or x >= width or y >= height then return end
+    ensurePixels()
     a = a or 255
     dirty = true
     local aK = clamp(a, 0, 255) / 255
@@ -254,6 +267,7 @@ function obj.setpixel(x, y, r, g, b, a)
 end
 
 function obj.getpixeldata()
+    ensurePixels()
     local total = width * height * 4
     local buf = pixels
     local pd = { width = width, height = height }
@@ -329,6 +343,7 @@ local function applyLoadResult()
         i32[OFF_WIDTH] = newW
         i32[OFF_HEIGHT] = newH
         dirty = true
+        pixelsValid = true
         obj.w = newW; obj.h = newH
         obj.hw = newW / 2; obj.hh = newH / 2
         obj.cx = newW / 2; obj.cy = newH / 2
@@ -447,6 +462,7 @@ end
 
 function obj.draw(ox, oy, oz, zoom, alpha, aspect)
     if drawTarget == "temp" then
+        ensurePixels()
         local t = ensureTemp()
         compositeDrawInto(t.data, t.w, t.h, pixels, width, height,
             ox or 0, oy or 0, zoom or 1, aspect or 0, alpha or 1, (options.antialias or 1) ~= 0)
@@ -488,6 +504,7 @@ function obj.drawpoly(...)
     end
     p[20] = alpha
     if drawTarget == "temp" then
+        ensurePixels()
         local t = ensureTemp()
         compositeDrawPolyInto(t.data, t.w, t.h, pixels, width, height, p, alpha, (options.antialias or 1) ~= 0)
         return
@@ -584,6 +601,7 @@ function obj.copybuffer(dst, src)
     local sk, skey = bufferKind(src)
     local data, w, h
     if sk == "o" then
+        ensurePixels()
         data = pixels
         w = width; h = height
     elseif sk == "t" or sk == "c" then
@@ -601,6 +619,7 @@ function obj.copybuffer(dst, src)
         width = w; height = h
         i32[OFF_WIDTH] = w; i32[OFF_HEIGHT] = h
         dirty = true
+        pixelsValid = true
         obj.w = w; obj.h = h
         obj.hw = w / 2; obj.hh = h / 2
         obj.cx = w / 2; obj.cy = h / 2
@@ -669,6 +688,23 @@ sandbox = {
 }
 sandbox._G = sandbox
 
+local function captureKeys(t)
+    local keys = {}
+    for k in pairs(t) do keys[k] = true end
+    return keys
+end
+
+local function resetExtraKeys(t, keys)
+    for k in pairs(t) do
+        if not keys[k] then t[k] = nil end
+    end
+end
+
+local sandboxKeys = captureKeys(sandbox)
+local objKeys = captureKeys(obj)
+local sceneKeys = captureKeys(scene)
+local ymm4Keys = captureKeys(ymm4)
+
 local compiledCode, compiledChunk
 
 local function loadFields()
@@ -695,6 +731,9 @@ local function loadFields()
     obj.timelineframe = f64[51]; obj.timelinetime = f64[52]
     obj.check0 = f64[53] ~= 0; obj.check1 = f64[54] ~= 0; obj.check2 = f64[55] ~= 0; obj.check3 = f64[56] ~= 0
     sandbox.color = (f64[57] >= 0) and f64[57] or nil
+    sandbox.time = f64[30]; sandbox.frame = f64[31]; sandbox.totalframe = f64[32]
+    sandbox.framerate = f64[35]; sandbox.layer = f64[36]
+    sandbox.timelineframe = f64[51]; sandbox.timelinetime = f64[52]
 end
 
 local function loadStringParams()
@@ -729,6 +768,7 @@ while true do
     if i32[OFF_COMMAND] == 1 then break end
 
     dirty = false
+    pixelsValid = false
     local scriptLen = i32[OFF_SCRIPTLEN]
     local code = ffi.string(base + SCRIPT_OFFSET, scriptLen)
 
@@ -748,6 +788,10 @@ while true do
     end
 
     if compiledChunk and code == compiledCode then
+        resetExtraKeys(sandbox, sandboxKeys)
+        resetExtraKeys(obj, objKeys)
+        resetExtraKeys(scene, sceneKeys)
+        resetExtraKeys(ymm4, ymm4Keys)
         loadFields()
         loadStringParams()
         cacheTag = nil
