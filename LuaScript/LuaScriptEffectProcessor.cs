@@ -467,6 +467,7 @@ namespace LuaScript
             ctx.ClearEffects();
             ctx.ClearDraws();
             ctx.DrawStateOverride = null;
+            ctx.ResetDrawTarget();
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
