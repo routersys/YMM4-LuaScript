@@ -564,6 +564,8 @@ while true do
         local ok, err = pcall(compiledChunk)
         if ok then
             storeFields()
+            local ds = options.draw_state
+            if ds == nil then f64[62] = 0 elseif ds == false or ds == 0 then f64[62] = 2 else f64[62] = 1 end
             i32[OFF_PIXELSDIRTY] = dirty and 1 or 0
             i32[OFF_STATUS] = 1
             k32.SetEvent(doneEvent)
