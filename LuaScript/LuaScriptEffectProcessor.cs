@@ -605,42 +605,30 @@ namespace LuaScript
             switch (request.Connection)
             {
                 case AnchorConnection.Line:
+                    for (int i = 0; i + 1 < request.Count; i++)
+                        AddEdge(builder, ConnectionPoint(source, request, i), ConnectionPoint(source, request, i + 1));
+                    break;
                 case AnchorConnection.Loop:
-                {
-                    var points = new ControllerPoint[request.Count];
-                    for (int i = 0; i < request.Count; i++)
-                        points[i] = ConnectionPoint(source, request, i);
-                    builder.Add(new VideoEffectController(item, points)
-                    {
-                        Connection = request.Connection == AnchorConnection.Loop
-                            ? VideoControllerPointConnection.Loop
-                            : VideoControllerPointConnection.Line,
-                    });
+                    for (int i = 0; i + 1 < request.Count; i++)
+                        AddEdge(builder, ConnectionPoint(source, request, i), ConnectionPoint(source, request, i + 1));
+                    if (request.Count >= 2)
+                        AddEdge(builder, ConnectionPoint(source, request, request.Count - 1), ConnectionPoint(source, request, 0));
                     break;
-                }
                 case AnchorConnection.Star:
-                {
                     for (int i = 0; i < request.Count; i++)
-                        builder.Add(new VideoEffectController(item, [CenterPoint(), ConnectionPoint(source, request, i)])
-                        {
-                            Connection = VideoControllerPointConnection.Line,
-                        });
+                        AddEdge(builder, CenterPoint(), ConnectionPoint(source, request, i));
                     break;
-                }
                 case AnchorConnection.Arm:
-                {
-                    var points = new ControllerPoint[request.Count + 1];
-                    points[0] = CenterPoint();
-                    for (int i = 0; i < request.Count; i++)
-                        points[i + 1] = ConnectionPoint(source, request, i);
-                    builder.Add(new VideoEffectController(item, points)
-                    {
-                        Connection = VideoControllerPointConnection.Line,
-                    });
+                    if (request.Count >= 1)
+                        AddEdge(builder, CenterPoint(), ConnectionPoint(source, request, 0));
+                    for (int i = 0; i + 1 < request.Count; i++)
+                        AddEdge(builder, ConnectionPoint(source, request, i), ConnectionPoint(source, request, i + 1));
                     break;
-                }
             }
         }
+
+        private void AddEdge(ImmutableList<VideoEffectController>.Builder builder, ControllerPoint a, ControllerPoint b) =>
+            builder.Add(new VideoEffectController(item, [a, b]) { Connection = VideoControllerPointConnection.Line });
 
         private static ControllerPoint CenterPoint() =>
             new(Vector3.Zero) { Shape = VideoControllerPointShape.None };
@@ -795,6 +783,7 @@ namespace LuaScript
                 NativeLoadMovie,
                 (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
                 ctx.AddDraw,
+                ResolveNativeAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
                 out int resultW, out int resultH, out string? error);
 
@@ -843,6 +832,22 @@ namespace LuaScript
 
             effectOutput = null;
             return false;
+        }
+
+        private void ResolveNativeAnchor(string group, int count, bool is3D, int connection, double[] positions)
+        {
+            _context.AddAnchorRequest(new AnchorRequestData(group, count, (AnchorConnection)connection, is3D));
+
+            int stride = is3D ? 3 : 2;
+            var source = _context.AnchorSource;
+            for (int i = 0; i < count; i++)
+            {
+                AnchorSupport.ResolvePosition(source, group, i, out double x, out double y, out double z);
+                positions[i * stride + 0] = x;
+                positions[i * stride + 1] = y;
+                if (is3D)
+                    positions[i * stride + 2] = z;
+            }
         }
 
         private (byte[] buffer, int w, int h) NativeLoadText(string family, string text, double size, bool bold, bool italic, int color)
