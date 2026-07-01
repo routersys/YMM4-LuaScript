@@ -24,7 +24,8 @@ namespace LuaScript.Engine
 
         public static bool UsesDrawingApi(string? script) =>
             script is not null &&
-                script.Contains("obj.setoption", StringComparison.Ordinal);
+                (script.Contains("obj.setoption", StringComparison.Ordinal) ||
+                 script.Contains("obj.setanchor", StringComparison.Ordinal));
 
         private static bool TryGetDirective(string? script, out ScriptEngineKind kind)
         {
