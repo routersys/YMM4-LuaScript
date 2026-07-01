@@ -87,6 +87,131 @@ local buffers = {}
 local options = {}
 local pixeloptions = {}
 local dirty = false
+local drawTarget = "frame"
+
+local function sampleSource(src, srcW, srcH, u, v, linear)
+    if not linear then
+        local su = clamp(math.floor(u), 0, srcW - 1)
+        local sv = clamp(math.floor(v), 0, srcH - 1)
+        local si = (sv * srcW + su) * 4
+        return src[si], src[si + 1], src[si + 2], src[si + 3]
+    end
+    local fx = u - 0.5
+    local fy = v - 0.5
+    local x0 = math.floor(fx)
+    local y0 = math.floor(fy)
+    local tx = fx - x0
+    local ty = fy - y0
+    local b, g, r, a = 0, 0, 0, 0
+    for j = 0, 1 do
+        local sy = clamp(y0 + j, 0, srcH - 1)
+        local wy = (j == 0) and (1 - ty) or ty
+        for i = 0, 1 do
+            local sx = clamp(x0 + i, 0, srcW - 1)
+            local w = wy * ((i == 0) and (1 - tx) or tx)
+            local si = (sy * srcW + sx) * 4
+            b = b + src[si] * w
+            g = g + src[si + 1] * w
+            r = r + src[si + 2] * w
+            a = a + src[si + 3] * w
+        end
+    end
+    return b, g, r, a
+end
+
+local function compositeOver(dst, di, sb, sg, sr, sa)
+    local inv = 1 - sa / 255
+    dst[di] = math.floor(clamp(sb + dst[di] * inv, 0, 255))
+    dst[di + 1] = math.floor(clamp(sg + dst[di + 1] * inv, 0, 255))
+    dst[di + 2] = math.floor(clamp(sr + dst[di + 2] * inv, 0, 255))
+    dst[di + 3] = math.floor(clamp(sa + dst[di + 3] * inv, 0, 255))
+end
+
+local function compositeDrawInto(dst, dstW, dstH, src, srcW, srcH, ox, oy, zoom, aspect, alpha, linear)
+    if srcW <= 0 or srcH <= 0 or dstW <= 0 or dstH <= 0 then return end
+    local ca = clamp(aspect, -1, 1)
+    local zx = zoom * (1 + ca)
+    local zy = zoom * (1 - ca)
+    if zx == 0 or zy == 0 then return end
+    local ka = clamp(alpha, 0, 1)
+    if ka <= 0 then return end
+    local halfW = srcW * 0.5
+    local halfH = srcH * 0.5
+    local spanX = math.abs(halfW * zx)
+    local spanY = math.abs(halfH * zy)
+    local x0 = math.max(0, math.floor(ox - spanX))
+    local x1 = math.min(dstW - 1, math.ceil(ox + spanX))
+    local y0 = math.max(0, math.floor(oy - spanY))
+    local y1 = math.min(dstH - 1, math.ceil(oy + spanY))
+    for py = y0, y1 do
+        for px = x0, x1 do
+            local u = (px + 0.5 - ox) / zx + halfW
+            local v = (py + 0.5 - oy) / zy + halfH
+            if u >= 0 and u < srcW and v >= 0 and v < srcH then
+                local sb, sg, sr, sa = sampleSource(src, srcW, srcH, u, v, linear)
+                compositeOver(dst, (py * dstW + px) * 4, sb * ka, sg * ka, sr * ka, sa * ka)
+            end
+        end
+    end
+end
+
+local function compositeDrawPolyInto(dst, dstW, dstH, src, srcW, srcH, poly, alpha, linear)
+    if srcW <= 0 or srcH <= 0 or dstW <= 0 or dstH <= 0 then return end
+    local x0p, y0p = poly[0], poly[1]
+    local x1p, y1p = poly[3], poly[4]
+    local x3p, y3p = poly[9], poly[10]
+    local u0, v0 = poly[12], poly[13]
+    local u1, v1 = poly[14], poly[15]
+    local u3, v3 = poly[18], poly[19]
+    local det = u0 * (v1 - v3) - v0 * (u1 - u3) + (u1 * v3 - v1 * u3)
+    if math.abs(det) < 1e-9 then return end
+    local inv = 1 / det
+    local a = (x0p * (v1 - v3) - v0 * (x1p - x3p) + (x1p * v3 - v1 * x3p)) * inv
+    local b = (u0 * (x1p - x3p) - x0p * (u1 - u3) + (u1 * x3p - x1p * u3)) * inv
+    local c = (u0 * (v1 * x3p - x1p * v3) - v0 * (u1 * x3p - x1p * u3) + x0p * (u1 * v3 - v1 * u3)) * inv
+    local d = (y0p * (v1 - v3) - v0 * (y1p - y3p) + (y1p * v3 - v1 * y3p)) * inv
+    local e = (u0 * (y1p - y3p) - y0p * (u1 - u3) + (u1 * y3p - y1p * u3)) * inv
+    local f = (u0 * (v1 * y3p - y1p * v3) - v0 * (u1 * y3p - y1p * u3) + y0p * (u1 * v3 - v1 * u3)) * inv
+    local adet = a * e - b * d
+    if math.abs(adet) < 1e-9 then return end
+    local ka = clamp(alpha, 0, 1)
+    if ka <= 0 then return end
+    local minX, minY, maxX, maxY = poly[0], poly[1], poly[0], poly[1]
+    for i = 0, 3 do
+        local xx = poly[i * 3]
+        local yy = poly[i * 3 + 1]
+        if xx < minX then minX = xx end
+        if xx > maxX then maxX = xx end
+        if yy < minY then minY = yy end
+        if yy > maxY then maxY = yy end
+    end
+    local bx0 = math.max(0, math.floor(minX))
+    local bx1 = math.min(dstW - 1, math.ceil(maxX))
+    local by0 = math.max(0, math.floor(minY))
+    local by1 = math.min(dstH - 1, math.ceil(maxY))
+    for py = by0, by1 do
+        for px = bx0, bx1 do
+            local dx = (px + 0.5) - c
+            local dy = (py + 0.5) - f
+            local u = (e * dx - b * dy) / adet
+            local v = (-d * dx + a * dy) / adet
+            if u >= 0 and u < srcW and v >= 0 and v < srcH then
+                local sb, sg, sr, sa = sampleSource(src, srcW, srcH, u, v, linear)
+                compositeOver(dst, (py * dstW + px) * 4, sb * ka, sg * ka, sr * ka, sa * ka)
+            end
+        end
+    end
+end
+
+local function ensureTemp()
+    local t = buffers["t"]
+    if not t then
+        local n = width * height * 4
+        t = { data = ffi.new("uint8_t[?]", n), w = width, h = height }
+        buffers["t"] = t
+    end
+    return t
+end
 
 local function bufferKind(id)
     local c = id:match("^%s*(.)")
@@ -319,6 +444,12 @@ function obj.effect(name, ...)
 end
 
 function obj.draw(ox, oy, oz, zoom, alpha, aspect)
+    if drawTarget == "temp" then
+        local t = ensureTemp()
+        compositeDrawInto(t.data, t.w, t.h, pixels, width, height,
+            ox or 0, oy or 0, zoom or 1, aspect or 0, alpha or 1, (options.antialias or 1) ~= 0)
+        return
+    end
     cbResult[0] = ox or 0
     cbResult[1] = oy or 0
     cbResult[2] = oz or 0
@@ -337,14 +468,15 @@ function obj.drawpoly(...)
     local n = select("#", ...)
     if n < 12 then return end
     local a = { ... }
-    for i = 0, 11 do cbTagD[i] = a[i + 1] or 0 end
+    local p = {}
+    for i = 0, 11 do p[i] = a[i + 1] or 0 end
     if n >= 20 then
-        for i = 0, 7 do cbTagD[12 + i] = a[13 + i] or 0 end
+        for i = 0, 7 do p[12 + i] = a[13 + i] or 0 end
     else
-        cbTagD[12] = 0; cbTagD[13] = 0
-        cbTagD[14] = width; cbTagD[15] = 0
-        cbTagD[16] = width; cbTagD[17] = height
-        cbTagD[18] = 0; cbTagD[19] = height
+        p[12] = 0; p[13] = 0
+        p[14] = width; p[15] = 0
+        p[16] = width; p[17] = height
+        p[18] = 0; p[19] = height
     end
     local alpha = 1
     if n == 13 then
@@ -352,7 +484,13 @@ function obj.drawpoly(...)
     elseif n >= 21 then
         alpha = a[21] or 1
     end
-    cbTagD[20] = alpha
+    p[20] = alpha
+    if drawTarget == "temp" then
+        local t = ensureTemp()
+        compositeDrawPolyInto(t.data, t.w, t.h, pixels, width, height, p, alpha, (options.antialias or 1) ~= 0)
+        return
+    end
+    for i = 0, 20 do cbTagD[i] = p[i] end
     cbTagD[21] = options.antialias or 1
     cbTagD[22] = options.blend or 0
     i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
@@ -368,10 +506,22 @@ function obj.getvalue(target)
     return 0
 end
 
-function obj.setoption(name, value)
+function obj.setoption(name, value, a, b)
     if type(name) ~= "string" then return end
     if value == nil then value = true end
     options[name] = value
+    if name == "drawtarget" then
+        if value == "tempbuffer" then
+            drawTarget = "temp"
+            if a ~= nil and b ~= nil then
+                local w = math.max(1, math.floor(a))
+                local h = math.max(1, math.floor(b))
+                buffers["t"] = { data = ffi.new("uint8_t[?]", w * h * 4), w = w, h = h }
+            end
+        else
+            drawTarget = "frame"
+        end
+    end
 end
 
 function obj.getoption(name)
@@ -392,7 +542,7 @@ function obj.copybuffer(dst, src)
     local sk, skey = bufferKind(src)
     local data, w, h
     if sk == "o" then
-        data = ffi.string(pixels, width * height * 4)
+        data = pixels
         w = width; h = height
     elseif sk == "t" or sk == "c" then
         local b = buffers[skey]
@@ -415,7 +565,10 @@ function obj.copybuffer(dst, src)
         obj.cz = 0
         obj.diagonal = math.sqrt(w * w + h * h)
     elseif dk == "t" or dk == "c" then
-        buffers[dkey] = { data = data, w = w, h = h }
+        local n = w * h * 4
+        local arr = ffi.new("uint8_t[?]", n)
+        ffi.copy(arr, data, n)
+        buffers[dkey] = { data = arr, w = w, h = h }
     end
 end
 
@@ -558,6 +711,7 @@ while true do
         cacheTag = nil
         for k in pairs(options) do options[k] = nil end
         for k in pairs(pixeloptions) do pixeloptions[k] = nil end
+        drawTarget = "frame"
         font.family = ""; font.size = 34; font.bold = false; font.italic = false; font.color = 0xFFFFFF
         math.randomseed(f64[31])
         setfenv(compiledChunk, sandbox)
