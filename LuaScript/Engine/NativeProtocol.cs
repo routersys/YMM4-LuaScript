@@ -129,6 +129,7 @@ namespace LuaScript.Engine
         public const int Slider1 = 59;
         public const int Slider2 = 60;
         public const int Slider3 = 61;
+        public const int DrawState = 62;
 
         public const int FirstWritableField = X;
         public const int LastWritableField = Rzr;
