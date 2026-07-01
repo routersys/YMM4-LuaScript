@@ -213,12 +213,13 @@ AviUtl のアニメーション効果スクリプト（`.anm` 系）のうち、
 - **`@` による複数セクション**: 1 つのスクリプトに `@名前` で複数の効果が定義されている場合、先頭のセクションのみを実行します。
 - **`obj.rand(st, ed [, seed [, frame]])`**: 指定範囲（`st`〜`ed`）の整数を返す決定論的な乱数です。`seed` と `frame` が同じであれば常に同じ値を返し、`frame` を省略すると現在のフレームを用います。従来エンジン（MoonSharp）と高速ランタイム（LuaJIT）で同じ値を返します。
 - **`obj.load("figure", 名前, 色, サイズ [, ライン [, アスペクト]])`**: 円・四角形・三角形・五角形・六角形・星形を生成し、オブジェクトのバッファを置き換えて描画します（出力は図形サイズに合わせて生成され、中心に配置されます）。`ライン` を省略するか `0` で塗りつぶし、サイズ以上の値でも塗りつぶしになります。`アスペクト`（-1.0〜1.0）で幅・高さを歪曲できます。
-- **描画・メディア・バッファ・オプション API**: `obj.draw` / `obj.drawpoly` による描画合成、`obj.load` の `"text"` / `"image"` / `"movie"`、`obj.setfont`、`obj.copybuffer`、`obj.effect`、`obj.getvalue`、`obj.setoption` / `obj.getoption` / `obj.pixeloption` に対応しています。これらは従来エンジン（MoonSharp）と高速ランタイム（LuaJIT）の双方で動作します。
+- **描画・メディア・バッファ・オプション API**: `obj.draw` / `obj.drawpoly` による描画合成、`obj.load` の `"text"` / `"image"` / `"movie"`、`obj.setfont`、`obj.copybuffer`、`obj.effect`、`obj.getvalue`、`obj.setoption` / `obj.getoption` / `obj.pixeloption` に対応しています。これらは従来エンジン（MoonSharp）と高速ランタイム（LuaJIT）の双方で動作します。`obj.setoption` では `antialias` に加えて、`obj.draw` / `obj.drawpoly` の合成モードを YMM4 の並びで指定する `blend`、描画先を `"framebuffer"` / `"tempbuffer"` で切り替える `drawtarget`、作業画像の出力可否を切り替える `draw_state` に対応します。
+- **`obj.setanchor(name, count [, option, ...])`**: プレビュー上にドラッグ可能なアンカーポイントを表示し、その座標を `name` の Lua 変数（`pos={x0,y0,x1,y1,…}`、`"xyz"` 指定時は `{x0,y0,z0,…}`）へ格納します。座標はオブジェクトの中心が原点で、ドラッグで調整した値はプロジェクトへ保存されます。最大 32 個で、`"line"` / `"loop"` / `"star"` / `"arm"` の線結びと `"xyz"` の 3D 指定に対応します。設置数を返し、従来エンジン（MoonSharp）と高速ランタイム（LuaJIT）の双方で動作します。`name` に `"track"` を指定するトラックバー連携は未対応です。
 - **`obj.effect` の AviUtl／AviUtl2 互換マップ**: `obj.effect("エフェクト名", "パラメータ名", 値, …)` はまず互換マップを参照し、AviUtl／AviUtl2 の名前として宣言したエフェクトを、対応する YMM4 の映像エフェクトとプロパティへ変換して適用します。値の倍率とオフセットの変換まで宣言できます。互換マップに宣言が無い名前は、従来どおり YMM4 のエフェクト名・キーワードでそのまま解決するため、既存の呼び出しはそのまま動きます。この互換マップは YMM4 自身が AviUtl の `.exo` へ書き出す変換を逆向きにたどって構築しているため、往復しても結果が一致します。対象のエンジンは指定子 `--!aviutl` または `--!aviutl2` で切り替え、指定子を書かないときは `--!aviutl` として扱います。互換マップが対応するエフェクト名の一覧はドキュメントの「obj の関数」を参照してください。
 
 次のような機能は、この互換層では対象外です（呼び出しを含むスクリプトは意図どおりには動作しません）。
 
-- `obj.setanchor`、`scene.set` / `scene.get` などの未実装関数
+- `scene.set` / `scene.get` などの未実装関数
 - `require` によるモジュール読み込み、`io` / `dofile` などの任意ファイルアクセス（`obj.load("image"/"movie")` のみ、先頭ヘッダー検証付きで対応）
 
 ---
