@@ -87,6 +87,53 @@ namespace LuaScript
 
         internal void ClearDraws() => _drawCommands.Clear();
 
+        private bool _drawTargetTemp;
+
+        internal void ResetDrawTarget() => _drawTargetTemp = false;
+
+        internal void SetDrawTarget(bool temp, int width, int height, bool hasSize)
+        {
+            _drawTargetTemp = temp;
+            if (temp && hasSize)
+            {
+                int w = Math.Max(1, width);
+                int h = Math.Max(1, height);
+                _buffers["t"] = (new byte[w * h * 4], w, h);
+            }
+        }
+
+        internal void SubmitDraw(DrawCommand command)
+        {
+            if (!_drawTargetTemp)
+            {
+                _drawCommands.Add(command);
+                return;
+            }
+            CompositeToTemp(command);
+        }
+
+        private void CompositeToTemp(DrawCommand command)
+        {
+            EnsurePixelBuffer();
+            var src = _pixelBuffer;
+            if (src is null)
+                return;
+
+            if (!_buffers.TryGetValue("t", out var temp))
+            {
+                int w = Math.Max(1, ImageWidth);
+                int h = Math.Max(1, ImageHeight);
+                temp = (new byte[w * h * 4], w, h);
+                _buffers["t"] = temp;
+            }
+
+            bool linear = command.Antialias != 0d;
+            if (command.Poly is { } poly)
+                SoftwareCompositor.DrawPolyInto(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, poly, command.Alpha, linear);
+            else
+                SoftwareCompositor.DrawInto(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, command.Ox, command.Oy, command.Zoom, command.Aspect, command.Alpha, linear);
+        }
+
         private readonly Dictionary<string, (byte[] Data, int Width, int Height)> _buffers = new(StringComparer.Ordinal);
 
         internal bool CopyBuffer(string dst, string src)
