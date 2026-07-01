@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
+using LuaScript.Anchor;
 using LuaScript.Compat;
 using Newtonsoft.Json;
 using YukkuriMovieMaker.Commons;
@@ -292,6 +294,19 @@ namespace LuaScript
             byte b = (byte)(rgb & 0xFF);
             return Color.FromRgb(r, g, b);
         }
+
+        public ImmutableList<LuaAnchorPoint> Anchors
+        {
+            get => _anchors;
+            set { if (Set(ref _anchors, value ?? ImmutableList<LuaAnchorPoint>.Empty)) AnchorVersion++; }
+        }
+        ImmutableList<LuaAnchorPoint> _anchors = ImmutableList<LuaAnchorPoint>.Empty;
+
+        [JsonIgnore]
+        internal int AnchorVersion { get; private set; }
+
+        internal void ApplyAnchorDrag(string group, int index, double dx, double dy, double dz)
+            => Anchors = AnchorSupport.ApplyDrag(Anchors, group, index, dx, dy, dz);
 
         public override IEnumerable<string> CreateExoVideoFilters(int keyFrameIndex, ExoOutputDescription exoOutputDescription) => [];
 
