@@ -167,10 +167,58 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.draw([ox, oy, oz, zoom, alpha, aspect])</code></td><td>現在のバッファをオフセット・拡大率・不透明度を指定して描画する</td></tr>
 <tr><td><code>obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, u0,v0, ... ,u3,v3] [, alpha])</code></td><td>4 頂点のテクスチャ付きポリゴンを描画する。UV を省略すると画像全体を使う</td></tr>
 <tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファ間でコピーする。ID は <code>obj</code>（作業画像）・<code>tmp</code>・<code>cache:名前</code>。書き込み先が <code>obj</code> のときのみ作業画像を置き換える</td></tr>
-<tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される</td></tr>
+<tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される。<code>blend</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の合成モードを番号で指定する。番号は下記の「合成モード」を参照</td></tr>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
 <tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
+</table>
+
+<h3>合成モード</h3>
+
+<p>
+<code>obj.setoption("blend", 番号)</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の描画に合成モードを設定します。
+番号は YMM4 のプロパティパネルにある「合成モード」のドロップダウンと並び順が同じで、0 から始まります。
+範囲外の値や数値以外を指定したときは通常モードになります。
+</p>
+
+<pre><code>obj.setoption("blend", 3)
+obj.draw()</code></pre>
+
+<table>
+<tr><th>番号</th><th>合成モード</th></tr>
+<tr><td><code>0</code></td><td>通常</td></tr>
+<tr><td><code>1</code></td><td>ディザ合成</td></tr>
+<tr><td><code>2</code></td><td>比較（暗）</td></tr>
+<tr><td><code>3</code></td><td>乗算</td></tr>
+<tr><td><code>4</code></td><td>焼き込みカラー</td></tr>
+<tr><td><code>5</code></td><td>焼き込み（リニア）</td></tr>
+<tr><td><code>6</code></td><td>比較（明）</td></tr>
+<tr><td><code>7</code></td><td>スクリーン</td></tr>
+<tr><td><code>8</code></td><td>覆い焼きカラー</td></tr>
+<tr><td><code>9</code></td><td>覆い焼き（リニア） - 加算</td></tr>
+<tr><td><code>10</code></td><td>加算</td></tr>
+<tr><td><code>11</code></td><td>オーバーレイ</td></tr>
+<tr><td><code>12</code></td><td>ソフトライト</td></tr>
+<tr><td><code>13</code></td><td>ハードライト</td></tr>
+<tr><td><code>14</code></td><td>ビビッドライト</td></tr>
+<tr><td><code>15</code></td><td>リニアライト</td></tr>
+<tr><td><code>16</code></td><td>ピンライト</td></tr>
+<tr><td><code>17</code></td><td>ハードミックス</td></tr>
+<tr><td><code>18</code></td><td>差分</td></tr>
+<tr><td><code>19</code></td><td>除外</td></tr>
+<tr><td><code>20</code></td><td>減算</td></tr>
+<tr><td><code>21</code></td><td>除算</td></tr>
+<tr><td><code>22</code></td><td>色相</td></tr>
+<tr><td><code>23</code></td><td>彩度</td></tr>
+<tr><td><code>24</code></td><td>カラー</td></tr>
+<tr><td><code>25</code></td><td>輝度</td></tr>
+<tr><td><code>26</code></td><td>カラー比較（明）</td></tr>
+<tr><td><code>27</code></td><td>背景</td></tr>
+<tr><td><code>28</code></td><td>カラー比較（暗）</td></tr>
+<tr><td><code>29</code></td><td>削除</td></tr>
+<tr><td><code>30</code></td><td>背景でクリッピング</td></tr>
+<tr><td><code>31</code></td><td>重ならない部分のみ</td></tr>
+<tr><td><code>32</code></td><td>色反転マスク</td></tr>
 </table>
 
 <h3>互換マップ</h3>
