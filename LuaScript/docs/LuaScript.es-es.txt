@@ -2,7 +2,8 @@
 
         El efecto de video «Script Lua» de YukkuriMovieMaker4 utiliza
         el lenguaje Lua para los scripts.
-        El motor de scripts empleado es MoonSharp (compatible con Lua 5.2).
+        Los scripts se ejecutan en el runtime rápido incluido (LuaJIT) y,
+        cuando este no está disponible, en MoonSharp (compatible con Lua 5.2).
 
         * Este efecto es una implementación propia y difiere de la especificación de scripts de AviUtl2.
         * Tiene una especificación distinta a los archivos de script de AviUtl2 (*.anm2, etc.).
@@ -11,7 +12,7 @@
 
 - Notas -
 
-        o El motor de ejecución de scripts es MoonSharp (compatible con Lua 5.2).
+        o Los motores de ejecución son LuaJIT (predeterminado) y MoonSharp (compatible con Lua 5.2).
         o Las bibliotecas estándar disponibles se limitan a las siguientes:
             table, string, math, bit32
             * io, os, debug, ffi, require, etc. no están disponibles.
@@ -26,17 +27,17 @@
 
 - Motores de ejecución y aceleración automática -
 
-        Los scripts que contienen procesamiento de píxeles (un bucle anidado
-        getpixel/setpixel) se analizan y se enrutan automáticamente a un motor
-        más rápido. Los scripts normales (coordenadas, rotación, opacidad, etc.)
-        siguen ejecutándose en MoonSharp como antes, sin cambios de comportamiento.
+        Los scripts se analizan y se enrutan automáticamente al mejor motor.
+        Los scripts sin directiva se ejecutan en el runtime rápido incluido
+        (LuaJIT), y los mapeos por píxel autocontenidos se compilan además al
+        núcleo CPU, aún más rápido. En ambos casos los resultados coinciden
+        con MoonSharp.
 
         o Enrutamiento automático (cuando no hay directiva)
                 - Un mapeo por píxel autocontenido (ver condiciones abajo)
                   -> núcleo CPU (rápido, exacto)
-                - Otras operaciones de píxeles -> Nativo (LuaJIT, solo si está
-                  desplegado)
-                - Sin operaciones de píxeles -> MoonSharp
+                - Todo lo demás -> Nativo (LuaJIT, solo si está desplegado)
+                - Nativo no desplegado, o script vacío -> MoonSharp
 
         o Directivas de motor (un comentario en la primera línea del script)
                 --!cpu       : Núcleo CPU. Compilado en tiempo de ejecución a un

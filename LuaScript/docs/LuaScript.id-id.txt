@@ -2,7 +2,9 @@
 
         Efek video "Script Lua" di YukkuriMovieMaker4 menggunakan
         bahasa Lua untuk penulisan skrip.
-        Mesin skrip yang digunakan adalah MoonSharp (kompatibel dengan Lua 5.2).
+        Skrip dijalankan pada runtime cepat yang disertakan (LuaJIT), dan
+        berjalan pada MoonSharp (kompatibel dengan Lua 5.2) jika runtime
+        tersebut tidak tersedia.
 
         * Efek ini adalah implementasi mandiri dan berbeda dari spesifikasi skrip AviUtl2.
         * Memiliki spesifikasi yang berbeda dari file skrip AviUtl2 (*.anm2, dll.).
@@ -11,7 +13,7 @@
 
 - Catatan -
 
-        o Mesin eksekusi skrip adalah MoonSharp (kompatibel dengan Lua 5.2).
+        o Mesin eksekusi skrip adalah LuaJIT (bawaan) dan MoonSharp (kompatibel dengan Lua 5.2).
         o Pustaka standar yang tersedia terbatas pada berikut ini:
             table, string, math, bit32
             * io, os, debug, ffi, require, dll. tidak tersedia.
@@ -26,16 +28,17 @@
 
 - Mesin Eksekusi dan Akselerasi Otomatis -
 
-        Skrip yang berisi pemrosesan piksel (loop bersarang getpixel/setpixel)
-        dianalisis sintaksnya dan secara otomatis dialihkan ke mesin yang lebih
-        cepat. Skrip biasa (koordinat, rotasi, opasitas, dll.) tetap berjalan di
-        MoonSharp seperti sebelumnya, tanpa perubahan perilaku.
+        Skrip dianalisis sintaksnya dan secara otomatis dialihkan ke mesin
+        yang paling sesuai. Skrip tanpa direktif dijalankan pada runtime cepat
+        yang disertakan (LuaJIT), dan pemetaan per-piksel mandiri dikompilasi
+        lebih lanjut ke kernel CPU yang lebih cepat lagi. Hasil keduanya sama
+        dengan MoonSharp.
 
         o Pengalihan otomatis (saat tidak ada direktif)
                 - Pemetaan per-piksel mandiri (lihat syarat di bawah)
                   -> kernel CPU (cepat, tepat)
-                - Operasi piksel lainnya -> Native (LuaJIT, hanya jika di-deploy)
-                - Tanpa operasi piksel -> MoonSharp
+                - Selain itu -> Native (LuaJIT, hanya jika di-deploy)
+                - Native tidak di-deploy, atau skrip kosong -> MoonSharp
 
         o Direktif mesin (komentar pada baris pertama skrip)
                 --!cpu       : Kernel CPU. Dikompilasi saat runtime menjadi pohon

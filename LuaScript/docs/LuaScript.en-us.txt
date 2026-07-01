@@ -2,7 +2,8 @@
 
         The "Lua Script" video effect in YukkuriMovieMaker4 uses
         the Lua language for scripting.
-        The scripting engine is MoonSharp (Lua 5.2 compatible).
+        Scripts run on the bundled fast runtime (LuaJIT), and fall back to
+        MoonSharp (Lua 5.2 compatible) when the runtime is unavailable.
 
         * This effect is a custom implementation and differs from the AviUtl2 script specification.
         * This is a separate specification from AviUtl2 script files (*.anm2, etc.).
@@ -11,7 +12,7 @@
 
 - Notes -
 
-        o The script execution engine is MoonSharp (Lua 5.2 compatible).
+        o The script execution engines are LuaJIT (default) and MoonSharp (Lua 5.2 compatible).
         o Available standard libraries are limited to the following:
             table, string, math, bit32
             * io, os, debug, ffi, require, etc. are not available.
@@ -26,16 +27,16 @@
 
 - Execution Engines and Automatic Acceleration -
 
-        Scripts that contain pixel processing (a nested getpixel/setpixel loop)
-        are analyzed and automatically routed to a faster engine.
-        Ordinary scripts (coordinate, rotation, opacity changes, etc.) keep
-        running on MoonSharp as before, with no change in behavior.
+        Scripts are analyzed and automatically routed to the best engine.
+        Scripts without a directive run on the bundled fast runtime (LuaJIT),
+        and self-contained per-pixel maps are further compiled to the even
+        faster CPU kernel. Either way the results match MoonSharp.
 
         o Automatic routing (when no directive is present)
                 - A self-contained per-pixel map (see conditions below)
                   -> CPU kernel (fast, exact)
-                - Other pixel operations -> Native (LuaJIT, only when deployed)
-                - No pixel operations -> MoonSharp
+                - Everything else -> Native (LuaJIT, only when deployed)
+                - Native not deployed, or an empty script -> MoonSharp
 
         o Engine directives (a comment on the first line of the script)
                 --!cpu       : CPU kernel. Compiled at runtime to an expression
