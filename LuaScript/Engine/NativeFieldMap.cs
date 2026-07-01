@@ -91,6 +91,13 @@ namespace LuaScript.Engine
                 f[NativeProtocol.Rxr],
                 f[NativeProtocol.Ryr],
                 f[NativeProtocol.Rzr]);
+
+            ctx.DrawStateOverride = f[NativeProtocol.DrawState] switch
+            {
+                1d => true,
+                2d => false,
+                _ => null,
+            };
         }
     }
 }
