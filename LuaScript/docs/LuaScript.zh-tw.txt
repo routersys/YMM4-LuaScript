@@ -487,6 +487,10 @@
                     26=Lighter color,27=Behind,28=Darker color,29=Clear,
                     30=Clipping by background,31=XOR,32=Color inversion mask。
                     超出範圍或無效的值將視為 0(一般)。
+                  "draw_state" : 以布林值決定此效果是否輸出工作影像。true 輸出
+                    工作影像，false 則原樣傳遞輸入。可用於不使用 obj.draw 或
+                    setpixel 也輸出工作影像，或反過來抑制輸出。適用於在 MoonSharp
+                    引擎上執行的繪製類腳本。
 
         ○ obj.pixeloption(名稱, 值)
                 將像素操作的選項作為狀態保存。

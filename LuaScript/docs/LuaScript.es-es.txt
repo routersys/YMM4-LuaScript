@@ -520,6 +520,12 @@
                     30=Recorte en el fondo,31=Sólo partes no superpuestas,
                     32=Máscara de inversión de color. Los valores fuera de rango
                     o no válidos se tratan como 0 (Normal).
+                  "draw_state" : un booleano que decide si este efecto emite su
+                    imagen de trabajo. true emite la imagen de trabajo; false deja
+                    pasar la entrada sin cambios. Sirve para emitir la imagen de
+                    trabajo sin obj.draw ni setpixel, o para suprimir la salida.
+                    Se aplica a los scripts de dibujo que corren en el motor
+                    MoonSharp.
 
         o obj.pixeloption(nombre, valor)
                 Guarda como estado una opción para las operaciones de píxeles.

@@ -515,6 +515,12 @@
                     30=Potong dengan latar belakang,
                     31=Hanya bagian yang tidak tumpang tindih,32=Mask inversi warna.
                     Nilai di luar jangkauan atau tidak valid dianggap 0 (Normal).
+                  "draw_state" : boolean yang menentukan apakah efek ini
+                    mengeluarkan citra kerjanya. true mengeluarkan citra kerja;
+                    false meneruskan input apa adanya. Berguna untuk mengeluarkan
+                    citra kerja tanpa obj.draw atau setpixel, atau untuk menekan
+                    keluaran. Berlaku untuk skrip gambar yang berjalan pada mesin
+                    MoonSharp.
 
         o obj.pixeloption(name, value)
                 Menyimpan opsi untuk operasi piksel sebagai status.

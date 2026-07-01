@@ -517,6 +517,11 @@
                     26=Lighter color,27=Behind,28=Darker color,29=Clear,
                     30=Clipping by background,31=XOR,32=Color inversion mask.
                     Out-of-range or invalid values are treated as 0 (Normal).
+                  "draw_state" : a boolean that decides whether this effect emits
+                    its working image. true outputs the working image; false passes
+                    the input through unchanged. Use it to emit the working image
+                    without obj.draw or setpixel, or to suppress the output. It
+                    applies to drawing scripts that run on the MoonSharp engine.
 
         o obj.pixeloption(name, value)
                 Stores an option for pixel operations as state.
