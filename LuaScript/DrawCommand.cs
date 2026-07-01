@@ -8,5 +8,6 @@ namespace LuaScript
         double Alpha,
         double Aspect,
         double[]? Poly = null,
-        double Antialias = 1d);
+        double Antialias = 1d,
+        double Blend = 0d);
 }
