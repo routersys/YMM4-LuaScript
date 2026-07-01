@@ -69,6 +69,7 @@ local CB_KIND_DRAWPOLY = 4
 local CB_KIND_LOADTEXT = 5
 local CB_KIND_LOADIMAGE = 6
 local CB_KIND_LOADMOVIE = 7
+local CB_KIND_SETANCHOR = 8
 
 assert(loadfile(shimPath))()
 
@@ -224,6 +225,7 @@ local function bufferKind(id)
     return c, c
 end
 
+local sandbox
 local obj = {}
 local scene = {}
 local ymm4 = {}
@@ -537,6 +539,46 @@ function obj.pixeloption(name, value)
     pixeloptions[name] = value
 end
 
+function obj.setanchor(name, count, ...)
+    if type(name) ~= "string" then return 0 end
+    count = math.floor(count or 0)
+    if count < 0 then count = 0 elseif count > 32 then count = 32 end
+    if name == "track" then return 0 end
+
+    local connection, is3d = 0, false
+    local optCount = select("#", ...)
+    for i = 1, optCount do
+        local o = select(i, ...)
+        if o == "line" then connection = 1
+        elseif o == "loop" then connection = 2
+        elseif o == "star" then connection = 3
+        elseif o == "arm" then connection = 4
+        elseif o == "xyz" then is3d = true end
+    end
+
+    local len = #name
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, name, len)
+    i32[OFF_CB_TAGLEN] = len
+    cbResult[0] = count
+    cbResult[1] = is3d and 1 or 0
+    cbResult[2] = connection
+    i32[OFF_CB_KIND] = CB_KIND_SETANCHOR
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+
+    local stride = is3d and 3 or 2
+    local pos = {}
+    for i = 0, count - 1 do
+        pos[i * stride + 1] = cbTagD[i * stride + 0]
+        pos[i * stride + 2] = cbTagD[i * stride + 1]
+        if is3d then pos[i * stride + 3] = cbTagD[i * stride + 2] end
+    end
+    sandbox[name] = pos
+    return count
+end
+
 function obj.copybuffer(dst, src)
     if type(dst) ~= "string" or type(src) ~= "string" then return end
     local sk, skey = bufferKind(src)
@@ -615,7 +657,7 @@ function obj.getobject(tag, frame)
     return buildObject()
 end
 
-local sandbox = {
+sandbox = {
     obj = obj, scene = scene, ymm4 = ymm4,
     anim = anim, bit32 = bit32, rawlen = rawlen,
     math = math, string = string, table = table,
