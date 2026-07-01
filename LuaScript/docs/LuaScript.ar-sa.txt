@@ -503,6 +503,14 @@
                   "draw_state" : قيمة منطقية تحدد ما إذا كان هذا التأثير يُخرج صورة
                     العمل. true تُخرج صورة العمل، وfalse تمرر الدخل كما هو. تُستخدم
                     لإخراج صورة العمل دون obj.draw أو setpixel، أو لإيقاف الإخراج.
+                    تعمل في المحركين معاً.
+                  "drawtarget" : يبدّل وجهة رسم obj.draw / obj.drawpoly.
+                    "framebuffer" (الافتراضي) يركّب في مخزن الإطار. "tempbuffer"
+                    يركّب في مخزن العمل tmp مباشرة. في
+                    obj.setoption("drawtarget", "tempbuffer", w, h) تُحدد w, h حجم
+                    تهيئة مخزن tmp، وحذفهما يُبقيه كما هو. أعِد نتيجة tmp إلى صورة
+                    العمل عبر obj.copybuffer("obj", "tmp"). التركيب في tempbuffer
+                    عادي (source-over)، وblend يُطبَّق على الرسم في framebuffer.
                     تنطبق على نصوص الرسم التي تعمل على محرك MoonSharp.
 
         ○ obj.pixeloption(name, value)

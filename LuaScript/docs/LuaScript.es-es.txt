@@ -524,6 +524,15 @@
                     imagen de trabajo. true emite la imagen de trabajo; false deja
                     pasar la entrada sin cambios. Sirve para emitir la imagen de
                     trabajo sin obj.draw ni setpixel, o para suprimir la salida.
+                    Funciona en ambos motores.
+                  "drawtarget" : cambia el destino de obj.draw / obj.drawpoly.
+                    "framebuffer" (por defecto) compone en el búfer de fotograma.
+                    "tempbuffer" compone en el búfer de trabajo tmp en el momento. En
+                    obj.setoption("drawtarget", "tempbuffer", w, h) los valores w, h
+                    dan el tamaño con que se inicializa el búfer tmp; omítelos para
+                    conservarlo. Recupera el resultado de tmp a la imagen de trabajo
+                    con obj.copybuffer("obj", "tmp"). La composición en tempbuffer es
+                    normal (source-over); blend se aplica al dibujo en framebuffer.
                     Se aplica a los scripts de dibujo que corren en el motor
                     MoonSharp.
 

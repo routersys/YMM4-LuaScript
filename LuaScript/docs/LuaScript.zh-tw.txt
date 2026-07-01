@@ -489,8 +489,14 @@
                     超出範圍或無效的值將視為 0(一般)。
                   "draw_state" : 以布林值決定此效果是否輸出工作影像。true 輸出
                     工作影像，false 則原樣傳遞輸入。可用於不使用 obj.draw 或
-                    setpixel 也輸出工作影像，或反過來抑制輸出。適用於在 MoonSharp
-                    引擎上執行的繪製類腳本。
+                    setpixel 也輸出工作影像，或反過來抑制輸出。兩個引擎都可用。
+                  "drawtarget" : 切換 obj.draw / obj.drawpoly 的繪製目標。
+                    "framebuffer"(預設)合成到影格緩衝。"tempbuffer" 則就地合成到
+                    工作用 tmp 緩衝。obj.setoption("drawtarget", "tempbuffer", w, h)
+                    中的 w, h 是初始化 tmp 緩衝的尺寸，省略則不初始化。畫到 tmp 的
+                    結果可用 obj.copybuffer("obj", "tmp") 取回工作影像。合成到
+                    tempbuffer 使用一般(來源覆蓋)，blend 套用於 framebuffer 的繪製。
+                    適用於在 MoonSharp 引擎上執行的繪製類腳本。
 
         ○ obj.pixeloption(名稱, 值)
                 將像素操作的選項作為狀態保存。

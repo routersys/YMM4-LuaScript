@@ -506,7 +506,16 @@
                     真偽値で決めます。true で作業画像を出力し、false で入力を
                     そのまま通します。obj.draw や setpixel を使わずに作業画像を
                     そのまま出力させたいときや、逆に出力を止めたいときに使います。
-                    MoonSharp エンジンで動く描画系スクリプトが対象です。
+                    両エンジンで動きます。
+                  "drawtarget" : obj.draw / obj.drawpoly の描画先を切り替えます。
+                    "framebuffer"(既定)ではフレームバッファへ合成します。
+                    "tempbuffer" では作業用の tmp バッファへその場で合成します。
+                    obj.setoption("drawtarget", "tempbuffer", w, h) の w, h は
+                    tmp バッファを初期化するサイズで、省略すると初期化しません。
+                    tmp へ描いた結果は obj.copybuffer("obj", "tmp") で作業画像へ
+                    戻せます。tempbuffer への合成は通常(ソースオーバー)で、blend は
+                    framebuffer への描画に適用されます。MoonSharp エンジンで動く
+                    描画系スクリプトが対象です。
 
         ○obj.pixeloption(名前, 値)
                 ピクセル操作のオプションを状態として保持します。

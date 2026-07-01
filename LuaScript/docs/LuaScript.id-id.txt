@@ -519,8 +519,16 @@
                     mengeluarkan citra kerjanya. true mengeluarkan citra kerja;
                     false meneruskan input apa adanya. Berguna untuk mengeluarkan
                     citra kerja tanpa obj.draw atau setpixel, atau untuk menekan
-                    keluaran. Berlaku untuk skrip gambar yang berjalan pada mesin
-                    MoonSharp.
+                    keluaran. Bekerja pada kedua mesin.
+                  "drawtarget" : mengganti tujuan gambar obj.draw / obj.drawpoly.
+                    "framebuffer" (bawaan) mengomposit ke frame buffer. "tempbuffer"
+                    mengomposit ke buffer kerja tmp secara langsung. Pada
+                    obj.setoption("drawtarget", "tempbuffer", w, h), w, h adalah
+                    ukuran untuk menginisialisasi buffer tmp; hilangkan untuk
+                    mempertahankannya. Kembalikan hasil tmp ke citra kerja dengan
+                    obj.copybuffer("obj", "tmp"). Komposit ke tempbuffer bersifat
+                    normal (source-over); blend berlaku untuk gambar ke framebuffer.
+                    Berlaku untuk skrip gambar yang berjalan pada mesin MoonSharp.
 
         o obj.pixeloption(name, value)
                 Menyimpan opsi untuk operasi piksel sebagai status.

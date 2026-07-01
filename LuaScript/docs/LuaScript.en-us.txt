@@ -520,7 +520,16 @@
                   "draw_state" : a boolean that decides whether this effect emits
                     its working image. true outputs the working image; false passes
                     the input through unchanged. Use it to emit the working image
-                    without obj.draw or setpixel, or to suppress the output. It
+                    without obj.draw or setpixel, or to suppress the output. It works
+                    in both engines.
+                  "drawtarget" : switches the destination of obj.draw / obj.drawpoly.
+                    "framebuffer" (default) composites into the frame buffer.
+                    "tempbuffer" composites into the working tmp buffer in place. In
+                    obj.setoption("drawtarget", "tempbuffer", w, h) the w, h give the
+                    size to initialize the tmp buffer; omit them to keep it. Bring the
+                    tmp result back to the working image with
+                    obj.copybuffer("obj", "tmp"). Compositing into tempbuffer is
+                    normal (source-over); blend applies to framebuffer drawing. It
                     applies to drawing scripts that run on the MoonSharp engine.
 
         o obj.pixeloption(name, value)
