@@ -505,6 +505,21 @@
                 Opciones que afectan al dibujo actualmente:
                   "antialias" : 0 = vecino más cercano, en otro caso interpolación
                                 lineal (obj.draw / obj.drawpoly).
+                  "blend" : número de modo de fusión (obj.draw / obj.drawpoly). El
+                    mismo orden (empezando en 0) que la lista desplegable "Modo de
+                    fusión" del panel de propiedades de YMM4:
+                    0=Normal,1=Síntesis de interpolación,2=Comparación (oscura),
+                    3=Multiplicar,4=Color de relleno,5=Burn-in (lineal),
+                    6=Comparación (clara),7=Pantalla,8=Color sin máscara,
+                    9=Sin máscara (lineal) - Aditivo,10=Adición,11=Superponer,
+                    12=Luz suave,13=Luz dura,14=Luz viva,15=Luz lineal,
+                    16=Pin Light,17=Mezcla dura,18=diferencia,19=Excluido,
+                    20=Sustracción,21=División,22=Tono,23=Saturación,24=Color,
+                    25=Luminosidad,26=Comparación de colores (claro),27=Fondo,
+                    28=Comparación de colores (oscuro),29=Supresión,
+                    30=Recorte en el fondo,31=Sólo partes no superpuestas,
+                    32=Máscara de inversión de color. Los valores fuera de rango
+                    o no válidos se tratan como 0 (Normal).
 
         o obj.pixeloption(nombre, valor)
                 Guarda como estado una opción para las operaciones de píxeles.

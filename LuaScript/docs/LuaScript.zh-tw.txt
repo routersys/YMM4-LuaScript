@@ -477,6 +477,16 @@
                 (getoption 回傳設定值，未設定為 0)。
                 目前會反映到繪製的項目：
                   "antialias" : 0 為最近鄰，其它為線性內插(obj.draw / obj.drawpoly)。
+                  "blend" : 合成模式編號(obj.draw / obj.drawpoly)。與 YMM4 屬性
+                    面板中「合成模式」下拉選單相同的順序(從 0 開始)：
+                    0=一般,1=Dissolve,2=比較（暗）,3=相乘,4=Color burn,5=陰影,
+                    6=比較（亮）,7=畫面,8=Color dodge,9=Linear dodge (Add),
+                    10=相加,11=覆蓋,12=Soft light,13=Hard light,14=Vivid light,
+                    15=明暗,16=Pin light,17=Hard mix,18=差異,19=Exclution,
+                    20=相減,21=Division,22=Hue,23=Saturation,24=色,25=亮度,
+                    26=Lighter color,27=Behind,28=Darker color,29=Clear,
+                    30=Clipping by background,31=XOR,32=Color inversion mask。
+                    超出範圍或無效的值將視為 0(一般)。
 
         ○ obj.pixeloption(名稱, 值)
                 將像素操作的選項作為狀態保存。

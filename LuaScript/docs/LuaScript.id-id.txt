@@ -501,6 +501,20 @@
                 Opsi yang saat ini memengaruhi penggambaran:
                   "antialias" : 0 = tetangga terdekat, selain itu interpolasi linear
                                 (obj.draw / obj.drawpoly).
+                  "blend" : nomor mode blend (obj.draw / obj.drawpoly). Urutan yang
+                    sama (mulai dari 0) dengan dropdown "Mode blend" pada panel
+                    properti YMM4:
+                    0=Normal,1=Larut,2=Gelap,3=Multiply,4=Bakar warna,
+                    5=Bakar linier,6=Terang,7=Layar,8=Peleburan warna,
+                    9=Peleburan linier (tambah),10=Tambah,11=Overlay,
+                    12=Cahaya lembut,13=Cahaya keras,14=Cahaya hidup,
+                    15=Cahaya linier,16=Cahaya pin,17=Campuran keras,
+                    18=Perbedaan,19=Ekslklusi,20=Pengurangan,21=Divisi,22=Hue,
+                    23=Saturasi,24=Warna,25=Pencahayaan,26=Warna terang,
+                    27=Belakang,28=Warna gelap,29=Bersih,
+                    30=Potong dengan latar belakang,
+                    31=Hanya bagian yang tidak tumpang tindih,32=Mask inversi warna.
+                    Nilai di luar jangkauan atau tidak valid dianggap 0 (Normal).
 
         o obj.pixeloption(name, value)
                 Menyimpan opsi untuk operasi piksel sebagai status.
