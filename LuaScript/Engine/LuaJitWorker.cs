@@ -130,6 +130,8 @@ namespace LuaScript.Engine
             for (int i = NativeProtocol.FirstWritableField; i <= NativeProtocol.LastWritableField; i++)
                 fields[i] = view.ReadDouble(NativeProtocol.FieldsOffset + i * 8);
 
+            fields[NativeProtocol.DrawState] = view.ReadDouble(NativeProtocol.FieldsOffset + NativeProtocol.DrawState * 8);
+
             resultWidth = view.ReadInt32(NativeProtocol.OffWidth);
             resultHeight = view.ReadInt32(NativeProtocol.OffHeight);
             bufferReplaced = resultWidth != width || resultHeight != height;
