@@ -402,6 +402,45 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void Draw_CarriesBlendFromOption()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.draw() obj.setoption('blend', 3) obj.draw()",
+                Fields(2, 2, 0d), NoStringParams, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(2, commands.Count);
+            Assert.Equal(0d, commands[0].Blend);
+            Assert.Equal(3d, commands[1].Blend);
+        }
+
+        [Fact]
+        public void DrawPoly_CarriesBlendFromOption()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[4 * 4 * 4];
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            bool ok = _worker.Execute(
+                "obj.setoption('blend', 11) obj.drawpoly(0,0,0, 10,0,0, 10,10,0, 0,10,0)",
+                Fields(4, 4, 0d), NoStringParams, pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Single(commands);
+            Assert.Equal(11d, commands[0].Blend);
+        }
+
+        [Fact]
         public void LoadText_RoundTripsThroughCallback()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
