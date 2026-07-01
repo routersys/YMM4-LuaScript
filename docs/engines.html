@@ -14,17 +14,17 @@
 <h1>エンジンと高速化</h1>
 
 <p>
-このプラグインには複数の実行エンジンがあります。標準は MoonSharp ですが、重いピクセル処理のために
-LuaJIT ネイティブレーンや、CPU / GPU カーネルへ変換するレーンを選べます。
-座標などを動かすだけのスクリプトでは MoonSharp で十分速く、エンジンを意識する必要はありません。
+このプラグインには複数の実行エンジンがあります。標準は同梱の LuaJIT ネイティブレーンで、
+決まった形の重いピクセル処理はさらに CPU カーネルへ変換されます。Lua 5.2 互換の MoonSharp は
+フォールバック用の従来エンジンです。指定子を書かなくても、内容に応じて自動で最適なレーンが選ばれます。
 </p>
 
 <h2>エンジンの種類</h2>
 
 <table>
 <tr><th>エンジン</th><th>指定子</th><th>特徴</th></tr>
-<tr><td>MoonSharp</td><td><code>--!moonsharp</code>（既定）</td><td>Lua 5.2 互換。全機能が使える標準エンジン</td></tr>
-<tr><td>ネイティブ（LuaJIT）</td><td><code>--!native</code></td><td>別プロセスの LuaJIT で実行。ピクセル処理が大幅に高速</td></tr>
+<tr><td>ネイティブ（LuaJIT）</td><td><code>--!native</code>（既定）</td><td>別プロセスの LuaJIT で実行。ピクセル処理が大幅に高速</td></tr>
+<tr><td>MoonSharp</td><td><code>--!moonsharp</code></td><td>Lua 5.2 互換。フォールバック用の従来エンジン</td></tr>
 <tr><td>CPU カーネル</td><td><code>--!cpu</code></td><td>決まった形のピクセルループを並列実行に変換。MoonSharp と一致する結果</td></tr>
 <tr><td>GPU カーネル</td><td><code>--!gpu</code></td><td>ピクセルループを GPU シェーダーに変換。最速だが float32 精度（明示指定のみ）</td></tr>
 </table>
@@ -57,9 +57,8 @@ end</code></pre>
 
 <ul>
 <li>後述のカーネル条件に当てはまるピクセルループは、CPU カーネルで実行します。結果は MoonSharp と一致します。</li>
-<li><code>obj.setoption</code> を使う描画系のスクリプトは、MoonSharp で実行します。</li>
-<li>カーネル条件には当てはまらないものの <code>getpixel</code> や <code>setpixel</code> を使うスクリプトは、ネイティブが使えればネイティブで実行します。</li>
-<li>それ以外は MoonSharp で実行します。</li>
+<li>それ以外のスクリプトは、同梱の LuaJIT ネイティブで実行します。結果は MoonSharp と一致します。</li>
+<li><code>native</code> フォルダが配備されていない環境と空のスクリプトは、MoonSharp で実行します。</li>
 </ul>
 
 <div class="note">

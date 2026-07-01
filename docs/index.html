@@ -20,9 +20,9 @@ YukkuriMovieMaker4 の映像エフェクト「Lua スクリプト」の公式ド
 </p>
 
 <p>
-標準のスクリプトエンジンは Lua 5.2 互換の MoonSharp です。
-重いピクセル処理のためには、LuaJIT で実行する <code>--!native</code> レーンと、
-CPU・GPU カーネルへ変換する <code>--!cpu</code>・<code>--!gpu</code> レーンも用意しています。
+標準のスクリプトエンジンは LuaJIT で実行するネイティブレーンで、
+決まった形のピクセル処理は <code>--!cpu</code> の CPU カーネルへ変換されます。
+Lua 5.2 互換の MoonSharp はフォールバックとして使われ、明示指定の <code>--!gpu</code> レーンも用意しています。
 詳しくは<a href="engines.html">エンジンと高速化</a>を参照してください。
 </p>
 
