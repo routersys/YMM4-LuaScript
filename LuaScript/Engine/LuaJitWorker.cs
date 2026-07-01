@@ -19,10 +19,9 @@ namespace LuaScript.Engine
         private EventWaitHandle? _workEvent;
         private EventWaitHandle? _doneEvent;
         private Process? _process;
-        private int _width;
-        private int _height;
         private int _stringParamsCapacity = NativeProtocol.MinStringParamsCapacity;
         private long _pixelOffset = NativeProtocol.PixelOffset(NativeProtocol.MinStringParamsCapacity);
+        private long _allocatedSize;
         private bool _alive;
 
         private readonly byte[] _callbackTag = new byte[NativeProtocol.CallbackTagMax];
@@ -49,7 +48,7 @@ namespace LuaScript.Engine
             string script,
             double[] fields,
             IReadOnlyDictionary<string, string> stringParameters,
-            byte[] pixels,
+            Func<byte[]> loadPixels,
             int width,
             int height,
             int timeoutMs,
@@ -63,14 +62,14 @@ namespace LuaScript.Engine
             Action<string, int, bool, int, double[]> setAnchor,
             out bool pixelsDirty,
             out bool bufferReplaced,
-            out byte[]? newPixels,
+            out byte[]? resultPixels,
             out int resultWidth,
             out int resultHeight,
             out string? error)
         {
             pixelsDirty = false;
             bufferReplaced = false;
-            newPixels = null;
+            resultPixels = null;
             resultWidth = width;
             resultHeight = height;
             error = null;
@@ -92,7 +91,6 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffHeight, height);
             view.Write(NativeProtocol.OffScriptLen, scriptBytes.Length);
             view.WriteArray(NativeProtocol.ScriptOffset, scriptBytes, 0, scriptBytes.Length);
-            view.WriteArray(_pixelOffset, pixels, 0, pixels.Length);
             view.Write(NativeProtocol.OffPixelsDirty, 0);
             view.Write(NativeProtocol.OffErrorLen, 0);
             view.Write(NativeProtocol.OffStatus, NativeProtocol.StatusIdle);
@@ -100,6 +98,7 @@ namespace LuaScript.Engine
 
             _workEvent!.Set();
 
+            byte[]? uploadedPixels = null;
             var stopwatch = Stopwatch.StartNew();
             int status;
             while (true)
@@ -116,7 +115,15 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor);
+                if (view.ReadInt32(NativeProtocol.OffCallbackKind) == NativeProtocol.CbKindRequestPixels)
+                {
+                    uploadedPixels ??= loadPixels();
+                    WritePixelRegion(uploadedPixels, uploadedPixels.Length);
+                }
+                else
+                {
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor);
+                }
                 _workEvent.Set();
             }
 
@@ -141,21 +148,54 @@ namespace LuaScript.Engine
             pixelsDirty = view.ReadInt32(NativeProtocol.OffPixelsDirty) != 0;
             if (pixelsDirty)
             {
-                if (bufferReplaced)
+                int pixelSize = resultWidth * resultHeight * 4;
+                if (!bufferReplaced && uploadedPixels is not null)
                 {
-                    int pixelSize = resultWidth * resultHeight * 4;
-                    if (_resultBuffer == null || _resultBuffer.Length < pixelSize)
-                        _resultBuffer = new byte[pixelSize];
-                    view.ReadArray(_pixelOffset, _resultBuffer, 0, pixelSize);
-                    newPixels = _resultBuffer;
+                    ReadPixelRegion(uploadedPixels, pixelSize);
+                    resultPixels = uploadedPixels;
                 }
                 else
                 {
-                    view.ReadArray(_pixelOffset, pixels, 0, pixels.Length);
+                    if (_resultBuffer == null || _resultBuffer.Length < pixelSize)
+                        _resultBuffer = new byte[pixelSize];
+                    ReadPixelRegion(_resultBuffer, pixelSize);
+                    resultPixels = _resultBuffer;
                 }
             }
 
             return true;
+        }
+
+        private unsafe void WritePixelRegion(byte[] source, int length)
+        {
+            var handle = _view!.SafeMemoryMappedViewHandle;
+            byte* ptr = null;
+            handle.AcquirePointer(ref ptr);
+            try
+            {
+                fixed (byte* src = source)
+                    Buffer.MemoryCopy(src, ptr + _view.PointerOffset + _pixelOffset, handle.ByteLength - (ulong)(_view.PointerOffset + _pixelOffset), (ulong)length);
+            }
+            finally
+            {
+                handle.ReleasePointer();
+            }
+        }
+
+        private unsafe void ReadPixelRegion(byte[] destination, int length)
+        {
+            var handle = _view!.SafeMemoryMappedViewHandle;
+            byte* ptr = null;
+            handle.AcquirePointer(ref ptr);
+            try
+            {
+                fixed (byte* dst = destination)
+                    Buffer.MemoryCopy(ptr + _view.PointerOffset + _pixelOffset, dst, destination.Length, length);
+            }
+            finally
+            {
+                handle.ReleasePointer();
+            }
         }
 
         private static int MeasureStringParameters(IReadOnlyDictionary<string, string> stringParameters)
@@ -178,8 +218,6 @@ namespace LuaScript.Engine
                 }
                 capacity *= 2;
             }
-            while (capacity > NativeProtocol.MinStringParamsCapacity && required <= capacity / 2)
-                capacity /= 2;
             return capacity;
         }
 
@@ -366,7 +404,7 @@ namespace LuaScript.Engine
 
             view.Write(NativeProtocol.OffLoadResultWidth, result.w);
             view.Write(NativeProtocol.OffLoadResultHeight, result.h);
-            view.WriteArray(_pixelOffset, result.buffer, 0, pixelSize);
+            WritePixelRegion(result.buffer, pixelSize);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
@@ -401,7 +439,7 @@ namespace LuaScript.Engine
 
             view.Write(NativeProtocol.OffLoadResultWidth, result.w);
             view.Write(NativeProtocol.OffLoadResultHeight, result.h);
-            view.WriteArray(_pixelOffset, result.buffer, 0, pixelSize);
+            WritePixelRegion(result.buffer, pixelSize);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
@@ -427,7 +465,7 @@ namespace LuaScript.Engine
 
             view.Write(NativeProtocol.OffLoadResultWidth, result.w);
             view.Write(NativeProtocol.OffLoadResultHeight, result.h);
-            view.WriteArray(_pixelOffset, result.buffer, 0, pixelSize);
+            WritePixelRegion(result.buffer, pixelSize);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
@@ -454,7 +492,7 @@ namespace LuaScript.Engine
 
             view.Write(NativeProtocol.OffLoadResultWidth, result.w);
             view.Write(NativeProtocol.OffLoadResultHeight, result.h);
-            view.WriteArray(_pixelOffset, result.buffer, 0, pixelSize);
+            WritePixelRegion(result.buffer, pixelSize);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
@@ -504,7 +542,8 @@ namespace LuaScript.Engine
 
         private void EnsureWorker(int width, int height, int stringCapacity)
         {
-            if (_alive && _process is { HasExited: false } && _width == width && _height == height && _stringParamsCapacity == stringCapacity)
+            long required = NativeProtocol.PixelOffset(stringCapacity) + (long)width * height * 4;
+            if (_alive && _process is { HasExited: false } && _stringParamsCapacity == stringCapacity && required <= _allocatedSize)
                 return;
 
             KillWorker();
@@ -513,11 +552,10 @@ namespace LuaScript.Engine
 
         private void StartWorker(int width, int height, int stringCapacity)
         {
-            _width = width;
-            _height = height;
             _stringParamsCapacity = stringCapacity;
             _pixelOffset = NativeProtocol.PixelOffset(stringCapacity);
-            long size = NativeProtocol.BufferSize(width, height, stringCapacity);
+            long size = Math.Max(NativeProtocol.BufferSize(width, height, stringCapacity), _allocatedSize);
+            _allocatedSize = size;
 
             string suffix = Guid.NewGuid().ToString("N");
             string mapName = "LuaScriptMap_" + suffix;
