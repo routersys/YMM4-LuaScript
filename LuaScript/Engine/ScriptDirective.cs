@@ -9,23 +9,13 @@ namespace LuaScript.Engine
 
         public static ScriptEngineKind ResolveAuto(string? script)
         {
-            if (TryGetDirective(script, out var kind))
-                return kind;
-            if (UsesDrawingApi(script))
+            if (string.IsNullOrEmpty(script))
                 return ScriptEngineKind.MoonSharp;
-            return UsesPixelApi(script) ? ScriptEngineKind.Native : ScriptEngineKind.MoonSharp;
+            return TryGetDirective(script, out var kind) ? kind : ScriptEngineKind.Native;
         }
 
         public static bool TryResolveExplicit(string? script, out ScriptEngineKind kind) =>
             TryGetDirective(script, out kind);
-
-        public static bool UsesPixelApi(string? script) =>
-            script is not null && (script.Contains("getpixel", StringComparison.Ordinal) || script.Contains("setpixel", StringComparison.Ordinal));
-
-        public static bool UsesDrawingApi(string? script) =>
-            script is not null &&
-                (script.Contains("obj.setoption", StringComparison.Ordinal) ||
-                 script.Contains("obj.setanchor", StringComparison.Ordinal));
 
         private static bool TryGetDirective(string? script, out ScriptEngineKind kind)
         {
