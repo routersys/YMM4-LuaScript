@@ -511,7 +511,7 @@
                     تهيئة مخزن tmp، وحذفهما يُبقيه كما هو. أعِد نتيجة tmp إلى صورة
                     العمل عبر obj.copybuffer("obj", "tmp"). التركيب في tempbuffer
                     عادي (source-over)، وblend يُطبَّق على الرسم في framebuffer.
-                    تنطبق على نصوص الرسم التي تعمل على محرك MoonSharp.
+                    تعمل في المحركين معاً.
 
         ○ obj.pixeloption(name, value)
                 يحفظ خياراً لعمليات البكسل كحالة.

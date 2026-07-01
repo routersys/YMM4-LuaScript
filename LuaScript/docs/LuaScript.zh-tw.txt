@@ -496,7 +496,7 @@
                     中的 w, h 是初始化 tmp 緩衝的尺寸，省略則不初始化。畫到 tmp 的
                     結果可用 obj.copybuffer("obj", "tmp") 取回工作影像。合成到
                     tempbuffer 使用一般(來源覆蓋)，blend 套用於 framebuffer 的繪製。
-                    適用於在 MoonSharp 引擎上執行的繪製類腳本。
+                    兩個引擎都可用。
 
         ○ obj.pixeloption(名稱, 值)
                 將像素操作的選項作為狀態保存。

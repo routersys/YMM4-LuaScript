@@ -514,8 +514,7 @@
                     tmp バッファを初期化するサイズで、省略すると初期化しません。
                     tmp へ描いた結果は obj.copybuffer("obj", "tmp") で作業画像へ
                     戻せます。tempbuffer への合成は通常(ソースオーバー)で、blend は
-                    framebuffer への描画に適用されます。MoonSharp エンジンで動く
-                    描画系スクリプトが対象です。
+                    framebuffer への描画に適用されます。両エンジンで動きます。
 
         ○obj.pixeloption(名前, 値)
                 ピクセル操作のオプションを状態として保持します。
