@@ -1,6 +1,8 @@
+using System.Collections.Immutable;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LuaScript.Anchor;
 using LuaScript.Compat;
 using LuaScript.Diagnostics;
 using LuaScript.Engine;
@@ -55,6 +57,7 @@ namespace LuaScript
             int GroupCount,
             int TimelineTotalFrame,
             double TimelineTotalTime,
+            int AnchorVersion,
             DrawDescription InputDesc
         );
 
@@ -228,6 +231,7 @@ namespace LuaScript
                 desc.GroupIndex, desc.GroupCount,
                 desc.TimelineDuration.Frame,
                 desc.TimelineDuration.Time.TotalSeconds,
+                item.AnchorVersion,
                 inDesc);
 
             _frameDesc = desc;
@@ -466,6 +470,8 @@ namespace LuaScript
             ctx.ClearQueries();
             ctx.ClearEffects();
             ctx.ClearDraws();
+            ctx.ClearAnchorRequests();
+            ctx.AnchorSource = item.Anchors;
             ctx.DrawStateOverride = null;
             ctx.ResetDrawTarget();
 
@@ -526,6 +532,126 @@ namespace LuaScript
         private static double ClampTrack(double value, AviUtlParameterLayout layout, int index)
         {
             return layout.GetTrack(index) is { } p ? Math.Clamp(value, p.Min, p.Max) : value;
+        }
+
+        private ImmutableList<VideoEffectController> _anchorControllers = ImmutableList<VideoEffectController>.Empty;
+        private AnchorRequestData[] _anchorSignature = [];
+        private IReadOnlyList<LuaAnchorPoint>? _anchorSignatureSource;
+
+        private ImmutableList<VideoEffectController> ResolveAnchorControllers(AviUtlScriptContext ctx)
+        {
+            var requests = ctx.AnchorRequests;
+            if (requests.Count == 0)
+            {
+                _anchorControllers = ImmutableList<VideoEffectController>.Empty;
+                _anchorSignature = [];
+                _anchorSignatureSource = null;
+                return _anchorControllers;
+            }
+
+            if (ReferenceEquals(_anchorSignatureSource, ctx.AnchorSource) && AnchorSignatureMatches(requests))
+                return _anchorControllers;
+
+            _anchorControllers = BuildAnchorControllers(ctx.AnchorSource, requests);
+            _anchorSignature = new AnchorRequestData[requests.Count];
+            for (int i = 0; i < requests.Count; i++)
+                _anchorSignature[i] = requests[i];
+            _anchorSignatureSource = ctx.AnchorSource;
+            return _anchorControllers;
+        }
+
+        private bool AnchorSignatureMatches(IReadOnlyList<AnchorRequestData> requests)
+        {
+            if (_anchorSignature.Length != requests.Count)
+                return false;
+            for (int i = 0; i < requests.Count; i++)
+                if (!_anchorSignature[i].Equals(requests[i]))
+                    return false;
+            return true;
+        }
+
+        private ImmutableList<VideoEffectController> BuildAnchorControllers(
+            IReadOnlyList<LuaAnchorPoint>? source, IReadOnlyList<AnchorRequestData> requests)
+        {
+            var builder = ImmutableList.CreateBuilder<VideoEffectController>();
+            foreach (var request in requests)
+            {
+                if (request.Count <= 0)
+                    continue;
+
+                AddConnectionControllers(builder, source, request);
+
+                var group = request.Group;
+                bool is3D = request.Is3D;
+                for (int i = 0; i < request.Count; i++)
+                {
+                    AnchorSupport.ResolvePosition(source, group, i, out double x, out double y, out double z);
+                    int index = i;
+                    var point = new ControllerPoint(
+                        new Vector3((float)x, (float)y, (float)(is3D ? z : 0d)),
+                        arg => item.ApplyAnchorDrag(group, index, arg.Delta.X, arg.Delta.Y, is3D ? arg.Delta.Z : 0d))
+                    {
+                        Shape = VideoControllerPointShape.Circle,
+                    };
+                    builder.Add(new VideoEffectController(item, [point]));
+                }
+            }
+            return builder.ToImmutable();
+        }
+
+        private void AddConnectionControllers(
+            ImmutableList<VideoEffectController>.Builder builder, IReadOnlyList<LuaAnchorPoint>? source, in AnchorRequestData request)
+        {
+            switch (request.Connection)
+            {
+                case AnchorConnection.Line:
+                case AnchorConnection.Loop:
+                {
+                    var points = new ControllerPoint[request.Count];
+                    for (int i = 0; i < request.Count; i++)
+                        points[i] = ConnectionPoint(source, request, i);
+                    builder.Add(new VideoEffectController(item, points)
+                    {
+                        Connection = request.Connection == AnchorConnection.Loop
+                            ? VideoControllerPointConnection.Loop
+                            : VideoControllerPointConnection.Line,
+                    });
+                    break;
+                }
+                case AnchorConnection.Star:
+                {
+                    for (int i = 0; i < request.Count; i++)
+                        builder.Add(new VideoEffectController(item, [CenterPoint(), ConnectionPoint(source, request, i)])
+                        {
+                            Connection = VideoControllerPointConnection.Line,
+                        });
+                    break;
+                }
+                case AnchorConnection.Arm:
+                {
+                    var points = new ControllerPoint[request.Count + 1];
+                    points[0] = CenterPoint();
+                    for (int i = 0; i < request.Count; i++)
+                        points[i + 1] = ConnectionPoint(source, request, i);
+                    builder.Add(new VideoEffectController(item, points)
+                    {
+                        Connection = VideoControllerPointConnection.Line,
+                    });
+                    break;
+                }
+            }
+        }
+
+        private static ControllerPoint CenterPoint() =>
+            new(Vector3.Zero) { Shape = VideoControllerPointShape.None };
+
+        private static ControllerPoint ConnectionPoint(IReadOnlyList<LuaAnchorPoint>? source, in AnchorRequestData request, int index)
+        {
+            AnchorSupport.ResolvePosition(source, request.Group, index, out double x, out double y, out double z);
+            return new ControllerPoint(new Vector3((float)x, (float)y, (float)(request.Is3D ? z : 0d)))
+            {
+                Shape = VideoControllerPointShape.None,
+            };
         }
 
         private void ApplyDrawState(AviUtlScriptContext ctx, RawRectF bounds)
