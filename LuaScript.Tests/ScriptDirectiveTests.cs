@@ -31,18 +31,21 @@ namespace LuaScript.Tests
         }
 
         [Theory]
-        [InlineData("obj.rz = time * 90", "MoonSharp")]
+        [InlineData(null, "MoonSharp")]
+        [InlineData("", "MoonSharp")]
+        [InlineData("obj.rz = time * 90", "Native")]
         [InlineData("local r,g,b,a = obj.getpixel(0,0)", "Native")]
         [InlineData("obj.setpixel(0,0,255,0,0)", "Native")]
         [InlineData("local pd = obj.getpixeldata()", "Native")]
         [InlineData("--!moonsharp\nobj.setpixel(0,0,1,1,1)", "MoonSharp")]
         [InlineData("--!native\nobj.rz = 1", "Native")]
-        [InlineData("obj.load(\"figure\", \"円\", 0xff0000, 100)", "MoonSharp")]
-        [InlineData("obj.load(\"figure\", \"円\", 0xff0000, 100)\nlocal r = obj.getpixel(0,0)", "Native")]
-        [InlineData("obj.draw()", "MoonSharp")]
-        [InlineData("obj.draw()\nlocal r = obj.getpixel(0,0)", "Native")]
-        [InlineData("--!native\nobj.load(\"figure\", \"円\", 0xff0000, 100)", "Native")]
-        public void ResolveAuto_RoutesPixelScriptsToNative(string script, string expected)
+        [InlineData("--!gpu\nfunction pixel() end", "Gpu")]
+        [InlineData("--!cpu\nfunction pixel() end", "Cpu")]
+        [InlineData("obj.load(\"figure\", \"円\", 0xff0000, 100)", "Native")]
+        [InlineData("obj.draw()", "Native")]
+        [InlineData("obj.setoption('blend', 1)", "Native")]
+        [InlineData("obj.setanchor('pos', 2)", "Native")]
+        public void ResolveAuto_DefaultsToNative(string? script, string expected)
         {
             Assert.Equal(expected, ScriptDirective.ResolveAuto(script).ToString());
         }
