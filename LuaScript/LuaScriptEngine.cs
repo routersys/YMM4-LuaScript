@@ -587,7 +587,7 @@ namespace LuaScript
                     double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
                     double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
 
-                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias()));
+                    _activeContext.AddDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias(), CurrentBlend()));
                     return DynValue.Void;
                 });
 
@@ -623,7 +623,7 @@ namespace LuaScript
                         _ => 1d,
                     };
 
-                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias()));
+                    _activeContext.AddDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias(), CurrentBlend()));
                     return DynValue.Void;
                 });
 
@@ -679,6 +679,11 @@ namespace LuaScript
                 _options.TryGetValue("antialias", out var value) && value.Type == DataType.Number
                     ? value.Number
                     : 1d;
+
+            private double CurrentBlend() =>
+                _options.TryGetValue("blend", out var value) && value.Type == DataType.Number
+                    ? value.Number
+                    : 0d;
 
             private void LoadFigure(string name, int color, double size, double line, double aspect)
             {
