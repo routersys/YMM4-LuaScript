@@ -324,6 +324,8 @@ namespace LuaScript
                             WarnEffectChainFailureOnce(ex);
                         }
                     }
+
+                    outDesc = AddAnchorControllers(outDesc, ctx);
                 }
             }
             catch (LuaScriptTimeoutException ex)
@@ -568,6 +570,12 @@ namespace LuaScript
                 if (!_anchorSignature[i].Equals(requests[i]))
                     return false;
             return true;
+        }
+
+        private DrawDescription AddAnchorControllers(DrawDescription desc, AviUtlScriptContext ctx)
+        {
+            var controllers = ResolveAnchorControllers(ctx);
+            return controllers.Count == 0 ? desc : desc with { Controllers = desc.Controllers.AddRange(controllers) };
         }
 
         private ImmutableList<VideoEffectController> BuildAnchorControllers(
