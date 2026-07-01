@@ -27,6 +27,7 @@ namespace LuaScript.Engine
 
         private readonly byte[] _callbackTag = new byte[NativeProtocol.CallbackTagMax];
         private readonly byte[] _lastCallbackTag = new byte[NativeProtocol.CallbackTagMax];
+        private readonly double[] _anchorBuffer = new double[Anchor.AnchorSupport.MaxAnchors * 3];
         private int _lastCallbackTagLength = -1;
         private string _lastCallbackTagText = string.Empty;
         private byte[]? _resultBuffer;
@@ -59,6 +60,7 @@ namespace LuaScript.Engine
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
+            Action<string, int, bool, int, double[]> setAnchor,
             out bool pixelsDirty,
             out bool bufferReplaced,
             out byte[]? newPixels,
@@ -114,7 +116,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw);
+                DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor);
                 _workEvent.Set();
             }
 
@@ -219,7 +221,8 @@ namespace LuaScript.Engine
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
-            Action<DrawCommand> addDraw)
+            Action<DrawCommand> addDraw,
+            Action<string, int, bool, int, double[]> setAnchor)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
             switch (kind)
@@ -248,7 +251,31 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindDrawPoly:
                     ResolveDrawPolyCallback(view, addDraw);
                     break;
+                case NativeProtocol.CbKindSetAnchor:
+                    ResolveSetAnchorCallback(view, setAnchor);
+                    break;
             }
+        }
+
+        private void ResolveSetAnchorCallback(MemoryMappedViewAccessor view, Action<string, int, bool, int, double[]> setAnchor)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string group = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            int count = Math.Clamp((int)view.ReadDouble(rOff + 0 * 8), 0, Anchor.AnchorSupport.MaxAnchors);
+            bool is3D = view.ReadDouble(rOff + 1 * 8) != 0d;
+            int connection = (int)view.ReadDouble(rOff + 2 * 8);
+
+            Array.Clear(_anchorBuffer, 0, _anchorBuffer.Length);
+            try { setAnchor(group, count, is3D, connection, _anchorBuffer); }
+            catch { }
+
+            int stride = is3D ? 3 : 2;
+            for (int i = 0; i < count * stride; i++)
+                view.Write(NativeProtocol.CallbackTagOffset + i * 8, _anchorBuffer[i]);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private static void ResolveDrawCallback(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
