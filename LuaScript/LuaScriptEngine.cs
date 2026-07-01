@@ -653,7 +653,13 @@ namespace LuaScript
                     _activeCancellation.ThrowIfCancellationRequested();
                     if (args.Count == 0 || args[0].Type != DataType.String)
                         return DynValue.Void;
-                    _options[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                    var name = args[0].String;
+                    var value = args.Count > 1 ? args[1] : DynValue.True;
+                    _options[name] = value;
+                    if (name == "draw_state" && _activeContext is not null)
+                        _activeContext.DrawStateOverride = value.Type == DataType.Boolean
+                            ? value.Boolean
+                            : (value.CastToNumber() ?? 0d) != 0d;
                     return DynValue.Void;
                 });
 
