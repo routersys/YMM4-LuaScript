@@ -441,6 +441,38 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void SetOption_DrawState_WritesBackFlag()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+
+            var fTrue = Fields(2, 2, 0d);
+            bool okTrue = _worker.Execute(
+                "obj.setoption('draw_state', true)",
+                fTrue, NoStringParams, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw,
+                out _, out _, out _, out _, out _, out string? errorTrue);
+            Assert.True(okTrue, errorTrue);
+            Assert.Equal(1d, fTrue[NativeProtocol.DrawState]);
+
+            var fFalse = Fields(2, 2, 0d);
+            bool okFalse = _worker.Execute(
+                "obj.setoption('draw_state', false)",
+                fFalse, NoStringParams, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw,
+                out _, out _, out _, out _, out _, out string? errorFalse);
+            Assert.True(okFalse, errorFalse);
+            Assert.Equal(2d, fFalse[NativeProtocol.DrawState]);
+
+            var fUnset = Fields(2, 2, 0d);
+            bool okUnset = _worker.Execute(
+                "obj.x = 1",
+                fUnset, NoStringParams, pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw,
+                out _, out _, out _, out _, out _, out string? errorUnset);
+            Assert.True(okUnset, errorUnset);
+            Assert.Equal(0d, fUnset[NativeProtocol.DrawState]);
+        }
+
+        [Fact]
         public void LoadText_RoundTripsThroughCallback()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
