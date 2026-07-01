@@ -96,6 +96,26 @@ namespace LuaScript
 
         private PixelBufferManager? _pixelManager;
 
+        private RawRectF _pixelBounds;
+        private int _pixelWidth;
+        private int _pixelHeight;
+        private Func<byte[]>? _pixelLoader;
+
+        private string _directiveSource = string.Empty;
+        private bool _directiveCached;
+        private ScriptEngineKind _autoKind;
+        private bool _hasExplicitDirective;
+        private ScriptEngineKind _explicitDirectiveKind;
+
+        private Func<string, int, SceneObjectInfo?>? _nativeResolveObject;
+        private Func<string, int, double, double, double, (byte[] buffer, int w, int h)>? _nativeLoadFigure;
+        private Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)>? _nativeLoadText;
+        private Func<string, (byte[] buffer, int w, int h)>? _nativeLoadImage;
+        private Func<string, double, (byte[] buffer, int w, int h)>? _nativeLoadMovie;
+        private Action<string, IReadOnlyList<KeyValuePair<string, object>>>? _nativeAddEffect;
+        private Action<DrawCommand>? _nativeAddDraw;
+        private Action<string, int, bool, int, double[]>? _nativeSetAnchor;
+
         private bool _isFirst = true;
         private string _sourceScript = string.Empty;
         private string _runnableScript = string.Empty;
@@ -251,7 +271,10 @@ namespace LuaScript
 
             var ctx = _context;
             PopulateContext(ctx, in key, imgW, imgH);
-            ctx.SetPixelLoader(() => LoadInputPixels(bounds, imgW, imgH));
+            _pixelBounds = bounds;
+            _pixelWidth = imgW;
+            _pixelHeight = imgH;
+            ctx.SetPixelLoader(_pixelLoader ??= LoadPendingInputPixels);
 
             DrawDescription outDesc = inDesc;
             IReadOnlyList<LuaScriptDiagnostic> diagnostics = [];
@@ -260,14 +283,15 @@ namespace LuaScript
             {
                 string runnable = GetRunnableScript(script);
                 EnsureKernel(runnable);
+                EnsureDirective(runnable);
 
-                if (ExecuteKernelLane(runnable, ctx, bounds, imgW, imgH))
+                if (ExecuteKernelLane(ctx, bounds, imgW, imgH))
                 {
                     outDesc = inDesc;
                 }
                 else
                 {
-                    bool wantNative = ScriptDirective.ResolveAuto(runnable) == ScriptEngineKind.Native;
+                    bool wantNative = _autoKind == ScriptEngineKind.Native;
                     bool nativeReady = wantNative && LuaJitWorker.IsAvailable(NativeDirectory);
                     if (wantNative && !nativeReady)
                         WarnNativeUnavailableOnce();
@@ -699,12 +723,24 @@ namespace LuaScript
             _gpuKernelChecked = false;
         }
 
-        private bool ExecuteKernelLane(string runnable, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
+        private void EnsureDirective(string runnable)
+        {
+            if (_directiveCached && string.Equals(runnable, _directiveSource, StringComparison.Ordinal))
+                return;
+
+            _directiveSource = runnable;
+            _directiveCached = true;
+            _hasExplicitDirective = ScriptDirective.TryResolveExplicit(runnable, out _explicitDirectiveKind);
+            _autoKind = ScriptDirective.ResolveAuto(runnable);
+        }
+
+        private bool ExecuteKernelLane(AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
         {
             if (_kernelProgram is null || _cpuKernel is null)
                 return false;
 
-            bool explicitDirective = ScriptDirective.TryResolveExplicit(runnable, out var kind);
+            bool explicitDirective = _hasExplicitDirective;
+            var kind = _explicitDirectiveKind;
             if (explicitDirective && kind is not (ScriptEngineKind.Gpu or ScriptEngineKind.Cpu))
                 return false;
 
@@ -778,20 +814,28 @@ namespace LuaScript
         {
             _nativeWorker ??= new LuaJitWorker(NativeDirectory);
             _nativeFields ??= new double[NativeProtocol.FieldCount];
+            _nativeResolveObject ??= (tag, frame) => _context.ResolveObject(tag, frame, out var info) ? info : null;
+            _nativeLoadFigure ??= NativeLoadFigure;
+            _nativeLoadText ??= NativeLoadText;
+            _nativeLoadImage ??= NativeLoadImage;
+            _nativeLoadMovie ??= NativeLoadMovie;
+            _nativeAddEffect ??= (name, args) => _context.AddEffect(new AviUtlEffectRequest(name, args));
+            _nativeAddDraw ??= command => _context.AddDraw(command);
+            _nativeSetAnchor ??= ResolveNativeAnchor;
 
             NativeFieldMap.ToFields(ctx, _nativeFields);
             byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
 
             bool ok = _nativeWorker.Execute(
                 script, _nativeFields, ctx.StringParameters, buffer, imgW, imgH, NativeTimeoutMilliseconds,
-                (tag, frame) => ctx.ResolveObject(tag, frame, out var info) ? info : null,
-                NativeLoadFigure,
-                NativeLoadText,
-                NativeLoadImage,
-                NativeLoadMovie,
-                (name, args) => ctx.AddEffect(new AviUtlEffectRequest(name, args)),
-                ctx.AddDraw,
-                ResolveNativeAnchor,
+                _nativeResolveObject,
+                _nativeLoadFigure,
+                _nativeLoadText,
+                _nativeLoadImage,
+                _nativeLoadMovie,
+                _nativeAddEffect,
+                _nativeAddDraw,
+                _nativeSetAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
                 out int resultW, out int resultH, out string? error);
 
@@ -890,6 +934,8 @@ namespace LuaScript
             var buffer = FigureRenderer.Render(name, fw, fh, color, lineWidth);
             return (buffer, fw, fh);
         }
+
+        private byte[] LoadPendingInputPixels() => LoadInputPixels(_pixelBounds, _pixelWidth, _pixelHeight);
 
         private byte[] LoadInputPixels(RawRectF bounds, int width, int height)
         {
