@@ -259,8 +259,9 @@ namespace LuaScript.Engine
             double alpha = view.ReadDouble(rOff + 4 * 8);
             double aspect = view.ReadDouble(rOff + 5 * 8);
             double antialias = view.ReadDouble(rOff + 6 * 8);
+            double blend = view.ReadDouble(rOff + 7 * 8);
 
-            try { addDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, antialias)); }
+            try { addDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, antialias, blend)); }
             catch { }
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
@@ -271,8 +272,9 @@ namespace LuaScript.Engine
             for (int i = 0; i < DrawPolyMath.Length; i++)
                 poly[i] = view.ReadDouble(NativeProtocol.CallbackTagOffset + i * 8);
             double antialias = view.ReadDouble(NativeProtocol.CallbackTagOffset + DrawPolyMath.Length * 8);
+            double blend = view.ReadDouble(NativeProtocol.CallbackTagOffset + (DrawPolyMath.Length + 1) * 8);
 
-            try { addDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, antialias)); }
+            try { addDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, antialias, blend)); }
             catch { }
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }

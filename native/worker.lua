@@ -326,6 +326,7 @@ function obj.draw(ox, oy, oz, zoom, alpha, aspect)
     cbResult[4] = alpha or 1
     cbResult[5] = aspect or 0
     cbResult[6] = options.antialias or 1
+    cbResult[7] = options.blend or 0
     i32[OFF_CB_KIND] = CB_KIND_DRAW
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
@@ -353,6 +354,7 @@ function obj.drawpoly(...)
     end
     cbTagD[20] = alpha
     cbTagD[21] = options.antialias or 1
+    cbTagD[22] = options.blend or 0
     i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
