@@ -1,3 +1,4 @@
+using LuaScript.Anchor;
 using LuaScript.Compat;
 using MoonSharp.Interpreter;
 using MoonSharp.Interpreter.Debugging;
@@ -646,6 +647,42 @@ namespace LuaScript
                         return DynValue.NewNumber(0d);
                     var value = _objTable!.Get(args[0].String);
                     return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
+                });
+
+                obj["setanchor"] = DynValue.NewCallback((_, args) =>
+                {
+                    _activeCancellation.ThrowIfCancellationRequested();
+                    if (_activeContext is null || _script is null || args.Count < 2 || args[0].Type != DataType.String)
+                        return DynValue.NewNumber(0d);
+
+                    var anchorName = args[0].String;
+                    int count = AnchorSupport.ClampCount((int)(args[1].CastToNumber() ?? 0d));
+                    if (string.Equals(anchorName, AnchorSupport.TrackGroup, StringComparison.Ordinal))
+                        return DynValue.NewNumber(0d);
+
+                    var connection = AnchorConnection.None;
+                    bool is3D = false;
+                    for (int i = 2; i < args.Count; i++)
+                    {
+                        if (args[i].Type == DataType.String)
+                            AnchorSupport.ApplyOption(args[i].String, ref connection, ref is3D);
+                    }
+
+                    int stride = is3D ? 3 : 2;
+                    var table = new Table(_script);
+                    var source = _activeContext.AnchorSource;
+                    for (int i = 0; i < count; i++)
+                    {
+                        AnchorSupport.ResolvePosition(source, anchorName, i, out double x, out double y, out double z);
+                        table.Set(i * stride + 1, DynValue.NewNumber(x));
+                        table.Set(i * stride + 2, DynValue.NewNumber(y));
+                        if (is3D)
+                            table.Set(i * stride + 3, DynValue.NewNumber(z));
+                    }
+                    _script.Globals.Set(anchorName, DynValue.NewTable(table));
+
+                    _activeContext.AddAnchorRequest(new AnchorRequestData(anchorName, count, connection, is3D));
+                    return DynValue.NewNumber(count);
                 });
 
                 obj["setoption"] = DynValue.NewCallback((_, args) =>
