@@ -535,6 +535,30 @@
         o obj.pixeloption(name, value)
                 Stores an option for pixel operations as state.
 
+        o obj.setanchor(name, count [, option, ..])
+                Shows anchor points on the preview so their coordinates can be
+                adjusted by mouse dragging. The adjusted coordinates are saved with
+                the project.
+                name : the name of the Lua variable that receives the coordinates,
+                    given as a string. The variable is laid out as
+                    pos={x0,y0,x1,y1,…}, or {x0,y0,z0,x1,y1,z1,…} with "xyz".
+                    Coordinates are relative to the object center.
+                count : the number of anchor points. Up to 32.
+                option : enumerated as strings.
+                    "line" : connect the anchor points with lines.
+                    "loop" : connect the anchor points and close the loop.
+                    "star" : connect each anchor point to the object center.
+                    "arm"  : connect the object center to each anchor point in order.
+                    "xyz"  : treat the anchor points as 3D coordinates. 2D by default.
+                Returns the number of anchor points. Because it involves editor
+                interaction, it runs on the MoonSharp engine.
+                The "track" trackbar mode is not supported yet and returns 0.
+                Example:
+                  num = obj.track0
+                  obj.setanchor("pos", num, "loop")
+                  for i = 0, num - 1 do
+                    obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+                  end
 
 
 - ymm4 Table -

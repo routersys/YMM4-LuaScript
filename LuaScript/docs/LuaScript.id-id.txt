@@ -533,6 +533,30 @@
         o obj.pixeloption(name, value)
                 Menyimpan opsi untuk operasi piksel sebagai status.
 
+        o obj.setanchor(name, count [, option, ..])
+                Menampilkan titik jangkar pada pratinjau agar koordinatnya dapat
+                disesuaikan dengan menyeret mouse. Koordinat yang disesuaikan
+                disimpan bersama proyek.
+                name : nama variabel Lua yang menerima koordinat, sebagai string.
+                    Variabel disusun sebagai pos={x0,y0,x1,y1,…}, atau
+                    {x0,y0,z0,x1,y1,z1,…} dengan "xyz". Koordinat relatif terhadap
+                    pusat objek.
+                count : jumlah titik jangkar. Hingga 32.
+                option : dicantumkan sebagai string.
+                    "line" : menghubungkan titik jangkar dengan garis.
+                    "loop" : menghubungkan titik jangkar dan menutup lingkaran.
+                    "star" : menghubungkan tiap titik jangkar ke pusat objek.
+                    "arm"  : menghubungkan pusat objek ke tiap titik secara berurutan.
+                    "xyz"  : memperlakukan titik sebagai koordinat 3D. Bawaan 2D.
+                Mengembalikan jumlah titik jangkar. Karena melibatkan interaksi
+                editor, berjalan pada mesin MoonSharp.
+                Mode bilah "track" belum didukung dan mengembalikan 0.
+                Contoh:
+                  num = obj.track0
+                  obj.setanchor("pos", num, "loop")
+                  for i = 0, num - 1 do
+                    obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+                  end
 
 
 - ymm4 Table -

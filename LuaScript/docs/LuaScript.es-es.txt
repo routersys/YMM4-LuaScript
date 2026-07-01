@@ -538,6 +538,30 @@
         o obj.pixeloption(nombre, valor)
                 Guarda como estado una opción para las operaciones de píxeles.
 
+        o obj.setanchor(nombre, cantidad [, opción, ..])
+                Muestra puntos de anclaje en la vista previa para ajustar sus
+                coordenadas arrastrando con el ratón. Las coordenadas ajustadas se
+                guardan con el proyecto.
+                nombre : el nombre de la variable Lua que recibe las coordenadas,
+                    como cadena. La variable se dispone como pos={x0,y0,x1,y1,…}, o
+                    {x0,y0,z0,x1,y1,z1,…} con "xyz". Las coordenadas son relativas
+                    al centro del objeto.
+                cantidad : el número de puntos de anclaje. Hasta 32.
+                opción : se enumeran como cadenas.
+                    "line" : une los puntos de anclaje con líneas.
+                    "loop" : une los puntos de anclaje y cierra el bucle.
+                    "star" : une cada punto de anclaje con el centro del objeto.
+                    "arm"  : une el centro del objeto con cada punto en orden.
+                    "xyz"  : trata los puntos como coordenadas 3D. 2D por defecto.
+                Devuelve el número de puntos de anclaje. Como implica interacción
+                con el editor, se ejecuta en el motor MoonSharp.
+                El modo de barra "track" aún no se admite y devuelve 0.
+                Ejemplo:
+                  num = obj.track0
+                  obj.setanchor("pos", num, "loop")
+                  for i = 0, num - 1 do
+                    obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+                  end
 
 
 - ymm4 Table -
