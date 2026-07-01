@@ -107,6 +107,8 @@ namespace LuaScript
         private bool _hasExplicitDirective;
         private ScriptEngineKind _explicitDirectiveKind;
 
+        private byte[]? _nativeInputPixels;
+        private Func<byte[]>? _nativeLoadInput;
         private Func<string, int, SceneObjectInfo?>? _nativeResolveObject;
         private Func<string, int, double, double, double, (byte[] buffer, int w, int h)>? _nativeLoadFigure;
         private Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)>? _nativeLoadText;
@@ -814,6 +816,7 @@ namespace LuaScript
         {
             _nativeWorker ??= new LuaJitWorker(NativeDirectory);
             _nativeFields ??= new double[NativeProtocol.FieldCount];
+            _nativeLoadInput ??= () => _nativeInputPixels ??= LoadPendingInputPixels();
             _nativeResolveObject ??= (tag, frame) => _context.ResolveObject(tag, frame, out var info) ? info : null;
             _nativeLoadFigure ??= NativeLoadFigure;
             _nativeLoadText ??= NativeLoadText;
@@ -824,10 +827,10 @@ namespace LuaScript
             _nativeSetAnchor ??= ResolveNativeAnchor;
 
             NativeFieldMap.ToFields(ctx, _nativeFields);
-            byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
+            _nativeInputPixels = null;
 
             bool ok = _nativeWorker.Execute(
-                script, _nativeFields, ctx.StringParameters, buffer, imgW, imgH, NativeTimeoutMilliseconds,
+                script, _nativeFields, ctx.StringParameters, _nativeLoadInput, imgW, imgH, NativeTimeoutMilliseconds,
                 _nativeResolveObject,
                 _nativeLoadFigure,
                 _nativeLoadText,
@@ -836,7 +839,7 @@ namespace LuaScript
                 _nativeAddEffect,
                 _nativeAddDraw,
                 _nativeSetAnchor,
-                out bool dirty, out bool bufferReplaced, out byte[]? newPixels,
+                out bool dirty, out bool bufferReplaced, out byte[]? resultPixels,
                 out int resultW, out int resultH, out string? error);
 
             if (!ok)
@@ -850,25 +853,21 @@ namespace LuaScript
 
             bool hasDraws = ctx.DrawCommands.Count > 0;
 
-            if (dirty)
+            if (dirty && resultPixels is not null)
             {
                 int outW = bufferReplaced ? resultW : imgW;
                 int outH = bufferReplaced ? resultH : imgH;
-                byte[] outPixels = buffer;
 
-                if (bufferReplaced && newPixels != null)
-                {
-                    outPixels = newPixels;
-                    ctx.ReplaceBuffer(outPixels, outW, outH);
-                }
+                if (bufferReplaced)
+                    ctx.ReplaceBuffer(resultPixels, outW, outH);
 
                 if (hasDraws)
                 {
-                    ctx.SetResolvedBuffer(outPixels, outW, outH);
+                    ctx.SetResolvedBuffer(resultPixels, outW, outH);
                     return true;
                 }
 
-                _pixelManager!.WritePixelsToOutput(outPixels, outW, outH);
+                _pixelManager!.WritePixelsToOutput(resultPixels, outW, outH);
                 if (bufferReplaced)
                     effectOutput = _pixelManager.GetTransformOutput(-outW / 2f, -outH / 2f);
                 else
@@ -878,7 +877,7 @@ namespace LuaScript
 
             if (hasDraws)
             {
-                ctx.SetResolvedBuffer(buffer, imgW, imgH);
+                ctx.SetResolvedBuffer(_nativeLoadInput(), imgW, imgH);
                 return false;
             }
 
