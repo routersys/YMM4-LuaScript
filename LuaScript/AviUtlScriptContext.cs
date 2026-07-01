@@ -1,7 +1,19 @@
+using LuaScript.Anchor;
+
 namespace LuaScript
 {
     internal sealed class AviUtlScriptContext
     {
+        public IReadOnlyList<LuaAnchorPoint>? AnchorSource { get; set; }
+
+        private readonly List<AnchorRequestData> _anchorRequests = [];
+
+        public IReadOnlyList<AnchorRequestData> AnchorRequests => _anchorRequests;
+
+        internal void AddAnchorRequest(in AnchorRequestData request) => _anchorRequests.Add(request);
+
+        internal void ClearAnchorRequests() => _anchorRequests.Clear();
+
         public bool IsPlaying { get; set; }
         public bool IsPaused { get; set; }
         public string SceneId { get; set; } = string.Empty;
