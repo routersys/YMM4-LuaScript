@@ -42,6 +42,8 @@ namespace LuaScript
         public bool HasColor { get; set; }
         public double ColorValue { get; set; }
 
+        public bool? DrawStateOverride { get; set; }
+
         public double Time { get; set; }
         public int Frame { get; set; }
         public int TotalFrame { get; set; }
