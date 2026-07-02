@@ -131,6 +131,7 @@ namespace LuaScript
 
         private VideoEffectChain? _effectChain;
         private DrawCompositor? _drawCompositor;
+        private FallbackCompositor? _bufferCompositor;
         private TextRenderer? _nativeTextRenderer;
         private ImageDecoder? _nativeImageDecoder;
         private MovieDecoder? _nativeMovieDecoder;
@@ -140,8 +141,24 @@ namespace LuaScript
             _ownCtx = new GraphicsDevicesAndContext(devices);
             disposer.Collect(_ownCtx);
             _pixelManager = new PixelBufferManager(_ownCtx);
+            _bufferCompositor = new FallbackCompositor(
+                new HardwareCompositor(_ownCtx),
+                new SoftwareCompositor(),
+                WarnBufferCompositorDegraded);
             _context.ResolverProvider = GetFrameResolver;
+            _context.Compositor = _bufferCompositor;
             return null;
+        }
+
+        private static void WarnBufferCompositorDegraded(Exception ex) =>
+            Log.Default.Write("LuaScript: hardware buffer compositing failed; falling back to the software compositor.", ex);
+
+        private AviUtlScriptContext CreateScriptContext()
+        {
+            var context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
+            if (_bufferCompositor is not null)
+                context.Compositor = _bufferCompositor;
+            return context;
         }
 
         private SceneObjectResolver GetFrameResolver()
@@ -357,7 +374,7 @@ namespace LuaScript
             catch (LuaScriptTimeoutException ex)
             {
                 effectOutput = null;
-                _context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
+                _context = CreateScriptContext();
                 _isFirst = true;
                 Log.Default.Write(ex.Message, ex);
                 LuaScriptDiagnostics.Instance.Report(script, [CreateDiagnostic(LuaScriptDiagnosticKind.Timeout, ex.Message)]);
@@ -958,6 +975,7 @@ namespace LuaScript
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
                 _drawCompositor?.Dispose();
+                _bufferCompositor?.Dispose();
                 _nativeTextRenderer?.Dispose();
                 _nativeImageDecoder?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
