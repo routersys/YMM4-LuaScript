@@ -766,7 +766,7 @@ namespace LuaScript
             _kernelUniforms ??= KernelUniformBinding.Create();
             KernelUniformBinding.Fill(ctx, _kernelUniforms);
 
-            if (explicitDirective && kind == ScriptEngineKind.Gpu)
+            if (!explicitDirective || kind == ScriptEngineKind.Gpu)
             {
                 var gpu = GetGpuKernel();
                 if (gpu is not null)
@@ -774,7 +774,8 @@ namespace LuaScript
                     effectOutput = gpu.Apply(input!, _kernelUniforms);
                     return true;
                 }
-                WarnGpuUnavailableOnce();
+                if (explicitDirective)
+                    WarnGpuUnavailableOnce();
             }
 
             byte[] buffer = LoadInputPixels(bounds, imgW, imgH);
@@ -790,16 +791,22 @@ namespace LuaScript
                 return _gpuKernel;
 
             _gpuKernelChecked = true;
-            if (_kernelProgram is null)
+            if (_kernelProgram is null || _cpuKernel is null)
                 return null;
 
             try
             {
                 var kernel = new GpuKernel(_ownCtx!, _kernelProgram);
-                if (kernel.IsReady)
+                if (kernel.IsReady && kernel.Verify(_cpuKernel))
+                {
                     _gpuKernel = kernel;
+                }
                 else
+                {
+                    if (kernel.IsReady)
+                        Log.Default.Write("LuaScript: GPU kernel output diverges from the CPU kernel beyond tolerance; using the CPU kernel.");
                     kernel.Dispose();
+                }
             }
             catch (Exception ex)
             {
