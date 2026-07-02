@@ -126,6 +126,8 @@ namespace LuaScript
         private Action<string, IReadOnlyList<KeyValuePair<string, object>>>? _nativeAddEffect;
         private Action<DrawCommand>? _nativeAddDraw;
         private Action<string, int, bool, int, double[]>? _nativeSetAnchor;
+        private Func<string, SceneValue>? _nativeSceneGet;
+        private Action<string, SceneValue>? _nativeSceneSet;
 
         private bool _isFirst = true;
         private string _sourceScript = string.Empty;
@@ -135,6 +137,8 @@ namespace LuaScript
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
         private SceneObjectQuery[] _cachedQueries = [];
+        private SceneValueQuery[] _cachedSceneValueQueries = [];
+        private bool _cachedSceneValuesWritten;
         private DrawDescription? _cachedOutputDesc;
         private ID2D1Image? _cachedEffectOutput;
 
@@ -291,8 +295,9 @@ namespace LuaScript
             _frameResolver = null;
             _frameResolverBuilt = false;
 
-            if (!_isFirst && key == _cachedKey &&
-                (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())))
+            if (!_isFirst && key == _cachedKey && !_cachedSceneValuesWritten &&
+                (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())) &&
+                (_cachedSceneValueQueries.Length == 0 || SceneValuesMatch(_cachedSceneValueQueries, SceneSharedValues.ForScene(ResolveSceneId(key.SceneId)))))
             {
                 effectOutput = _cachedEffectOutput;
                 return _cachedOutputDesc ?? inDesc;
@@ -390,6 +395,7 @@ namespace LuaScript
                 effectOutput = null;
                 _context = CreateScriptContext();
                 _isFirst = true;
+                DebugOutput.Write(ex.Message);
                 Log.Default.Write(ex.Message, ex);
                 LuaScriptDiagnostics.Instance.Report(script, [CreateDiagnostic(LuaScriptDiagnosticKind.Timeout, ex.Message)]);
                 return inDesc;
@@ -398,6 +404,7 @@ namespace LuaScript
             {
                 effectOutput = null;
                 outDesc = inDesc;
+                DebugOutput.Write(ex.Message);
                 Log.Default.Write(ex.Message, ex);
                 diagnostics = [CreateDiagnostic(ClassifyDiagnostic(ex), ex.Message)];
             }
@@ -412,6 +419,8 @@ namespace LuaScript
             _isFirst = false;
             _cachedKey = key;
             _cachedQueries = ctx.ObjectQueries.Count == 0 ? [] : [.. ctx.ObjectQueries];
+            _cachedSceneValueQueries = ctx.SceneValueQueries.Count == 0 ? [] : [.. ctx.SceneValueQueries];
+            _cachedSceneValuesWritten = ctx.SceneValuesWritten;
             _cachedOutputDesc = outDesc;
             _cachedEffectOutput = effectOutput;
 
@@ -458,6 +467,16 @@ namespace LuaScript
             }
 
             return new SceneObjectResolver([.. entries], desc.FPS);
+        }
+
+        private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values)
+        {
+            for (int i = 0; i < queries.Length; i++)
+            {
+                if (values.Get(queries[i].Name) != queries[i].Result)
+                    return false;
+            }
+            return true;
         }
 
         private static bool QueriesMatch(SceneObjectQuery[] queries, SceneObjectResolver resolver)
@@ -863,6 +882,8 @@ namespace LuaScript
             _nativeAddEffect ??= (name, args) => _context.AddEffect(new AviUtlEffectRequest(name, args));
             _nativeAddDraw ??= command => _context.AddDraw(command);
             _nativeSetAnchor ??= ResolveNativeAnchor;
+            _nativeSceneGet ??= name => _context.GetSceneValue(name);
+            _nativeSceneSet ??= (name, value) => _context.SetSceneValue(name, value);
 
             NativeFieldMap.ToFields(ctx, _nativeFields);
             _nativeUploaded = false;
@@ -877,6 +898,8 @@ namespace LuaScript
                 _nativeAddEffect,
                 _nativeAddDraw,
                 _nativeSetAnchor,
+                _nativeSceneGet,
+                _nativeSceneSet,
                 out bool dirty, out bool bufferReplaced,
                 out int resultW, out int resultH, out string? error);
 
