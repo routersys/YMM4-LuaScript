@@ -142,8 +142,8 @@ namespace LuaScript
             disposer.Collect(_ownCtx);
             _pixelManager = new PixelBufferManager(_ownCtx);
             _bufferCompositor = new FallbackCompositor(
-                new HardwareCompositor(_ownCtx),
-                new SoftwareCompositor(),
+                new SynchronizedCompositor(new HardwareCompositor(_ownCtx), _pixelLoaderSemaphore),
+                SoftwareCompositor.Instance,
                 WarnBufferCompositorDegraded);
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
