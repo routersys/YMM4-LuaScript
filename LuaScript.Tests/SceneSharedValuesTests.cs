@@ -1,41 +1,120 @@
-using System.Text;
-
 namespace LuaScript.Tests
 {
     public class SceneSharedValuesTests
     {
-        [Fact]
-        public void Set_Get_RoundTripsAllKinds()
+        private static Dictionary<string, SceneValue> Writes(params (string Name, SceneValue Value)[] items)
         {
-            var store = new SceneSharedValues();
-            store.Set("num", SceneValue.FromNumber(1.5));
-            store.Set("text", SceneValue.FromString("あいう"));
-            store.Set("flagTrue", SceneValue.FromBoolean(true));
-            store.Set("flagFalse", SceneValue.FromBoolean(false));
-
-            Assert.Equal(SceneValue.FromNumber(1.5), store.Get("num"));
-            Assert.Equal(SceneValue.FromString("あいう"), store.Get("text"));
-            Assert.Equal(SceneValue.FromBoolean(true), store.Get("flagTrue"));
-            Assert.Equal(SceneValue.FromBoolean(false), store.Get("flagFalse"));
-            Assert.Equal(SceneValue.Nil, store.Get("missing"));
+            var writes = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
+            foreach (var (name, value) in items)
+                writes[name] = value;
+            return writes;
         }
 
         [Fact]
-        public void Set_Nil_RemovesValue()
+        public void Publish_IsInvisibleWithinSameGeneration()
         {
             var store = new SceneSharedValues();
-            store.Set("key", SceneValue.FromNumber(1d));
-            store.Set("key", SceneValue.Nil);
-            Assert.Equal(SceneValue.Nil, store.Get("key"));
+            store.Publish(10, false, Writes(("key", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.Nil, store.Read(10, false, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(11, false, "key"));
         }
 
         [Fact]
-        public void Set_OverwritesValueAndKind()
+        public void Read_IsOrderIndependentWithinGeneration()
         {
             var store = new SceneSharedValues();
-            store.Set("key", SceneValue.FromNumber(1d));
-            store.Set("key", SceneValue.FromString("s"));
-            Assert.Equal(SceneValue.FromString("s"), store.Get("key"));
+            store.Publish(0, false, Writes(("key", SceneValue.FromNumber(1d))));
+
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+            store.Publish(1, false, Writes(("key", SceneValue.FromNumber(2d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+            store.Publish(1, false, Writes(("other", SceneValue.FromNumber(3d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(2, false, "key"));
+            Assert.Equal(SceneValue.FromNumber(3d), store.Read(2, false, "other"));
+        }
+
+        [Fact]
+        public void Fold_AppliesRemovalsAndOverwrites()
+        {
+            var store = new SceneSharedValues();
+            store.Publish(0, false, Writes(
+                ("a", SceneValue.FromNumber(1d)),
+                ("b", SceneValue.FromString("s")),
+                ("c", SceneValue.FromBoolean(true))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "a"));
+
+            store.Publish(1, false, Writes(
+                ("a", SceneValue.Nil),
+                ("b", SceneValue.FromNumber(9d))));
+
+            Assert.Equal(SceneValue.Nil, store.Read(2, false, "a"));
+            Assert.Equal(SceneValue.FromNumber(9d), store.Read(2, false, "b"));
+            Assert.Equal(SceneValue.FromBoolean(true), store.Read(2, false, "c"));
+        }
+
+        [Fact]
+        public void BackwardScrub_FoldsPendingOnce()
+        {
+            var store = new SceneSharedValues();
+            store.Publish(100, false, Writes(("key", SceneValue.FromNumber(5d))));
+            Assert.Equal(SceneValue.FromNumber(5d), store.Read(50, false, "key"));
+            Assert.Equal(SceneValue.FromNumber(5d), store.Read(50, false, "key"));
+        }
+
+        [Fact]
+        public void ExportStart_ResetsAllValues()
+        {
+            var store = new SceneSharedValues();
+            store.Publish(5, false, Writes(("key", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(6, false, "key"));
+
+            Assert.Equal(SceneValue.Nil, store.Read(0, true, "key"));
+
+            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(2d))));
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(1, true, "key"));
+        }
+
+        [Fact]
+        public void ExportRestart_IsDetectedByBackwardFrame()
+        {
+            var store = new SceneSharedValues();
+            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(10, true, "key"));
+
+            Assert.Equal(SceneValue.Nil, store.Read(0, true, "key"));
+        }
+
+        [Fact]
+        public void ExportEnd_KeepsValuesForPreview()
+        {
+            var store = new SceneSharedValues();
+            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+        }
+
+        [Fact]
+        public void Capacity_LimitsDistinctNames_AndKeepsExistingUpdatable()
+        {
+            var store = new SceneSharedValues();
+            var writes = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
+            for (int i = 0; i < SceneSharedValues.MaxEntries; i++)
+                writes["k" + i] = SceneValue.FromNumber(i);
+            store.Publish(0, false, writes);
+
+            store.Publish(1, false, Writes(
+                ("overflow", SceneValue.FromNumber(1d)),
+                ("k0", SceneValue.FromNumber(-1d))));
+
+            Assert.Equal(SceneValue.Nil, store.Read(2, false, "overflow"));
+            Assert.Equal(SceneValue.FromNumber(-1d), store.Read(2, false, "k0"));
+
+            store.Publish(2, false, Writes(
+                ("k1", SceneValue.Nil),
+                ("replacement", SceneValue.FromNumber(7d))));
+            Assert.Equal(SceneValue.Nil, store.Read(3, false, "k1"));
+            Assert.Equal(SceneValue.FromNumber(7d), store.Read(3, false, "replacement"));
         }
 
         [Fact]
@@ -44,35 +123,11 @@ namespace LuaScript.Tests
             string sceneA = Guid.NewGuid().ToString();
             string sceneB = Guid.NewGuid().ToString();
 
-            SceneSharedValues.ForScene(sceneA).Set("key", SceneValue.FromNumber(1d));
+            SceneSharedValues.ForScene(sceneA).Publish(0, false, Writes(("key", SceneValue.FromNumber(1d))));
 
-            Assert.Equal(SceneValue.FromNumber(1d), SceneSharedValues.ForScene(sceneA).Get("key"));
-            Assert.Equal(SceneValue.Nil, SceneSharedValues.ForScene(sceneB).Get("key"));
+            Assert.Equal(SceneValue.FromNumber(1d), SceneSharedValues.ForScene(sceneA).Read(1, false, "key"));
+            Assert.Equal(SceneValue.Nil, SceneSharedValues.ForScene(sceneB).Read(1, false, "key"));
             Assert.Same(SceneSharedValues.ForScene(sceneA), SceneSharedValues.ForScene(sceneA));
-        }
-
-        [Fact]
-        public void LongText_IsTruncatedAtUtf8Boundary()
-        {
-            var store = new SceneSharedValues();
-            string text = new string('あ', 2000);
-            store.Set("key", SceneValue.FromString(text));
-
-            var stored = store.Get("key");
-            Assert.Equal(SceneValueKind.String, stored.Kind);
-            Assert.True(Encoding.UTF8.GetByteCount(stored.Text!) <= SceneSharedValues.MaxTextBytes);
-            Assert.Equal(SceneSharedValues.MaxTextBytes / 3, stored.Text!.Length);
-            Assert.StartsWith(stored.Text, text, StringComparison.Ordinal);
-        }
-
-        [Fact]
-        public void LongName_IsTruncatedConsistentlyOnSetAndGet()
-        {
-            var store = new SceneSharedValues();
-            string name = new string('k', SceneSharedValues.MaxNameBytes + 100);
-            store.Set(name, SceneValue.FromNumber(7d));
-            Assert.Equal(SceneValue.FromNumber(7d), store.Get(name));
-            Assert.Equal(SceneValue.FromNumber(7d), store.Get(name[..SceneSharedValues.MaxNameBytes]));
         }
     }
 }
