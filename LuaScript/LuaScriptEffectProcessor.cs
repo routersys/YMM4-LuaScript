@@ -95,6 +95,8 @@ namespace LuaScript
         private string _lastSceneId = string.Empty;
         private bool _sceneIdCached;
 
+        private IGraphicsDevicesAndContext? _hostDevices;
+
         private GraphicsDevicesAndContext? _ownCtx;
 
         private PixelBufferManager? _pixelManager;
@@ -138,7 +140,6 @@ namespace LuaScript
         private RenderKey _cachedKey;
         private SceneObjectQuery[] _cachedQueries = [];
         private SceneValueQuery[] _cachedSceneValueQueries = [];
-        private bool _cachedSceneValuesWritten;
         private DrawDescription? _cachedOutputDesc;
         private ID2D1Image? _cachedEffectOutput;
 
@@ -151,6 +152,7 @@ namespace LuaScript
 
         protected override ID2D1Image? CreateEffect(IGraphicsDevicesAndContext devices)
         {
+            _hostDevices = devices;
             _ownCtx = new GraphicsDevicesAndContext(devices);
             disposer.Collect(_ownCtx);
             _pixelManager = new PixelBufferManager(_ownCtx);
@@ -295,13 +297,12 @@ namespace LuaScript
             _frameResolver = null;
             _frameResolverBuilt = false;
 
-            if (!_isFirst && key == _cachedKey && !_cachedSceneValuesWritten &&
+            if (!_isFirst && key == _cachedKey &&
                 (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())) &&
                 (_cachedSceneValueQueries.Length == 0 || SceneValuesMatch(
                     _cachedSceneValueQueries,
-                    SceneSharedValues.ForScene(ResolveSceneId(key.SceneId)),
-                    key.TimelineFrame,
-                    key.Usage == TimelineSourceUsage.Exporting)))
+                    SceneSharedValues.ForScene(_hostDevices!, ResolveSceneId(key.SceneId)),
+                    key.TimelineFrame)))
             {
                 effectOutput = _cachedEffectOutput;
                 return _cachedOutputDesc ?? inDesc;
@@ -426,7 +427,6 @@ namespace LuaScript
             _cachedKey = key;
             _cachedQueries = ctx.ObjectQueries.Count == 0 ? [] : [.. ctx.ObjectQueries];
             _cachedSceneValueQueries = ctx.SceneValueQueries.Count == 0 ? [] : [.. ctx.SceneValueQueries];
-            _cachedSceneValuesWritten = ctx.SceneValuesWritten;
             _cachedOutputDesc = outDesc;
             _cachedEffectOutput = effectOutput;
 
@@ -475,11 +475,11 @@ namespace LuaScript
             return new SceneObjectResolver([.. entries], desc.FPS);
         }
 
-        private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values, long generation, bool exporting)
+        private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values, long generation)
         {
             for (int i = 0; i < queries.Length; i++)
             {
-                if (values.Read(generation, exporting, queries[i].Name) != queries[i].Result)
+                if (values.Read(generation, queries[i].Name) != queries[i].Result)
                     return false;
             }
             return true;
@@ -611,6 +611,7 @@ namespace LuaScript
             ctx.SceneId = ResolveSceneId(key.SceneId);
             ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
             PopulateStringParameters(ctx);
+            ctx.SceneScope = _hostDevices;
             ctx.BeginSceneValues();
         }
 
