@@ -187,6 +187,51 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void PixelData_RebuildsAfterSetPixel()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "obj.setpixel(0,0,100,150,200,255) " +
+                "local pd = obj.getpixeldata() " +
+                "obj.x = pd:get(1) obj.y = pd:get(2) obj.z = pd:get(3) obj.alpha = pd:get(4)";
+
+            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(100d, fields[NativeProtocol.X]);
+            Assert.Equal(150d, fields[NativeProtocol.Y]);
+            Assert.Equal(200d, fields[NativeProtocol.Z]);
+            Assert.Equal(255d, fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void PixelData_WritesAreVisibleToGetPixel()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            pixels[3] = 255;
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "local pd = obj.getpixeldata() " +
+                "pd:set(1,120) pd:set(2,130) pd:set(3,140) " +
+                "local r,g,b,a = obj.getpixel(0,0) " +
+                "obj.x = r obj.y = g obj.z = b obj.alpha = a";
+
+            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(120d, fields[NativeProtocol.X]);
+            Assert.Equal(130d, fields[NativeProtocol.Y]);
+            Assert.Equal(140d, fields[NativeProtocol.Z]);
+            Assert.Equal(255d, fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
         public void PersistentWorker_HandlesMultipleCalls()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

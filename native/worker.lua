@@ -92,6 +92,7 @@ local pixeloptions = {}
 local dirty = false
 local pixelsValid = false
 local drawTarget = "frame"
+local pdData, pdCapacity, pdValid, pdDirty = nil, 0, false, false
 
 local function ensurePixels()
     if pixelsValid then return end
@@ -100,6 +101,46 @@ local function ensurePixels()
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
     pixelsValid = true
+end
+
+local function rebuildPixelData()
+    local count = width * height * 4
+    if not pdData or pdCapacity < count then
+        pdData = ffi.new("double[?]", count)
+        pdCapacity = count
+    end
+    for pi = 0, width * height - 1 do
+        local p = pixels + pi * 4
+        local di = pi * 4
+        local a = p[3]
+        pdData[di + 3] = a
+        if a <= 0 then
+            pdData[di] = 0; pdData[di + 1] = 0; pdData[di + 2] = 0
+        else
+            local s = 255 / a
+            pdData[di] = clamp(p[2] * s, 0, 255)
+            pdData[di + 1] = clamp(p[1] * s, 0, 255)
+            pdData[di + 2] = clamp(p[0] * s, 0, 255)
+        end
+    end
+    pdValid = true
+    pdDirty = false
+end
+
+local function flushPixelData()
+    if not pdDirty then return end
+    for pi = 0, width * height - 1 do
+        local di = pi * 4
+        local a = math.floor(clamp(pdData[di + 3], 0, 255))
+        local aK = a / 255
+        local p = pixels + pi * 4
+        p[0] = math.floor(clamp(pdData[di + 2] * aK, 0, 255))
+        p[1] = math.floor(clamp(pdData[di + 1] * aK, 0, 255))
+        p[2] = math.floor(clamp(pdData[di] * aK, 0, 255))
+        p[3] = a
+    end
+    dirty = true
+    pdDirty = false
 end
 
 local function sampleSource(src, srcW, srcH, u, v, linear)
@@ -246,6 +287,7 @@ function obj.getpixel(x, y)
     x = math.floor(x); y = math.floor(y)
     if x < 0 or y < 0 or x >= width or y >= height then return 0, 0, 0, 0 end
     ensurePixels()
+    flushPixelData()
     local p = pixels + (y * width + x) * 4
     local a = p[3]
     if a <= 0 then return 0, 0, 0, 0 end
@@ -257,6 +299,7 @@ function obj.setpixel(x, y, r, g, b, a)
     x = math.floor(x); y = math.floor(y)
     if x < 0 or y < 0 or x >= width or y >= height then return end
     ensurePixels()
+    flushPixelData()
     a = a or 255
     dirty = true
     local aK = clamp(a, 0, 255) / 255
@@ -265,58 +308,30 @@ function obj.setpixel(x, y, r, g, b, a)
     p[1] = math.floor(clamp(g * aK, 0, 255))
     p[2] = math.floor(clamp(r * aK, 0, 255))
     p[3] = math.floor(clamp(a, 0, 255))
+    pdValid = false
 end
 
 function obj.getpixeldata()
     ensurePixels()
+    if not pdValid then rebuildPixelData() end
+    local data = pdData
     local total = width * height * 4
-    local buf = pixels
     local pd = { width = width, height = height }
     function pd:get(index)
         local zb = index - 1
         if zb < 0 or zb >= total then return 0 end
-        local pi = math.floor(zb / 4)
-        local ch = zb - pi * 4
-        local p = buf + pi * 4
-        local a = p[3]
-        if ch == 3 then return a end
-        if a <= 0 then return 0 end
-        local sc = 255 / a
-        if ch == 0 then return clamp(p[2] * sc, 0, 255) end
-        if ch == 1 then return clamp(p[1] * sc, 0, 255) end
-        return clamp(p[0] * sc, 0, 255)
+        return data[zb]
     end
     function pd:set(index, value)
         local zb = index - 1
         if zb < 0 or zb >= total then return end
-        dirty = true
-        local pi = math.floor(zb / 4)
-        local ch = zb - pi * 4
-        local p = buf + pi * 4
-        local clamped = clamp(value, 0, 255)
-        if ch == 3 then
-            local oldA = p[3]
-            local newA = clamped
-            if oldA > 0 and newA > 0 then
-                local f = newA / oldA
-                p[0] = math.floor(clamp(p[0] * f, 0, 255))
-                p[1] = math.floor(clamp(p[1] * f, 0, 255))
-                p[2] = math.floor(clamp(p[2] * f, 0, 255))
-            elseif newA <= 0 then
-                p[0] = 0; p[1] = 0; p[2] = 0
-            end
-            p[3] = math.floor(newA)
-        else
-            local a = p[3]
-            local pm = clamped * (a / 255)
-            local bo = (ch == 0) and 2 or ((ch == 1) and 1 or 0)
-            p[bo] = math.floor(clamp(pm, 0, 255))
-        end
+        data[zb] = clamp(value, 0, 255)
+        pdDirty = true
     end
     return pd
 end
 
-function obj.putpixeldata() end
+function obj.putpixeldata() flushPixelData() end
 
 function obj.rand(a, b, seed, frame)
     return aviutl_rand(a or 0, b or 0, seed or 0, frame or obj.frame or 0)
@@ -345,6 +360,7 @@ local function applyLoadResult()
         i32[OFF_HEIGHT] = newH
         dirty = true
         pixelsValid = true
+        pdValid = false
         obj.w = newW; obj.h = newH
         obj.hw = newW / 2; obj.hh = newH / 2
         obj.cx = newW / 2; obj.cy = newH / 2
@@ -464,6 +480,7 @@ end
 function obj.draw(ox, oy, oz, zoom, alpha, aspect)
     if drawTarget == "temp" then
         ensurePixels()
+        flushPixelData()
         local t = ensureTemp()
         compositeDrawInto(t.data, t.w, t.h, pixels, width, height,
             ox or 0, oy or 0, zoom or 1, aspect or 0, alpha or 1, (options.antialias or 1) ~= 0)
@@ -506,6 +523,7 @@ function obj.drawpoly(...)
     p[20] = alpha
     if drawTarget == "temp" then
         ensurePixels()
+        flushPixelData()
         local t = ensureTemp()
         compositeDrawPolyInto(t.data, t.w, t.h, pixels, width, height, p, alpha, (options.antialias or 1) ~= 0)
         return
@@ -603,6 +621,7 @@ function obj.copybuffer(dst, src)
     local data, w, h
     if sk == "o" then
         ensurePixels()
+        flushPixelData()
         data = pixels
         w = width; h = height
     elseif sk == "t" or sk == "c" then
@@ -621,6 +640,7 @@ function obj.copybuffer(dst, src)
         i32[OFF_WIDTH] = w; i32[OFF_HEIGHT] = h
         dirty = true
         pixelsValid = true
+        pdValid = false
         obj.w = w; obj.h = h
         obj.hw = w / 2; obj.hh = h / 2
         obj.cx = w / 2; obj.cy = h / 2
@@ -771,6 +791,8 @@ while true do
 
     dirty = false
     pixelsValid = false
+    pdValid = false
+    pdDirty = false
     local version = i32[OFF_SCRIPT_VERSION]
     if version ~= lastScriptVersion then
         lastScriptVersion = version
@@ -812,6 +834,7 @@ while true do
         setfenv(compiledChunk, sandbox)
         local ok, err = pcall(compiledChunk)
         if ok then
+            flushPixelData()
             storeFields()
             local ds = options.draw_state
             if ds == nil then f64[62] = 0 elseif ds == false or ds == 0 then f64[62] = 2 else f64[62] = 1 end
