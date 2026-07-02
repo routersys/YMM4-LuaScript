@@ -112,6 +112,9 @@ end</code></pre>
 <li><code>--!gpu</code> を指定しても、GPU カーネルを初期化できない場合は CPU カーネル、さらに MoonSharp の順で
   フォールバックします。</li>
 <li><code>--!cpu</code> を指定してもカーネル条件に合わないスクリプトは、ほかのエンジンで実行されます。</li>
+<li>MoonSharp では <code>tempbuffer</code> への描画合成を GPU で実行し、GPU を利用できない環境では
+  CPU の合成へ自動的に切り替わります。丸めの違いにより、合成の結果はエンジン間で
+  ごく僅かに異なることがあります。</li>
 </ul>
 
 <div class="warn">

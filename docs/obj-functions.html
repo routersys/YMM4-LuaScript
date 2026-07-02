@@ -235,6 +235,8 @@ obj.draw()</code></pre>
 <p>
 <code>tempbuffer</code> への合成は通常（ソースオーバー）で、<code>blend</code> は <code>framebuffer</code> への描画に適用されます。
 描画先の切り替えは両エンジンで動きます。
+MoonSharp では <code>tempbuffer</code> への合成を GPU で実行し、GPU を利用できない環境では CPU の合成へ自動的に切り替わります。
+丸めの違いにより、合成の結果はエンジン間でごく僅かに異なることがあります。
 </p>
 
 <pre><code>obj.setoption("drawtarget", "tempbuffer", obj.w, obj.h)
