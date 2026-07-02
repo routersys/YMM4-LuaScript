@@ -4,65 +4,96 @@ namespace LuaScript.Tests
 {
     public class SceneTableRegistrarTests
     {
-        private static (Script script, SceneSharedValues store) CreateScript()
+        private sealed class Harness
         {
-            var script = new Script(CoreModules.Basic | CoreModules.Math | CoreModules.String | CoreModules.Table);
-            var store = new SceneSharedValues();
-            var scene = new Table(script);
-            SceneTableRegistrar.RegisterFunctions(scene, store.Get, store.Set);
-            script.Globals["scene"] = scene;
-            return (script, store);
+            private readonly string _sceneId = Guid.NewGuid().ToString();
+            private long _generation;
+
+            public Script Script { get; }
+            public SceneValueSession Session { get; } = new();
+
+            public Harness()
+            {
+                Script = new Script(CoreModules.Basic | CoreModules.Math | CoreModules.String | CoreModules.Table);
+                var scene = new Table(Script);
+                SceneTableRegistrar.RegisterFunctions(scene, Session.Get, Session.Set);
+                Script.Globals["scene"] = scene;
+                Session.Begin(_sceneId, _generation, false);
+            }
+
+            public DynValue Run(string code)
+            {
+                var result = Script.DoString(code);
+                Session.Publish();
+                return result;
+            }
+
+            public void NextFrame()
+            {
+                _generation++;
+                Session.Begin(_sceneId, _generation, false);
+            }
+
+            public SceneValue Stored(string name)
+            {
+                NextFrame();
+                return Session.Get(name);
+            }
         }
 
         [Fact]
         public void Set_StoresAllSupportedKinds()
         {
-            var (script, store) = CreateScript();
-            script.DoString(
+            var harness = new Harness();
+            harness.Run(
                 "scene.set('num', 4.25) " +
                 "scene.set('text', 'こんにちは') " +
                 "scene.set('flag', false)");
 
-            Assert.Equal(SceneValue.FromNumber(4.25), store.Get("num"));
-            Assert.Equal(SceneValue.FromString("こんにちは"), store.Get("text"));
-            Assert.Equal(SceneValue.FromBoolean(false), store.Get("flag"));
+            Assert.Equal(SceneValue.FromNumber(4.25), harness.Stored("num"));
+            Assert.Equal(SceneValue.FromString("こんにちは"), harness.Stored("text"));
+            Assert.Equal(SceneValue.FromBoolean(false), harness.Stored("flag"));
         }
 
         [Fact]
         public void Set_NilOrMissingValue_Removes()
         {
-            var (script, store) = CreateScript();
-            store.Set("a", SceneValue.FromNumber(1d));
-            store.Set("b", SceneValue.FromNumber(2d));
-            script.DoString("scene.set('a', nil) scene.set('b')");
-            Assert.Equal(SceneValue.Nil, store.Get("a"));
-            Assert.Equal(SceneValue.Nil, store.Get("b"));
+            var harness = new Harness();
+            harness.Run("scene.set('a', 1) scene.set('b', 2)");
+            harness.NextFrame();
+            harness.Run("scene.set('a', nil) scene.set('b')");
+
+            Assert.Equal(SceneValue.Nil, harness.Stored("a"));
+            Assert.Equal(SceneValue.Nil, harness.Stored("b"));
         }
 
         [Fact]
         public void Set_UnsupportedTypesAndNames_AreIgnored()
         {
-            var (script, store) = CreateScript();
-            store.Set("keep", SceneValue.FromNumber(9d));
-            script.DoString(
+            var harness = new Harness();
+            harness.Run("scene.set('keep', 9)");
+            harness.NextFrame();
+            harness.Run(
                 "scene.set('keep', {}) " +
                 "scene.set('fn', function() end) " +
                 "scene.set(12, 'x') " +
                 "scene.set()");
 
-            Assert.Equal(SceneValue.FromNumber(9d), store.Get("keep"));
-            Assert.Equal(SceneValue.Nil, store.Get("fn"));
+            Assert.Equal(SceneValue.FromNumber(9d), harness.Stored("keep"));
+            Assert.Equal(SceneValue.Nil, harness.Stored("fn"));
         }
 
         [Fact]
         public void Get_ReturnsStoredValuesWithLuaTypes()
         {
-            var (script, store) = CreateScript();
-            store.Set("num", SceneValue.FromNumber(-8.5));
-            store.Set("text", SceneValue.FromString("v"));
-            store.Set("flag", SceneValue.FromBoolean(true));
+            var harness = new Harness();
+            harness.Run(
+                "scene.set('num', -8.5) " +
+                "scene.set('text', 'v') " +
+                "scene.set('flag', true)");
+            harness.NextFrame();
 
-            var result = script.DoString(
+            var result = harness.Run(
                 "return scene.get('num'), scene.get('text'), scene.get('flag'), scene.get('missing'), scene.get(1)");
 
             Assert.Equal(DataType.Tuple, result.Type);
@@ -76,12 +107,25 @@ namespace LuaScript.Tests
         [Fact]
         public void SetAndGet_RoundTripWithinScript()
         {
-            var (script, _) = CreateScript();
-            var result = script.DoString(
+            var harness = new Harness();
+            var result = harness.Run(
                 "scene.set('counter', (scene.get('counter') or 0) + 1) " +
                 "scene.set('counter', (scene.get('counter') or 0) + 1) " +
                 "return scene.get('counter')");
             Assert.Equal(2d, result.Number);
+        }
+
+        [Fact]
+        public void Counter_AccumulatesAcrossFrames()
+        {
+            var harness = new Harness();
+            const string script = "scene.set('counter', (scene.get('counter') or 0) + 1) return scene.get('counter')";
+
+            Assert.Equal(1d, harness.Run(script).Number);
+            harness.NextFrame();
+            Assert.Equal(2d, harness.Run(script).Number);
+            harness.NextFrame();
+            Assert.Equal(3d, harness.Run(script).Number);
         }
     }
 }
