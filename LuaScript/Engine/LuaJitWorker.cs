@@ -131,14 +131,19 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
-                if (view.ReadInt32(NativeProtocol.OffCallbackKind) == NativeProtocol.CbKindRequestPixels)
+                int callbackKind = view.ReadInt32(NativeProtocol.OffCallbackKind);
+                if (callbackKind == NativeProtocol.CbKindRequestPixels)
                 {
                     uploadedPixels ??= loadPixels();
                     WritePixelRegion(uploadedPixels, uploadedPixels.Length);
                 }
+                else if (callbackKind == NativeProtocol.CbKindFlushDraws)
+                {
+                    DrainDrawRing(view, addDraw);
+                }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor);
                 }
                 _workEvent.Set();
             }
@@ -151,6 +156,8 @@ namespace LuaScript.Engine
                 error = Encoding.UTF8.GetString(buffer);
                 return false;
             }
+
+            DrainDrawRing(view, addDraw);
 
             for (int i = NativeProtocol.FirstWritableField; i <= NativeProtocol.LastWritableField; i++)
                 fields[i] = view.ReadDouble(NativeProtocol.FieldsOffset + i * 8);
@@ -275,7 +282,6 @@ namespace LuaScript.Engine
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
-            Action<DrawCommand> addDraw,
             Action<string, int, bool, int, double[]> setAnchor)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
@@ -298,12 +304,6 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
-                    break;
-                case NativeProtocol.CbKindDraw:
-                    ResolveDrawCallback(view, addDraw);
-                    break;
-                case NativeProtocol.CbKindDrawPoly:
-                    ResolveDrawPolyCallback(view, addDraw);
                     break;
                 case NativeProtocol.CbKindSetAnchor:
                     ResolveSetAnchorCallback(view, setAnchor);
@@ -332,34 +332,48 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
-        private static void ResolveDrawCallback(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
+        private void DrainDrawRing(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
         {
-            long rOff = NativeProtocol.CallbackResultOffset;
-            double ox = view.ReadDouble(rOff + 0 * 8);
-            double oy = view.ReadDouble(rOff + 1 * 8);
-            double oz = view.ReadDouble(rOff + 2 * 8);
-            double zoom = view.ReadDouble(rOff + 3 * 8);
-            double alpha = view.ReadDouble(rOff + 4 * 8);
-            double aspect = view.ReadDouble(rOff + 5 * 8);
-            double antialias = view.ReadDouble(rOff + 6 * 8);
-            double blend = view.ReadDouble(rOff + 7 * 8);
+            long ringBase = NativeProtocol.DrawRingOffset(_stringParamsCapacity);
+            int count = (int)view.ReadDouble(ringBase);
+            for (int k = 0; k < count; k++)
+            {
+                long entry = ringBase + (1 + (long)k * NativeProtocol.DrawEntryDoubles) * 8;
+                int kind = (int)view.ReadDouble(entry);
+                long payload = entry + 8;
+                if (kind == NativeProtocol.CbKindDrawPoly)
+                    DispatchRingDrawPoly(view, payload, addDraw);
+                else
+                    DispatchRingDraw(view, payload, addDraw);
+            }
+            view.Write(ringBase, 0d);
+        }
+
+        private static void DispatchRingDraw(MemoryMappedViewAccessor view, long payload, Action<DrawCommand> addDraw)
+        {
+            double ox = view.ReadDouble(payload + 0 * 8);
+            double oy = view.ReadDouble(payload + 1 * 8);
+            double oz = view.ReadDouble(payload + 2 * 8);
+            double zoom = view.ReadDouble(payload + 3 * 8);
+            double alpha = view.ReadDouble(payload + 4 * 8);
+            double aspect = view.ReadDouble(payload + 5 * 8);
+            double antialias = view.ReadDouble(payload + 6 * 8);
+            double blend = view.ReadDouble(payload + 7 * 8);
 
             try { addDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, antialias, blend)); }
             catch { }
-            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
-        private static void ResolveDrawPolyCallback(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
+        private static void DispatchRingDrawPoly(MemoryMappedViewAccessor view, long payload, Action<DrawCommand> addDraw)
         {
             var poly = new double[DrawPolyMath.Length];
             for (int i = 0; i < DrawPolyMath.Length; i++)
-                poly[i] = view.ReadDouble(NativeProtocol.CallbackTagOffset + i * 8);
-            double antialias = view.ReadDouble(NativeProtocol.CallbackTagOffset + DrawPolyMath.Length * 8);
-            double blend = view.ReadDouble(NativeProtocol.CallbackTagOffset + (DrawPolyMath.Length + 1) * 8);
+                poly[i] = view.ReadDouble(payload + i * 8);
+            double antialias = view.ReadDouble(payload + DrawPolyMath.Length * 8);
+            double blend = view.ReadDouble(payload + (DrawPolyMath.Length + 1) * 8);
 
             try { addDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, antialias, blend)); }
             catch { }
-            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private void ResolveGetObjectCallback(MemoryMappedViewAccessor view, Func<string, int, SceneObjectInfo?> resolveObject)

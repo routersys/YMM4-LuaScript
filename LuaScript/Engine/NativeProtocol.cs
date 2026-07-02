@@ -58,6 +58,12 @@ namespace LuaScript.Engine
         public const int CbKindLoadMovie = 7;
         public const int CbKindSetAnchor = 8;
         public const int CbKindRequestPixels = 9;
+        public const int CbKindFlushDraws = 10;
+
+        public const int DrawRingCapacity = 4096;
+        public const int DrawEntryDoubles = 24;
+        public const int DrawRingDoubles = 1 + DrawRingCapacity * DrawEntryDoubles;
+        public const long DrawRingBytes = (long)DrawRingDoubles * 8;
 
         public const int CbExist = 0;
         public const int CbX = 1;
@@ -68,7 +74,9 @@ namespace LuaScript.Engine
         public const int CbAlpha = 6;
         public const int CbLayer = 7;
 
-        public static int PixelOffset(int stringCapacity) => StringParamsOffset + stringCapacity;
+        public static long DrawRingOffset(int stringCapacity) => StringParamsOffset + stringCapacity;
+
+        public static long PixelOffset(int stringCapacity) => DrawRingOffset(stringCapacity) + DrawRingBytes;
 
         public const int W = 0;
         public const int H = 1;

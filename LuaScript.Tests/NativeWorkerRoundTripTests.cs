@@ -410,6 +410,28 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void Draw_BatchesInOrderAcrossRingOverflow()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var commands = new System.Collections.Generic.List<DrawCommand>();
+            Action<DrawCommand> addDraw = commands.Add;
+
+            int total = NativeProtocol.DrawRingCapacity + 100;
+            string script = "for i=1," + total + " do obj.draw(i,0,0,1,1,0) end";
+
+            bool ok = _worker.Execute(
+                script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(total, commands.Count);
+            for (int i = 0; i < total; i++)
+                Assert.Equal(i + 1, commands[i].Ox);
+        }
+
+        [Fact]
         public void DrawPoly_RecordsDefaultUvAndAlpha()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

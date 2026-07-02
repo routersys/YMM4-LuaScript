@@ -58,7 +58,12 @@ local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
 local CB_TAG_MAX = 4096
 local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
 local STRING_PARAMS_OFFSET = CB_RESULT_OFFSET + 8 * 8
-local PIXEL_OFFSET = STRING_PARAMS_OFFSET + stringParamsCap
+local DRAW_RING_CAPACITY = 4096
+local DRAW_ENTRY_DOUBLES = 24
+local DRAW_RING_DOUBLES = 1 + DRAW_RING_CAPACITY * DRAW_ENTRY_DOUBLES
+local DRAW_RING_BYTES = DRAW_RING_DOUBLES * 8
+local DRAW_RING_OFFSET = STRING_PARAMS_OFFSET + stringParamsCap
+local PIXEL_OFFSET = DRAW_RING_OFFSET + DRAW_RING_BYTES
 local FIRST_WRITABLE = 8
 local LAST_WRITABLE = 25
 local STATUS_CALLBACK = 3
@@ -72,6 +77,7 @@ local CB_KIND_LOADIMAGE = 6
 local CB_KIND_LOADMOVIE = 7
 local CB_KIND_SETANCHOR = 8
 local CB_KIND_REQUESTPIXELS = 9
+local CB_KIND_FLUSHDRAWS = 10
 
 assert(loadfile(shimPath))()
 
@@ -83,6 +89,7 @@ end
 
 local width, height = 0, 0
 local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
+local ringD = ffi.cast("double*", base + DRAW_RING_OFFSET)
 local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
 local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
 local pixelCapacity = mapSize - PIXEL_OFFSET
@@ -101,6 +108,25 @@ local function ensurePixels()
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
     pixelsValid = true
+end
+
+local function flushDraws()
+    i32[OFF_CB_KIND] = CB_KIND_FLUSHDRAWS
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+local function ringSlot(kind)
+    local n = ringD[0]
+    if n >= DRAW_RING_CAPACITY then
+        flushDraws()
+        n = 0
+    end
+    local eb = 1 + n * DRAW_ENTRY_DOUBLES
+    ringD[eb] = kind
+    ringD[0] = n + 1
+    return eb
 end
 
 local function rebuildPixelData()
@@ -486,18 +512,15 @@ function obj.draw(ox, oy, oz, zoom, alpha, aspect)
             ox or 0, oy or 0, zoom or 1, aspect or 0, alpha or 1, (options.antialias or 1) ~= 0)
         return
     end
-    cbResult[0] = ox or 0
-    cbResult[1] = oy or 0
-    cbResult[2] = oz or 0
-    cbResult[3] = zoom or 1
-    cbResult[4] = alpha or 1
-    cbResult[5] = aspect or 0
-    cbResult[6] = options.antialias or 1
-    cbResult[7] = options.blend or 0
-    i32[OFF_CB_KIND] = CB_KIND_DRAW
-    i32[OFF_STATUS] = STATUS_CALLBACK
-    k32.SetEvent(doneEvent)
-    k32.WaitForSingleObject(workEvent, INFINITE)
+    local eb = ringSlot(CB_KIND_DRAW)
+    ringD[eb + 1] = ox or 0
+    ringD[eb + 2] = oy or 0
+    ringD[eb + 3] = oz or 0
+    ringD[eb + 4] = zoom or 1
+    ringD[eb + 5] = alpha or 1
+    ringD[eb + 6] = aspect or 0
+    ringD[eb + 7] = options.antialias or 1
+    ringD[eb + 8] = options.blend or 0
 end
 
 function obj.drawpoly(...)
@@ -528,13 +551,10 @@ function obj.drawpoly(...)
         compositeDrawPolyInto(t.data, t.w, t.h, pixels, width, height, p, alpha, (options.antialias or 1) ~= 0)
         return
     end
-    for i = 0, 20 do cbTagD[i] = p[i] end
-    cbTagD[21] = options.antialias or 1
-    cbTagD[22] = options.blend or 0
-    i32[OFF_CB_KIND] = CB_KIND_DRAWPOLY
-    i32[OFF_STATUS] = STATUS_CALLBACK
-    k32.SetEvent(doneEvent)
-    k32.WaitForSingleObject(workEvent, INFINITE)
+    local eb = ringSlot(CB_KIND_DRAWPOLY)
+    for i = 0, 20 do ringD[eb + 1 + i] = p[i] end
+    ringD[eb + 22] = options.antialias or 1
+    ringD[eb + 23] = options.blend or 0
 end
 
 function obj.getvalue(target)
@@ -793,6 +813,7 @@ while true do
     pixelsValid = false
     pdValid = false
     pdDirty = false
+    ringD[0] = 0
     local version = i32[OFF_SCRIPT_VERSION]
     if version ~= lastScriptVersion then
         lastScriptVersion = version
