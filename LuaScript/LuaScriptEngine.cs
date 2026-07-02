@@ -60,11 +60,7 @@ namespace LuaScript
             private TextRenderer? _textRenderer;
             private ImageDecoder? _imageDecoder;
             private MovieDecoder? _movieDecoder;
-            private string _fontFamily = string.Empty;
-            private double _fontSize = 34d;
-            private bool _fontBold;
-            private bool _fontItalic;
-            private int _fontColor = 0xFFFFFF;
+            private readonly AviUtlFontState _fontState = new();
 
             private Script? _script;
             private DynValue? _compiledChunk;
@@ -219,11 +215,7 @@ namespace LuaScript
 
                 _options.Clear();
                 _pixelOptions.Clear();
-                _fontFamily = string.Empty;
-                _fontSize = 34d;
-                _fontBold = false;
-                _fontItalic = false;
-                _fontColor = 0xFFFFFF;
+                _fontState.Reset();
 
                 if (isFirstSetup)
                 {
@@ -552,20 +544,11 @@ namespace LuaScript
                 obj["setfont"] = DynValue.NewCallback((_, args) =>
                 {
                     _activeCancellation.ThrowIfCancellationRequested();
-                    if (args.Count == 0)
-                        return DynValue.Void;
-                    if (args[0].Type == DataType.String)
-                        _fontFamily = args[0].String;
-                    if (args.Count > 1)
-                        _fontSize = args[1].CastToNumber() ?? _fontSize;
-                    if (args.Count > 2)
-                    {
-                        int type = (int)(args[2].CastToNumber() ?? 0d);
-                        _fontBold = (type & 1) != 0;
-                        _fontItalic = (type & 2) != 0;
-                    }
-                    if (args.Count > 3)
-                        _fontColor = (int)(args[3].CastToNumber() ?? _fontColor);
+                    _fontState.Apply(
+                        args.Count > 0 ? args[0] : DynValue.Nil,
+                        args.Count > 1 ? args[1] : DynValue.Nil,
+                        args.Count > 2 ? args[2] : DynValue.Nil,
+                        args.Count > 3 ? args[3] : DynValue.Nil);
                     return DynValue.Void;
                 });
 
@@ -781,7 +764,7 @@ namespace LuaScript
             {
                 _textRenderer ??= new TextRenderer();
                 var buffer = _textRenderer.Render(
-                    text, _fontFamily, _fontSize, _fontBold, _fontItalic, _fontColor,
+                    text, _fontState.Family, _fontState.Size, _fontState.Bold, _fontState.Italic, _fontState.Color,
                     out int w, out int h);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
                 RefreshObjDimensions();
