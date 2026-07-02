@@ -47,8 +47,11 @@ namespace LuaScript
                 "obj.file_mp4", "obj.file_exo", "obj.file_subtitle", "obj.file_shader",
                 "obj.time", "obj.totaltime", "obj.t", "obj.frame", "obj.totalframe",
                 "obj.framerate", "obj.layer", "obj.index", "obj.num",
-                "obj.getpixel", "obj.setpixel",
-                "obj.getpixeldata", "obj.rand", "obj.load"
+                "obj.getobject", "obj.getpixel", "obj.setpixel",
+                "obj.getpixeldata", "obj.putpixeldata", "obj.rand", "obj.load",
+                "obj.setfont", "obj.draw", "obj.drawpoly", "obj.copybuffer",
+                "obj.getvalue", "obj.setoption", "obj.getoption", "obj.pixeloption",
+                "obj.setanchor", "obj.effect"
             ]),
             ("math", [
                 "math.abs", "math.ceil", "math.cos", "math.exp", "math.floor",
