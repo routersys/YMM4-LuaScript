@@ -11,14 +11,14 @@ namespace LuaScript
 
         public bool IsDegraded => _degraded;
 
-        public void Compose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
+        public bool TryCompose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
         {
             if (!_degraded)
             {
                 try
                 {
-                    primary.Compose(dst, dstW, dstH, src, srcW, srcH, command);
-                    return;
+                    if (primary.TryCompose(dst, dstW, dstH, src, srcW, srcH, command))
+                        return true;
                 }
                 catch (Exception ex)
                 {
@@ -26,7 +26,7 @@ namespace LuaScript
                     onDegraded?.Invoke(ex);
                 }
             }
-            fallback.Compose(dst, dstW, dstH, src, srcW, srcH, command);
+            return fallback.TryCompose(dst, dstW, dstH, src, srcW, srcH, command);
         }
 
         public void Dispose()
