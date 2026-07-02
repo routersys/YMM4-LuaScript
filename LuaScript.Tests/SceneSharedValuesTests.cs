@@ -2,96 +2,121 @@ namespace LuaScript.Tests
 {
     public class SceneSharedValuesTests
     {
-        private static Dictionary<string, SceneValue> Writes(params (string Name, SceneValue Value)[] items)
+        private static Dictionary<string, SceneValue> Writes(params (string Name, SceneValue Value)[] entries)
         {
             var writes = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
-            foreach (var (name, value) in items)
+            foreach (var (name, value) in entries)
                 writes[name] = value;
             return writes;
         }
 
         [Fact]
-        public void Publish_IsInvisibleWithinSameGeneration()
+        public void Publish_IsInvisibleAtOwnFrame_AndVisibleImmediatelyAfter()
         {
             var store = new SceneSharedValues();
-            store.Publish(10, false, Writes(("key", SceneValue.FromNumber(1d))));
-            Assert.Equal(SceneValue.Nil, store.Read(10, false, "key"));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(11, false, "key"));
+            store.Publish(10, 0, Writes(("key", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.Nil, store.Read(10, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(11, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1000, "key"));
         }
 
         [Fact]
-        public void Read_IsOrderIndependentWithinGeneration()
+        public void Read_IsOrderIndependentWithinFrame()
         {
             var store = new SceneSharedValues();
-            store.Publish(0, false, Writes(("key", SceneValue.FromNumber(1d))));
+            store.Publish(0, 0, Writes(("key", SceneValue.FromNumber(1d))));
 
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
-            store.Publish(1, false, Writes(("key", SceneValue.FromNumber(2d))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
-            store.Publish(1, false, Writes(("other", SceneValue.FromNumber(3d))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, "key"));
+            store.Publish(1, 0, Writes(("key", SceneValue.FromNumber(2d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, "key"));
+            store.Publish(1, 1, Writes(("other", SceneValue.FromNumber(3d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, "key"));
 
-            Assert.Equal(SceneValue.FromNumber(2d), store.Read(2, false, "key"));
-            Assert.Equal(SceneValue.FromNumber(3d), store.Read(2, false, "other"));
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(2, "key"));
+            Assert.Equal(SceneValue.FromNumber(3d), store.Read(2, "other"));
         }
 
         [Fact]
-        public void Fold_AppliesRemovalsAndOverwrites()
+        public void RandomSeek_ReadsAreDeterministicPerFrame()
         {
             var store = new SceneSharedValues();
-            store.Publish(0, false, Writes(
-                ("a", SceneValue.FromNumber(1d)),
-                ("b", SceneValue.FromString("s")),
-                ("c", SceneValue.FromBoolean(true))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "a"));
+            store.Publish(10, 0, Writes(("key", SceneValue.FromNumber(1d))));
+            store.Publish(20, 0, Writes(("key", SceneValue.FromNumber(2d))));
 
-            store.Publish(1, false, Writes(
-                ("a", SceneValue.Nil),
-                ("b", SceneValue.FromNumber(9d))));
+            Assert.Equal(SceneValue.Nil, store.Read(5, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(15, "key"));
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(25, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(15, "key"));
+            Assert.Equal(SceneValue.Nil, store.Read(5, "key"));
 
-            Assert.Equal(SceneValue.Nil, store.Read(2, false, "a"));
-            Assert.Equal(SceneValue.FromNumber(9d), store.Read(2, false, "b"));
-            Assert.Equal(SceneValue.FromBoolean(true), store.Read(2, false, "c"));
+            store.Publish(30, 0, Writes(("key", SceneValue.FromNumber(3d))));
+            Assert.Equal(SceneValue.Nil, store.Read(5, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(15, "key"));
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(25, "key"));
+            Assert.Equal(SceneValue.FromNumber(3d), store.Read(35, "key"));
         }
 
         [Fact]
-        public void BackwardScrub_FoldsPendingOnce()
+        public void BackwardSeekPublish_InsertsIntoHistoryInOrder()
         {
             var store = new SceneSharedValues();
-            store.Publish(100, false, Writes(("key", SceneValue.FromNumber(5d))));
-            Assert.Equal(SceneValue.FromNumber(5d), store.Read(50, false, "key"));
-            Assert.Equal(SceneValue.FromNumber(5d), store.Read(50, false, "key"));
+            store.Publish(20, 0, Writes(("key", SceneValue.FromNumber(2d))));
+            store.Publish(10, 0, Writes(("key", SceneValue.FromNumber(1d))));
+
+            Assert.Equal(SceneValue.Nil, store.Read(10, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(15, "key"));
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(25, "key"));
         }
 
         [Fact]
-        public void ExportStart_ResetsAllValues()
+        public void NilWrite_RecordsRemovalWithoutErasingHistory()
         {
             var store = new SceneSharedValues();
-            store.Publish(5, false, Writes(("key", SceneValue.FromNumber(1d))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(6, false, "key"));
+            store.Publish(10, 0, Writes(("key", SceneValue.FromNumber(1d))));
+            store.Publish(20, 0, Writes(("key", SceneValue.Nil)));
 
-            Assert.Equal(SceneValue.Nil, store.Read(0, true, "key"));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(15, "key"));
+            Assert.Equal(SceneValue.Nil, store.Read(25, "key"));
 
-            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(2d))));
-            Assert.Equal(SceneValue.FromNumber(2d), store.Read(1, true, "key"));
+            store.Publish(30, 0, Writes(("key", SceneValue.FromNumber(3d))));
+            Assert.Equal(SceneValue.Nil, store.Read(25, "key"));
+            Assert.Equal(SceneValue.FromNumber(3d), store.Read(31, "key"));
         }
 
         [Fact]
-        public void ExportRestart_IsDetectedByBackwardFrame()
+        public void SameFrameConflict_HigherLayerWinsRegardlessOfPublishOrder()
         {
-            var store = new SceneSharedValues();
-            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(1d))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(10, true, "key"));
+            var forward = new SceneSharedValues();
+            forward.Publish(0, 3, Writes(("key", SceneValue.FromNumber(3d))));
+            forward.Publish(0, 5, Writes(("key", SceneValue.FromNumber(5d))));
 
-            Assert.Equal(SceneValue.Nil, store.Read(0, true, "key"));
+            var reverse = new SceneSharedValues();
+            reverse.Publish(0, 5, Writes(("key", SceneValue.FromNumber(5d))));
+            reverse.Publish(0, 3, Writes(("key", SceneValue.FromNumber(3d))));
+
+            Assert.Equal(SceneValue.FromNumber(5d), forward.Read(1, "key"));
+            Assert.Equal(SceneValue.FromNumber(5d), reverse.Read(1, "key"));
         }
 
         [Fact]
-        public void ExportEnd_KeepsValuesForPreview()
+        public void SameFrameSameLayer_LaterPublishReplaces()
         {
             var store = new SceneSharedValues();
-            store.Publish(0, true, Writes(("key", SceneValue.FromNumber(1d))));
-            Assert.Equal(SceneValue.FromNumber(1d), store.Read(1, false, "key"));
+            store.Publish(0, 2, Writes(("key", SceneValue.FromNumber(1d))));
+            store.Publish(0, 2, Writes(("key", SceneValue.FromNumber(2d))));
+
+            Assert.Equal(SceneValue.FromNumber(2d), store.Read(1, "key"));
+        }
+
+        [Fact]
+        public void Republish_IsIdempotent()
+        {
+            var store = new SceneSharedValues();
+            for (int i = 0; i < 5; i++)
+                store.Publish(7, 1, Writes(("key", SceneValue.FromNumber(9d))));
+
+            Assert.Equal(SceneValue.Nil, store.Read(7, "key"));
+            Assert.Equal(SceneValue.FromNumber(9d), store.Read(8, "key"));
         }
 
         [Fact]
@@ -101,33 +126,63 @@ namespace LuaScript.Tests
             var writes = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
             for (int i = 0; i < SceneSharedValues.MaxEntries; i++)
                 writes["k" + i] = SceneValue.FromNumber(i);
-            store.Publish(0, false, writes);
+            store.Publish(0, 0, writes);
 
-            store.Publish(1, false, Writes(
+            store.Publish(1, 0, Writes(
                 ("overflow", SceneValue.FromNumber(1d)),
                 ("k0", SceneValue.FromNumber(-1d))));
 
-            Assert.Equal(SceneValue.Nil, store.Read(2, false, "overflow"));
-            Assert.Equal(SceneValue.FromNumber(-1d), store.Read(2, false, "k0"));
+            Assert.Equal(SceneValue.Nil, store.Read(2, "overflow"));
+            Assert.Equal(SceneValue.FromNumber(-1d), store.Read(2, "k0"));
 
-            store.Publish(2, false, Writes(
-                ("k1", SceneValue.Nil),
-                ("replacement", SceneValue.FromNumber(7d))));
-            Assert.Equal(SceneValue.Nil, store.Read(3, false, "k1"));
-            Assert.Equal(SceneValue.FromNumber(7d), store.Read(3, false, "replacement"));
+            store.Publish(2, 0, Writes(("k1", SceneValue.Nil)));
+            Assert.Equal(SceneValue.Nil, store.Read(3, "k1"));
         }
 
         [Fact]
-        public void ForScene_IsolatesScenes_AndSharesWithinScene()
+        public void NilWritesToUnknownNames_DoNotConsumeCapacity()
         {
+            var store = new SceneSharedValues();
+            var removals = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
+            for (int i = 0; i < SceneSharedValues.MaxEntries; i++)
+                removals["ghost" + i] = SceneValue.Nil;
+            store.Publish(0, 0, removals);
+
+            store.Publish(1, 0, Writes(("real", SceneValue.FromNumber(1d))));
+            Assert.Equal(SceneValue.FromNumber(1d), store.Read(2, "real"));
+        }
+
+        [Fact]
+        public void HistoryBudget_EvictsOldestVersionsAndKeepsNewest()
+        {
+            var store = new SceneSharedValues();
+            string payload = new('x', SceneSharedValues.MaxTextBytes - 5);
+            int frames = (int)(SceneSharedValues.MaxHistoryCostBytes /
+                (SceneSharedValues.MaxTextBytes * 2L)) + 200;
+
+            for (int i = 0; i < frames; i++)
+                store.Publish(i, 0, Writes(("key", SceneValue.FromString(payload + i.ToString("D5")))));
+
+            Assert.Equal(SceneValue.Nil, store.Read(1, "key"));
+            Assert.Equal(
+                SceneValue.FromString(payload + (frames - 1).ToString("D5")),
+                store.Read(frames, "key"));
+        }
+
+        [Fact]
+        public void ForScene_IsolatesScopesAndScenes_AndSharesWithinBoth()
+        {
+            object scopeA = new();
+            object scopeB = new();
             string sceneA = Guid.NewGuid().ToString();
             string sceneB = Guid.NewGuid().ToString();
 
-            SceneSharedValues.ForScene(sceneA).Publish(0, false, Writes(("key", SceneValue.FromNumber(1d))));
+            SceneSharedValues.ForScene(scopeA, sceneA).Publish(0, 0, Writes(("key", SceneValue.FromNumber(1d))));
 
-            Assert.Equal(SceneValue.FromNumber(1d), SceneSharedValues.ForScene(sceneA).Read(1, false, "key"));
-            Assert.Equal(SceneValue.Nil, SceneSharedValues.ForScene(sceneB).Read(1, false, "key"));
-            Assert.Same(SceneSharedValues.ForScene(sceneA), SceneSharedValues.ForScene(sceneA));
+            Assert.Equal(SceneValue.FromNumber(1d), SceneSharedValues.ForScene(scopeA, sceneA).Read(1, "key"));
+            Assert.Equal(SceneValue.Nil, SceneSharedValues.ForScene(scopeA, sceneB).Read(1, "key"));
+            Assert.Equal(SceneValue.Nil, SceneSharedValues.ForScene(scopeB, sceneA).Read(1, "key"));
+            Assert.Same(SceneSharedValues.ForScene(scopeA, sceneA), SceneSharedValues.ForScene(scopeA, sceneA));
         }
     }
 }
