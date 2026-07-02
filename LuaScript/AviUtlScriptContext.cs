@@ -83,6 +83,46 @@ namespace LuaScript
 
         public IReadOnlyList<SceneObjectQuery> ObjectQueries => _objectQueries;
 
+        private SceneSharedValues? _sceneValues;
+        private string _sceneValuesKey = string.Empty;
+        private readonly List<SceneValueQuery> _sceneValueQueries = [];
+
+        public IReadOnlyList<SceneValueQuery> SceneValueQueries => _sceneValueQueries;
+
+        public bool SceneValuesWritten { get; private set; }
+
+        private SceneSharedValues SceneValues
+        {
+            get
+            {
+                if (_sceneValues is null || !string.Equals(_sceneValuesKey, SceneId, StringComparison.Ordinal))
+                {
+                    _sceneValues = SceneSharedValues.ForScene(SceneId);
+                    _sceneValuesKey = SceneId;
+                }
+                return _sceneValues;
+            }
+        }
+
+        internal void ClearSceneValueTracking()
+        {
+            _sceneValueQueries.Clear();
+            SceneValuesWritten = false;
+        }
+
+        public SceneValue GetSceneValue(string name)
+        {
+            var value = SceneValues.Get(name);
+            _sceneValueQueries.Add(new SceneValueQuery(name, value));
+            return value;
+        }
+
+        public void SetSceneValue(string name, SceneValue value)
+        {
+            SceneValuesWritten = true;
+            SceneValues.Set(name, value);
+        }
+
         private readonly List<AviUtlEffectRequest> _effectRequests = [];
 
         public IReadOnlyList<AviUtlEffectRequest> EffectRequests => _effectRequests;
