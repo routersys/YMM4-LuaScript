@@ -44,7 +44,12 @@
     <Compile Include="..\LuaScript\Anchor\AnchorSupport.cs" Link="Linked\AnchorSupport.cs" />
     <Compile Include="..\LuaScript\SceneObjectInfo.cs" Link="Linked\SceneObjectInfo.cs" />
     <Compile Include="..\LuaScript\SceneObjectQuery.cs" Link="Linked\SceneObjectQuery.cs" />
+    <Compile Include="..\LuaScript\SceneSharedValues.cs" Link="Linked\SceneSharedValues.cs" />
+    <Compile Include="..\LuaScript\SceneTableRegistrar.cs" Link="Linked\SceneTableRegistrar.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
+    <Compile Include="..\LuaScript\AviUtlGlobalRegistrar.cs" Link="Linked\AviUtlGlobalRegistrar.cs" />
+    <Compile Include="..\LuaScript\Compat\AviUtlGlobalFunctions.cs" Link="Linked\AviUtlGlobalFunctions.cs" />
+    <Compile Include="..\LuaScript\Diagnostics\DebugOutput.cs" Link="Linked\DebugOutput.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlScript.cs" Link="Linked\AviUtlScript.cs" />
     <Compile Include="..\LuaScript\Compat\ScriptParserHelper.cs" Link="Linked\ScriptParserHelper.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlParameterLayout.cs" Link="Linked\AviUtlParameterLayout.cs" />
