@@ -509,6 +509,9 @@
                     그린 결과는 obj.copybuffer("obj", "tmp")로 작업 이미지에 되돌릴
                     수 있습니다. tempbuffer로의 합성은 보통(소스 오버)이며, blend는
                     framebuffer 그리기에 적용됩니다. 두 엔진 모두에서 동작합니다.
+                    MoonSharp에서는 tempbuffer로의 합성을 GPU에서 실행하며, GPU를
+                    사용할 수 없는 환경에서는 CPU 합성으로 자동 전환됩니다. 반올림
+                    차이로 인해 합성 결과가 엔진 간에 아주 조금 다를 수 있습니다.
 
         ○ obj.pixeloption(이름, 값)
                 픽셀 조작 옵션을 상태로 보존합니다.

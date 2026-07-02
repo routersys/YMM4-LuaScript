@@ -531,7 +531,10 @@
                     mempertahankannya. Kembalikan hasil tmp ke citra kerja dengan
                     obj.copybuffer("obj", "tmp"). Komposit ke tempbuffer bersifat
                     normal (source-over); blend berlaku untuk gambar ke framebuffer.
-                    Bekerja pada kedua mesin.
+                    Bekerja pada kedua mesin. Pada MoonSharp, komposit ke tempbuffer
+                    dijalankan di GPU dan beralih secara otomatis ke komposit CPU
+                    saat GPU tidak tersedia. Karena pembulatan, hasil komposit dapat
+                    sedikit berbeda antara kedua mesin.
 
         o obj.pixeloption(name, value)
                 Menyimpan opsi untuk operasi piksel sebagai status.

@@ -531,7 +531,10 @@
                     tmp result back to the working image with
                     obj.copybuffer("obj", "tmp"). Compositing into tempbuffer is
                     normal (source-over); blend applies to framebuffer drawing. It
-                    works in both engines.
+                    works in both engines. In MoonSharp the compositing into
+                    tempbuffer runs on the GPU and switches to the CPU compositing
+                    automatically when the GPU is unavailable. Due to rounding, the
+                    composited result may differ very slightly between the engines.
 
         o obj.pixeloption(name, value)
                 Stores an option for pixel operations as state.

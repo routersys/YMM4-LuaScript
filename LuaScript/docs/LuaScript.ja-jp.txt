@@ -516,6 +516,10 @@
                     tmp へ描いた結果は obj.copybuffer("obj", "tmp") で作業画像へ
                     戻せます。tempbuffer への合成は通常(ソースオーバー)で、blend は
                     framebuffer への描画に適用されます。両エンジンで動きます。
+                    MoonSharp では tempbuffer への合成を GPU で実行し、GPU を
+                    利用できない環境では CPU の合成へ自動的に切り替わります。
+                    丸めの違いにより、合成の結果はエンジン間でごく僅かに
+                    異なることがあります。
 
         ○obj.pixeloption(名前, 値)
                 ピクセル操作のオプションを状態として保持します。

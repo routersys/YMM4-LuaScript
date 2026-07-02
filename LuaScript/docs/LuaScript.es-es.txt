@@ -534,7 +534,11 @@
                     conservarlo. Recupera el resultado de tmp a la imagen de trabajo
                     con obj.copybuffer("obj", "tmp"). La composición en tempbuffer es
                     normal (source-over); blend se aplica al dibujo en framebuffer.
-                    Funciona en ambos motores.
+                    Funciona en ambos motores. En MoonSharp la composición en
+                    tempbuffer se ejecuta en la GPU y cambia automáticamente a la
+                    composición por CPU cuando la GPU no está disponible. Por el
+                    redondeo, el resultado puede diferir muy ligeramente entre los
+                    motores.
 
         o obj.pixeloption(nombre, valor)
                 Guarda como estado una opción para las operaciones de píxeles.
