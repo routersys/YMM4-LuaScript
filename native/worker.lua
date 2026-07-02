@@ -78,6 +78,8 @@ local CB_KIND_LOADMOVIE = 7
 local CB_KIND_SETANCHOR = 8
 local CB_KIND_REQUESTPIXELS = 9
 local CB_KIND_FLUSHDRAWS = 10
+local CB_KIND_SCENEGET = 11
+local CB_KIND_SCENESET = 12
 
 assert(loadfile(shimPath))()
 
@@ -676,6 +678,61 @@ function obj.copybuffer(dst, src)
     end
 end
 
+function scene.get(name)
+    if type(name) ~= "string" then return nil end
+    local len = #name
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, name, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_SCENEGET
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    local kind = cbResult[0]
+    if kind == 1 then return cbResult[1] end
+    if kind == 2 then return ffi.string(base + CB_TAG_OFFSET, i32[OFF_CB_TAGLEN]) end
+    if kind == 3 then return cbResult[1] ~= 0 end
+    return nil
+end
+
+function scene.set(name, value)
+    if type(name) ~= "string" then return end
+    local vt = type(value)
+    local kind, num
+    if vt == "number" then
+        kind, num = 1, value
+    elseif vt == "string" then
+        kind, num = 2, 0
+    elseif vt == "boolean" then
+        kind, num = 3, value and 1 or 0
+    elseif vt == "nil" then
+        kind, num = 0, 0
+    else
+        return
+    end
+    local len = #name
+    if kind == 2 then
+        if len > CB_TAG_MAX - 1 then len = CB_TAG_MAX - 1 end
+        ffi.copy(base + CB_TAG_OFFSET, name, len)
+        base[CB_TAG_OFFSET + len] = 0
+        local vlen = #value
+        local avail = CB_TAG_MAX - len - 1
+        if vlen > avail then vlen = avail end
+        if vlen > 0 then ffi.copy(base + CB_TAG_OFFSET + len + 1, value, vlen) end
+        i32[OFF_CB_TAGLEN] = len + 1 + vlen
+    else
+        if len > CB_TAG_MAX then len = CB_TAG_MAX end
+        ffi.copy(base + CB_TAG_OFFSET, name, len)
+        i32[OFF_CB_TAGLEN] = len
+    end
+    cbResult[0] = kind
+    cbResult[1] = num
+    i32[OFF_CB_KIND] = CB_KIND_SCENESET
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
 local cacheTag, cacheFrame, cacheFound
 local cacheExist, cacheX, cacheY, cacheZ, cacheZoom, cacheRz, cacheAlpha, cacheLayer
 
@@ -722,6 +779,8 @@ end
 sandbox = {
     obj = obj, scene = scene, ymm4 = ymm4,
     anim = anim, bit32 = bit32, rawlen = rawlen,
+    RGB = RGB, HSV = HSV, OR = OR, AND = AND, XOR = XOR, SHIFT = SHIFT,
+    debug_print = debug_print,
     math = math, string = string, table = table,
     type = type, tostring = tostring, tonumber = tonumber, select = select,
     error = error, assert = assert, ipairs = ipairs, pairs = pairs, next = next,
@@ -775,6 +834,7 @@ local function loadFields()
     obj.timelineframe = f64[51]; obj.timelinetime = f64[52]
     obj.check0 = f64[53] ~= 0; obj.check1 = f64[54] ~= 0; obj.check2 = f64[55] ~= 0; obj.check3 = f64[56] ~= 0
     sandbox.color = (f64[57] >= 0) and f64[57] or nil
+    aviutl_set_time_ratio(f64[33] > 0 and f64[30] / f64[33] or 0)
     sandbox.time = f64[30]; sandbox.frame = f64[31]; sandbox.totalframe = f64[32]
     sandbox.framerate = f64[35]; sandbox.layer = f64[36]
     sandbox.timelineframe = f64[51]; sandbox.timelinetime = f64[52]
