@@ -32,6 +32,21 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void CoordinatesUsePixelCenterOrigin()
+        {
+            string hlsl = HlslKernelEmitter.Emit(Extract(Grayscale));
+            Assert.Contains(" - 0.5;", hlsl);
+        }
+
+        [Fact]
+        public void OutputTruncatesToMatchCpuKernel()
+        {
+            string hlsl = HlslKernelEmitter.Emit(Extract(Grayscale));
+            Assert.Contains("float oR = floor(clamp((", hlsl);
+            Assert.Contains("float oA = floor(outA) / 255.0;", hlsl);
+        }
+
+        [Fact]
         public void ThresholdEmitsTernary()
         {
             string hlsl = HlslKernelEmitter.Emit(Extract(Threshold));
