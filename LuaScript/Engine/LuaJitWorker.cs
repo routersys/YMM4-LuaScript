@@ -335,7 +335,7 @@ namespace LuaScript.Engine
         private void DrainDrawRing(MemoryMappedViewAccessor view, Action<DrawCommand> addDraw)
         {
             long ringBase = NativeProtocol.DrawRingOffset(_stringParamsCapacity);
-            int count = (int)view.ReadDouble(ringBase);
+            int count = Math.Clamp((int)view.ReadDouble(ringBase), 0, NativeProtocol.DrawRingCapacity);
             for (int k = 0; k < count; k++)
             {
                 long entry = ringBase + (1 + (long)k * NativeProtocol.DrawEntryDoubles) * 8;
