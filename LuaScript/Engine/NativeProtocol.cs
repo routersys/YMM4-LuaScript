@@ -27,6 +27,7 @@ namespace LuaScript.Engine
         public const int OffLoadResultWidth = 48;
         public const int OffLoadResultHeight = 52;
         public const int OffStringParamsLen = 56;
+        public const int OffScriptVersion = 60;
 
         public const int HeaderSize = 64;
 

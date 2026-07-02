@@ -51,6 +51,7 @@ local OFF_CB_KIND = 11
 local OFF_LOAD_RESULT_W = 12
 local OFF_LOAD_RESULT_H = 13
 local OFF_STRING_PARAMS_LEN = 14
+local OFF_SCRIPT_VERSION = 15
 local SCRIPT_OFFSET = 64 + 64 * 8
 local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
 local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
@@ -705,7 +706,8 @@ local objKeys = captureKeys(obj)
 local sceneKeys = captureKeys(scene)
 local ymm4Keys = captureKeys(ymm4)
 
-local compiledCode, compiledChunk
+local compiledCode, compiledChunk, compiledError
+local lastScriptVersion
 
 local function loadFields()
     width = i32[OFF_WIDTH]
@@ -769,25 +771,32 @@ while true do
 
     dirty = false
     pixelsValid = false
-    local scriptLen = i32[OFF_SCRIPTLEN]
-    local code = ffi.string(base + SCRIPT_OFFSET, scriptLen)
-
-    if code ~= compiledCode then
-        local chunk, err = loadstring(code, "LuaScript")
-        if chunk then
-            compiledChunk = chunk
-            compiledCode = code
-        else
-            compiledChunk = nil
-            local msg = err or "compile error"
-            ffi.copy(base + ERROR_OFFSET, msg, math.min(#msg, 4096))
-            i32[OFF_ERRORLEN] = math.min(#msg, 4096)
-            i32[OFF_STATUS] = 2
-            k32.SetEvent(doneEvent)
+    local version = i32[OFF_SCRIPT_VERSION]
+    if version ~= lastScriptVersion then
+        lastScriptVersion = version
+        local scriptLen = i32[OFF_SCRIPTLEN]
+        local code = ffi.string(base + SCRIPT_OFFSET, scriptLen)
+        if code ~= compiledCode then
+            local chunk, err = loadstring(code, "LuaScript")
+            if chunk then
+                compiledChunk = chunk
+                compiledCode = code
+                compiledError = nil
+            else
+                compiledChunk = nil
+                compiledCode = code
+                compiledError = err or "compile error"
+            end
         end
     end
 
-    if compiledChunk and code == compiledCode then
+    if not compiledChunk then
+        local msg = compiledError or "compile error"
+        ffi.copy(base + ERROR_OFFSET, msg, math.min(#msg, 4096))
+        i32[OFF_ERRORLEN] = math.min(#msg, 4096)
+        i32[OFF_STATUS] = 2
+        k32.SetEvent(doneEvent)
+    else
         resetExtraKeys(sandbox, sandboxKeys)
         resetExtraKeys(obj, objKeys)
         resetExtraKeys(scene, sceneKeys)

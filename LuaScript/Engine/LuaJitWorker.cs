@@ -30,6 +30,10 @@ namespace LuaScript.Engine
         private int _lastCallbackTagLength = -1;
         private string _lastCallbackTagText = string.Empty;
         private byte[]? _resultBuffer;
+        private int _scriptVersion;
+        private string? _lastScript;
+        private byte[] _lastScriptBytes = Array.Empty<byte>();
+        private bool _scriptWritten;
         private readonly Dictionary<string, byte[]> _stringNameBytes = new(StringComparer.Ordinal);
         private byte[] _stringValueBytes = new byte[256];
 
@@ -74,11 +78,18 @@ namespace LuaScript.Engine
             resultHeight = height;
             error = null;
 
-            byte[] scriptBytes = Encoding.UTF8.GetBytes(script);
-            if (scriptBytes.Length > NativeProtocol.ScriptMax)
+            bool scriptChanged = !ReferenceEquals(script, _lastScript);
+            if (scriptChanged)
             {
-                error = "script too large for native lane";
-                return false;
+                byte[] scriptBytes = Encoding.UTF8.GetBytes(script);
+                if (scriptBytes.Length > NativeProtocol.ScriptMax)
+                {
+                    error = "script too large for native lane";
+                    return false;
+                }
+                _lastScript = script;
+                _lastScriptBytes = scriptBytes;
+                _scriptVersion++;
             }
 
             int stringCapacity = ResolveStringCapacity(_stringParamsCapacity, MeasureStringParameters(stringParameters));
@@ -89,8 +100,13 @@ namespace LuaScript.Engine
             WriteStringParameters(view, stringParameters);
             view.Write(NativeProtocol.OffWidth, width);
             view.Write(NativeProtocol.OffHeight, height);
-            view.Write(NativeProtocol.OffScriptLen, scriptBytes.Length);
-            view.WriteArray(NativeProtocol.ScriptOffset, scriptBytes, 0, scriptBytes.Length);
+            if (scriptChanged || !_scriptWritten)
+            {
+                view.Write(NativeProtocol.OffScriptLen, _lastScriptBytes.Length);
+                view.WriteArray(NativeProtocol.ScriptOffset, _lastScriptBytes, 0, _lastScriptBytes.Length);
+                _scriptWritten = true;
+            }
+            view.Write(NativeProtocol.OffScriptVersion, _scriptVersion);
             view.Write(NativeProtocol.OffPixelsDirty, 0);
             view.Write(NativeProtocol.OffErrorLen, 0);
             view.Write(NativeProtocol.OffStatus, NativeProtocol.StatusIdle);
@@ -553,6 +569,7 @@ namespace LuaScript.Engine
         private void StartWorker(int width, int height, int stringCapacity)
         {
             _stringParamsCapacity = stringCapacity;
+            _scriptWritten = false;
             _pixelOffset = NativeProtocol.PixelOffset(stringCapacity);
             long size = Math.Max(NativeProtocol.BufferSize(width, height, stringCapacity), _allocatedSize);
             _allocatedSize = size;

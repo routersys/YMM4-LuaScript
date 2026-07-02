@@ -202,6 +202,51 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void AlternatingScripts_RecompileWhenVersionChanges()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            const string scriptA = "obj.x = obj.time * 2";
+            const string scriptB = "obj.x = obj.time * 3";
+
+            for (int k = 1; k <= 4; k++)
+            {
+                var fa = Fields(2, 2, k);
+                bool okA = _worker.Execute(scriptA, fa, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorA);
+                Assert.True(okA, errorA);
+                Assert.Equal(k * 2d, fa[NativeProtocol.X]);
+
+                var fb = Fields(2, 2, k);
+                bool okB = _worker.Execute(scriptB, fb, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorB);
+                Assert.True(okB, errorB);
+                Assert.Equal(k * 3d, fb[NativeProtocol.X]);
+            }
+        }
+
+        [Fact]
+        public void CompileError_IsReportedEveryFrame_AndRecovers()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            const string broken = "obj.x = (";
+
+            for (int k = 0; k < 2; k++)
+            {
+                bool ok = _worker.Execute(broken, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+                Assert.False(ok);
+                Assert.False(string.IsNullOrEmpty(error));
+                Assert.DoesNotContain("timed out", error);
+            }
+
+            var fields = Fields(2, 2, 9d);
+            bool recovered = _worker.Execute("obj.x = obj.time", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? recoverError);
+            Assert.True(recovered, recoverError);
+            Assert.Equal(9d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
         public void Timeout_KillsWorker_AndRecovers()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
