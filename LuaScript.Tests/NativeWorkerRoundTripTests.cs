@@ -848,6 +848,43 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void SetFont_CoercesArgumentsLikeMoonSharp()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var rendered = new byte[4];
+            var captured = new List<(string Family, double Size, bool Bold, bool Italic, int Color)>();
+            Func<string, string, double, bool, bool, int, (byte[], int, int)> loadText =
+                (family, text, size, bold, italic, color) =>
+                {
+                    captured.Add((family, size, bold, italic, color));
+                    return (rendered, 1, 1);
+                };
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+
+            bool ok = RunWorker(
+                "obj.setfont('Meiryo', 40, 3, 0x112233) obj.load('text', 'a') " +
+                "obj.setfont(123, '48') obj.load('text', 'a') " +
+                "obj.setfont(true, false, {}, function() end) obj.load('text', 'a') " +
+                "obj.setfont(nil, nil, -1.5) obj.load('text', 'a') " +
+                "obj.setfont('X', 20, 0, 0) obj.load('text', 'a')",
+                fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, loadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(
+            [
+                ("Meiryo", 40d, true, true, 0x112233),
+                ("123", 48d, true, true, 0x112233),
+                ("123", 48d, true, true, 0x112233),
+                ("123", 48d, false, true, 0x112233),
+                ("X", 20d, false, false, 0),
+            ], captured);
+        }
+
+        [Fact]
         public void LoadImage_RoundTripsThroughCallback()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");

@@ -47,6 +47,7 @@
     <Compile Include="..\LuaScript\SceneSharedValues.cs" Link="Linked\SceneSharedValues.cs" />
     <Compile Include="..\LuaScript\SceneValueSession.cs" Link="Linked\SceneValueSession.cs" />
     <Compile Include="..\LuaScript\SceneTableRegistrar.cs" Link="Linked\SceneTableRegistrar.cs" />
+    <Compile Include="..\LuaScript\AviUtlFontState.cs" Link="Linked\AviUtlFontState.cs" />
     <Compile Include="..\LuaScript\AnimTableRegistrar.cs" Link="Linked\AnimTableRegistrar.cs" />
     <Compile Include="..\LuaScript\AviUtlGlobalRegistrar.cs" Link="Linked\AviUtlGlobalRegistrar.cs" />
     <Compile Include="..\LuaScript\Compat\AviUtlGlobalFunctions.cs" Link="Linked\AviUtlGlobalFunctions.cs" />
