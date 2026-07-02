@@ -7,6 +7,8 @@ namespace LuaScript.Tests
     {
         private readonly Script _script;
 
+        public double TimeRatio { get; set; }
+
         public MoonSharpLane()
         {
             _script = new Script(
@@ -22,6 +24,8 @@ namespace LuaScript.Tests
             var anim = new Table(_script);
             AnimTableRegistrar.RegisterFunctions(anim);
             _script.Globals["anim"] = anim;
+
+            AviUtlGlobalRegistrar.RegisterFunctions(_script.Globals, () => TimeRatio);
         }
 
         public DynValue Run(string code) => _script.DoString(code);
