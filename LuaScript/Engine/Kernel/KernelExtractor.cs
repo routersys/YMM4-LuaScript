@@ -35,6 +35,9 @@ namespace LuaScript.Engine.Kernel
         private string _widthVariable = string.Empty;
         private string _heightVariable = string.Empty;
         private bool _coordsEnabled;
+        private string? _pixelDataVariable;
+        private string _baseIndexVariable = string.Empty;
+        private readonly bool[] _writtenChannels = new bool[4];
 
         public static KernelProgram? TryExtract(string runnableScript)
         {
@@ -55,6 +58,11 @@ namespace LuaScript.Engine.Kernel
             int index = 0;
             while (index < block.Count && block[index] is LocalStmt prelude)
             {
+                if (TryBindPixelData(prelude))
+                {
+                    index++;
+                    continue;
+                }
                 BindLocal(prelude);
                 index++;
             }
@@ -76,7 +84,116 @@ namespace LuaScript.Engine.Kernel
             _widthVariable = outerAxis == KAxis.X ? outerVar : innerVar;
             _heightVariable = outerAxis == KAxis.Y ? outerVar : innerVar;
 
-            return BuildKernel(inner.Body);
+            return _pixelDataVariable is null ? BuildKernel(inner.Body) : BuildPixelDataKernel(inner.Body);
+        }
+
+        private bool TryBindPixelData(LocalStmt local)
+        {
+            if (local.Names.Count != 1 || local.Values.Count != 1 ||
+                local.Values[0] is not CallExpr { Target: MemberExpr { Target: NameExpr { Name: "obj" }, Name: "getpixeldata" }, Arguments.Count: 0 })
+                return false;
+            if (_pixelDataVariable is not null)
+                throw new KernelUnsupportedException("Multiple pixel-data handles are not supported.");
+            _pixelDataVariable = local.Names[0];
+            return true;
+        }
+
+        private KernelProgram? BuildPixelDataKernel(IReadOnlyList<LuaStmt> body)
+        {
+            if (body.Count < 5)
+                return null;
+            if (body[0] is not LocalStmt { Names.Count: 1, Values.Count: 1 } baseStmt || !IsBaseIndex(baseStmt.Values[0]))
+                return null;
+
+            _baseIndexVariable = baseStmt.Names[0];
+            EnsureNotCoordinateName(_baseIndexVariable);
+            _coordsEnabled = true;
+
+            KExpr? outR = null, outG = null, outB = null;
+            for (int i = 1; i < body.Count; i++)
+            {
+                switch (body[i])
+                {
+                    case LocalStmt local:
+                        BindLocal(local);
+                        break;
+                    case AssignStmt assign:
+                        BindAssign(assign);
+                        break;
+                    case CallStmt { Call: MethodCallExpr set } when IsPixelDataSet(set, out int writeChannel):
+                        var value = Lower(set.Arguments[1]);
+                        if (writeChannel == 0) outR = value;
+                        else if (writeChannel == 1) outG = value;
+                        else outB = value;
+                        _writtenChannels[writeChannel] = true;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+
+            if (outR is null || outG is null || outB is null)
+                return null;
+
+            return new KernelProgram(_bindings, outR, outG, outB, new KInput(KChannel.A), [.. _uniforms]);
+        }
+
+        private bool IsBaseIndex(LuaExpr expression)
+        {
+            if (expression is not BinaryExpr { Operator: "*", Right: NumberExpr { Value: 4d } } scaled ||
+                scaled.Left is not BinaryExpr { Operator: "+" } sum)
+                return false;
+            if (!IsCoordinate(sum.Right, KAxis.X))
+                return false;
+            if (sum.Left is not BinaryExpr { Operator: "*" } stride)
+                return false;
+            return IsCoordinate(stride.Left, KAxis.Y) && IsWidth(stride.Right);
+        }
+
+        private bool IsWidth(LuaExpr expression)
+        {
+            if (expression is MemberExpr { Target: NameExpr { Name: "obj" }, Name: var field } &&
+                KernelUniforms.TryResolveMember("obj", field, out var uniform))
+                return uniform == KernelUniform.Width;
+            return _pixelDataVariable is not null &&
+                expression is MemberExpr { Target: NameExpr { } target, Name: "width" } &&
+                string.Equals(target.Name, _pixelDataVariable, StringComparison.Ordinal);
+        }
+
+        private bool TryPixelDataChannel(LuaExpr expression, out int channel)
+        {
+            channel = 0;
+            if (expression is not MethodCallExpr { Method: "get", Arguments.Count: 1 } call ||
+                call.Target is not NameExpr { } handle ||
+                !string.Equals(handle.Name, _pixelDataVariable, StringComparison.Ordinal))
+                return false;
+            if (!TryChannelOffset(call.Arguments[0], 1, 4, out channel))
+                return false;
+            channel--;
+            return !_writtenChannels[channel];
+        }
+
+        private bool IsPixelDataSet(MethodCallExpr call, out int channel)
+        {
+            channel = 0;
+            if (call.Method != "set" || call.Arguments.Count != 2 ||
+                call.Target is not NameExpr { } handle ||
+                !string.Equals(handle.Name, _pixelDataVariable, StringComparison.Ordinal))
+                return false;
+            if (!TryChannelOffset(call.Arguments[0], 1, 3, out channel))
+                return false;
+            channel--;
+            return true;
+        }
+
+        private bool TryChannelOffset(LuaExpr expression, int min, int max, out int offset)
+        {
+            offset = 0;
+            if (expression is not BinaryExpr { Operator: "+", Left: NameExpr baseName, Right: NumberExpr number } ||
+                !string.Equals(baseName.Name, _baseIndexVariable, StringComparison.Ordinal))
+                return false;
+            offset = (int)number.Value;
+            return offset == number.Value && offset >= min && offset <= max;
         }
 
         private KernelProgram? BuildKernel(IReadOnlyList<LuaStmt> body)
@@ -112,7 +229,7 @@ namespace LuaScript.Engine.Kernel
                 }
             }
 
-            if (body[^1] is not CallStmt { Call: var call } || !IsObjectMethod(call, "setpixel"))
+            if (body[^1] is not CallStmt { Call: CallExpr call } || !IsObjectMethod(call, "setpixel"))
                 return null;
             if (call.Arguments.Count is < 5 or > 6)
                 return null;
@@ -187,6 +304,8 @@ namespace LuaScript.Engine.Kernel
                     return LowerMember(member);
                 case CallExpr call:
                     return LowerCall(call);
+                case MethodCallExpr method when TryPixelDataChannel(method, out int channel):
+                    return new KInput((KChannel)channel);
                 case UnaryExpr { Operator: "-" } unary:
                     return new KNegate(Lower(unary.Operand));
                 case BinaryExpr binary:
@@ -323,20 +442,36 @@ namespace LuaScript.Engine.Kernel
                 return false;
             if (loop.Stop is not BinaryExpr { Operator: "-", Right: NumberExpr { Value: 1d } } bound)
                 return false;
-            if (bound.Left is not MemberExpr { Target: NameExpr { Name: "obj" }, Name: var field })
-                return false;
-            if (!KernelUniforms.TryResolveMember("obj", field, out var uniform))
-                return false;
-
-            if (uniform == KernelUniform.Width)
+            if (bound.Left is MemberExpr { Target: NameExpr { Name: "obj" }, Name: var field } &&
+                KernelUniforms.TryResolveMember("obj", field, out var uniform))
             {
-                axis = KAxis.X;
-                return true;
+                if (uniform == KernelUniform.Width)
+                {
+                    axis = KAxis.X;
+                    return true;
+                }
+                if (uniform == KernelUniform.Height)
+                {
+                    axis = KAxis.Y;
+                    return true;
+                }
+                return false;
             }
-            if (uniform == KernelUniform.Height)
+
+            if (_pixelDataVariable is not null &&
+                bound.Left is MemberExpr { Target: NameExpr { } handle, Name: var pixelField } &&
+                string.Equals(handle.Name, _pixelDataVariable, StringComparison.Ordinal))
             {
-                axis = KAxis.Y;
-                return true;
+                if (pixelField == "width")
+                {
+                    axis = KAxis.X;
+                    return true;
+                }
+                if (pixelField == "height")
+                {
+                    axis = KAxis.Y;
+                    return true;
+                }
             }
             return false;
         }

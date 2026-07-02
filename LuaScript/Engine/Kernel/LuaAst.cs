@@ -20,6 +20,8 @@ namespace LuaScript.Engine.Kernel
 
     internal sealed record CallExpr(LuaExpr Target, IReadOnlyList<LuaExpr> Arguments) : LuaExpr;
 
+    internal sealed record MethodCallExpr(LuaExpr Target, string Method, IReadOnlyList<LuaExpr> Arguments) : LuaExpr;
+
     internal sealed record UnaryExpr(string Operator, LuaExpr Operand) : LuaExpr;
 
     internal sealed record BinaryExpr(string Operator, LuaExpr Left, LuaExpr Right) : LuaExpr;
@@ -30,7 +32,7 @@ namespace LuaScript.Engine.Kernel
 
     internal sealed record AssignStmt(IReadOnlyList<LuaExpr> Targets, IReadOnlyList<LuaExpr> Values) : LuaStmt;
 
-    internal sealed record CallStmt(CallExpr Call) : LuaStmt;
+    internal sealed record CallStmt(LuaExpr Call) : LuaStmt;
 
     internal sealed record IfClause(LuaExpr Condition, IReadOnlyList<LuaStmt> Body);
 

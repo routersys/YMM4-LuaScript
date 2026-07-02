@@ -24,13 +24,17 @@ namespace LuaScript
             {
                 byte* pixel = p + pixelIndex * 4;
                 double a = pixel[3];
+                if (channel == 3)
+                    return a;
+                if (a <= 0d)
+                    return 0d;
 
+                double scale = 255d / a;
                 return channel switch
                 {
-                    0 => a > 0d ? Math.Clamp(pixel[2] * 255d / a, 0d, 255d) : 0d,
-                    1 => a > 0d ? Math.Clamp(pixel[1] * 255d / a, 0d, 255d) : 0d,
-                    2 => a > 0d ? Math.Clamp(pixel[0] * 255d / a, 0d, 255d) : 0d,
-                    3 => a,
+                    0 => Math.Clamp(pixel[2] * scale, 0d, 255d),
+                    1 => Math.Clamp(pixel[1] * scale, 0d, 255d),
+                    2 => Math.Clamp(pixel[0] * scale, 0d, 255d),
                     _ => throw new UnreachableException()
                 };
             }

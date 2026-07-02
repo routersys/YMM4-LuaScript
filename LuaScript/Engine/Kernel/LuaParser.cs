@@ -149,8 +149,8 @@ namespace LuaScript.Engine.Kernel
                 return new AssignStmt(targets, values);
             }
 
-            if (first is CallExpr call)
-                return new CallStmt(call);
+            if (first is CallExpr or MethodCallExpr)
+                return new CallStmt(first);
 
             throw new KernelUnsupportedException("Expression is not a valid statement.");
         }
@@ -274,6 +274,12 @@ namespace LuaScript.Engine.Kernel
                 else if (t.IsSymbol("("))
                 {
                     expression = new CallExpr(expression, ParseArguments());
+                }
+                else if (t.IsSymbol(":"))
+                {
+                    Advance();
+                    string method = ExpectName();
+                    expression = new MethodCallExpr(expression, method, ParseArguments());
                 }
                 else
                 {

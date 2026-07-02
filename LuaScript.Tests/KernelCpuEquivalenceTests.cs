@@ -39,6 +39,27 @@ namespace LuaScript.Tests
         }
 
         [Theory]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,255-r) pd:set(i+2,255-g) pd:set(i+3,255-b) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,obj.h-1 do for x=0,obj.w-1 do local i=(y*obj.w+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) local l=0.298912*r+0.586611*g+0.114478*b pd:set(i+1,l) pd:set(i+2,l) pd:set(i+3,l) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,b) pd:set(i+2,g) pd:set(i+3,r) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,obj.h-1 do for x=0,obj.w-1 do local i=(y*obj.w+x)*4 local r=pd:get(i+1) local a=pd:get(i+4) pd:set(i+1,r*a/255) pd:set(i+2,pd:get(i+2)*obj.track0/100) pd:set(i+3,math.min(255,pd:get(i+3)+50)) end end")]
+        public void GetPixelDataKernelMatchesMoonSharp(string script)
+        {
+            var fields = new Dictionary<string, double> { ["w"] = Width, ["h"] = Height, ["track0"] = 73d };
+            AssertEquivalent(script, fields, new Dictionary<string, double>());
+        }
+
+        [Theory]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 pd:set(i+4,128) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 pd:set(i+1,pd:get(i+5)) pd:set(i+2,0) pd:set(i+3,0) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=((y+1)*pd.width+x)*4 pd:set(i+1,0) pd:set(i+2,0) pd:set(i+3,0) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 pd:set(i+1,pd:get(i+3)) pd:set(i+2,pd:get(i+2)) pd:set(i+3,pd:get(i+1)) end end")]
+        public void GetPixelDataNonKernelScriptsAreRejected(string script)
+        {
+            Assert.Null(KernelExtractor.TryExtract(script));
+        }
+
+        [Theory]
         [InlineData("--!cpu\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,255-r,255-g,255-b,a) end end")]
         [InlineData("--!gpu\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) local l=0.298912*r+0.586611*g+0.114478*b obj.setpixel(x,y,l,l,l,a) end end")]
         [InlineData("--!cpu\r\nfor y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,x/obj.w*255,y/obj.h*255,b,a) end end")]
@@ -134,8 +155,58 @@ namespace LuaScript.Tests
                 return DynValue.Void;
             });
 
+            obj["getpixeldata"] = DynValue.NewCallback((_, _) =>
+            {
+                var pd = new Table(engine);
+                pd["width"] = Width;
+                pd["height"] = Height;
+                pd["get"] = DynValue.NewCallback((_, a) =>
+                    DynValue.NewNumber(PixelDataGet(buffer, (int)(a[1].CastToNumber() ?? 0d))));
+                pd["set"] = DynValue.NewCallback((_, a) =>
+                {
+                    PixelDataSet(buffer, (int)(a[1].CastToNumber() ?? 0d), a[2].CastToNumber() ?? 0d);
+                    return DynValue.Void;
+                });
+                return DynValue.NewTable(pd);
+            });
+
             engine.Globals["obj"] = obj;
             engine.DoString(script);
+        }
+
+        private static double PixelDataGet(byte[] buffer, int index)
+        {
+            int zeroBased = index - 1;
+            if ((uint)zeroBased >= (uint)buffer.Length)
+                return 0d;
+            int pixel = Math.DivRem(zeroBased, 4, out int channel);
+            int p = pixel * 4;
+            double a = buffer[p + 3];
+            if (channel == 3)
+                return a;
+            if (a <= 0d)
+                return 0d;
+            double scale = 255d / a;
+            return channel switch
+            {
+                0 => Math.Clamp(buffer[p + 2] * scale, 0d, 255d),
+                1 => Math.Clamp(buffer[p + 1] * scale, 0d, 255d),
+                _ => Math.Clamp(buffer[p] * scale, 0d, 255d),
+            };
+        }
+
+        private static void PixelDataSet(byte[] buffer, int index, double value)
+        {
+            int zeroBased = index - 1;
+            if ((uint)zeroBased >= (uint)buffer.Length)
+                return;
+            int pixel = Math.DivRem(zeroBased, 4, out int channel);
+            int p = pixel * 4;
+            double clamped = Math.Clamp(value, 0d, 255d);
+            double a = buffer[p + 3];
+            double premultiplied = clamped * (a / 255d);
+            int byteOffset = channel switch { 0 => 2, 1 => 1, _ => 0 };
+            buffer[p + byteOffset] = (byte)Math.Clamp(premultiplied, 0d, 255d);
         }
 
         private static (double r, double g, double b, double a) GetPixel(byte[] buffer, int x, int y)
