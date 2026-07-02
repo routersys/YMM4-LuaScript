@@ -87,9 +87,9 @@ namespace LuaScript
 
         public IReadOnlyList<SceneValueQuery> SceneValueQueries => _sceneValues.Queries;
 
-        public bool SceneValuesWritten => _sceneValues.HasWrites;
+        internal object? SceneScope { get; set; }
 
-        internal void BeginSceneValues() => _sceneValues.Begin(SceneId, TimelineFrame, IsSaving);
+        internal void BeginSceneValues() => _sceneValues.Begin(SceneScope ?? this, SceneId, TimelineFrame, Layer);
 
         internal void PublishSceneValues() => _sceneValues.Publish();
 
