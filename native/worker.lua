@@ -55,7 +55,7 @@ local OFF_SCRIPT_VERSION = 15
 local SCRIPT_OFFSET = 64 + 64 * 8
 local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
 local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
-local CB_TAG_MAX = 4096
+local CB_TAG_MAX = 8192
 local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
 local STRING_PARAMS_OFFSET = CB_RESULT_OFFSET + 8 * 8
 local DRAW_RING_CAPACITY = 4096
@@ -678,10 +678,36 @@ function obj.copybuffer(dst, src)
     end
 end
 
+local SCENE_VALUE_MAX = 4095
+local SCENE_NIL = {}
+local sceneReads = {}
+local sceneWrites = {}
+
+local function sceneCut(s, max)
+    if #s <= max then return s end
+    local len = max
+    while len > 0 do
+        local b = string.byte(s, len + 1)
+        if b < 0x80 or b >= 0xC0 then break end
+        len = len - 1
+    end
+    return string.sub(s, 1, len)
+end
+
 function scene.get(name)
     if type(name) ~= "string" then return nil end
+    name = sceneCut(name, SCENE_VALUE_MAX)
+    local written = sceneWrites[name]
+    if written ~= nil then
+        if written == SCENE_NIL then return nil end
+        return written
+    end
+    local cached = sceneReads[name]
+    if cached ~= nil then
+        if cached == SCENE_NIL then return nil end
+        return cached
+    end
     local len = #name
-    if len > CB_TAG_MAX then len = CB_TAG_MAX end
     ffi.copy(base + CB_TAG_OFFSET, name, len)
     i32[OFF_CB_TAGLEN] = len
     i32[OFF_CB_KIND] = CB_KIND_SCENEGET
@@ -689,20 +715,32 @@ function scene.get(name)
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
     local kind = cbResult[0]
-    if kind == 1 then return cbResult[1] end
-    if kind == 2 then return ffi.string(base + CB_TAG_OFFSET, i32[OFF_CB_TAGLEN]) end
-    if kind == 3 then return cbResult[1] ~= 0 end
-    return nil
+    local value
+    if kind == 1 then
+        value = cbResult[1]
+    elseif kind == 2 then
+        value = ffi.string(base + CB_TAG_OFFSET, i32[OFF_CB_TAGLEN])
+    elseif kind == 3 then
+        value = cbResult[1] ~= 0
+    end
+    if value == nil then
+        sceneReads[name] = SCENE_NIL
+    else
+        sceneReads[name] = value
+    end
+    return value
 end
 
 function scene.set(name, value)
     if type(name) ~= "string" then return end
+    name = sceneCut(name, SCENE_VALUE_MAX)
     local vt = type(value)
     local kind, num
     if vt == "number" then
         kind, num = 1, value
     elseif vt == "string" then
         kind, num = 2, 0
+        value = sceneCut(value, SCENE_VALUE_MAX)
     elseif vt == "boolean" then
         kind, num = 3, value and 1 or 0
     elseif vt == "nil" then
@@ -710,19 +748,19 @@ function scene.set(name, value)
     else
         return
     end
+    if value == nil then
+        sceneWrites[name] = SCENE_NIL
+    else
+        sceneWrites[name] = value
+    end
     local len = #name
+    ffi.copy(base + CB_TAG_OFFSET, name, len)
     if kind == 2 then
-        if len > CB_TAG_MAX - 1 then len = CB_TAG_MAX - 1 end
-        ffi.copy(base + CB_TAG_OFFSET, name, len)
         base[CB_TAG_OFFSET + len] = 0
         local vlen = #value
-        local avail = CB_TAG_MAX - len - 1
-        if vlen > avail then vlen = avail end
         if vlen > 0 then ffi.copy(base + CB_TAG_OFFSET + len + 1, value, vlen) end
         i32[OFF_CB_TAGLEN] = len + 1 + vlen
     else
-        if len > CB_TAG_MAX then len = CB_TAG_MAX end
-        ffi.copy(base + CB_TAG_OFFSET, name, len)
         i32[OFF_CB_TAGLEN] = len
     end
     cbResult[0] = kind
@@ -911,6 +949,8 @@ while true do
         cacheTag = nil
         for k in pairs(options) do options[k] = nil end
         for k in pairs(pixeloptions) do pixeloptions[k] = nil end
+        for k in pairs(sceneReads) do sceneReads[k] = nil end
+        for k in pairs(sceneWrites) do sceneWrites[k] = nil end
         drawTarget = "frame"
         font.family = ""; font.size = 34; font.bold = false; font.italic = false; font.color = 0xFFFFFF
         math.randomseed(f64[31])
