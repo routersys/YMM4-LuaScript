@@ -5,13 +5,20 @@ namespace LuaScript
 {
     internal sealed class SoftwareCompositor : IBufferCompositor
     {
-        public void Compose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
+        public static readonly SoftwareCompositor Instance = new();
+
+        private SoftwareCompositor()
+        {
+        }
+
+        public bool TryCompose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
         {
             bool linear = command.Antialias != 0d;
             if (command.Poly is { } poly)
                 DrawPolyInto(dst, dstW, dstH, src, srcW, srcH, poly, command.Alpha, linear);
             else
                 DrawInto(dst, dstW, dstH, src, srcW, srcH, command.Ox, command.Oy, command.Zoom, command.Aspect, command.Alpha, linear);
+            return true;
         }
 
         public static void DrawInto(
