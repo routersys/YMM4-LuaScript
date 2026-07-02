@@ -79,32 +79,16 @@ namespace LuaScript
             for (int i = 0; i < commands.Count; i++)
             {
                 var cmd = commands[i];
+                if (!DrawTransform.TryResolve(cmd, width, height, out var transform))
+                    continue;
+
                 var interpolation = cmd.Antialias != 0d
                     ? BitmapInterpolationMode.Linear
                     : BitmapInterpolationMode.NearestNeighbor;
                 var blend = BlendModeMap.Resolve(cmd.Blend);
 
-                if (cmd.Poly is { } poly)
-                {
-                    if (!DrawPolyMath.TrySolveAffine(poly, out var affine))
-                        continue;
-                    rt.Transform = affine * toTarget;
-                    DrawSource(rt, (float)Math.Clamp(poly[20], 0d, 1d), interpolation, blend);
-                    continue;
-                }
-
-                double aspect = Math.Clamp(cmd.Aspect, -1d, 1d);
-                float zx = (float)(cmd.Zoom * (1d + aspect));
-                float zy = (float)(cmd.Zoom * (1d - aspect));
-                float opacity = (float)Math.Clamp(cmd.Alpha, 0d, 1d);
-
-                var matrix =
-                    Matrix3x2.CreateTranslation(-width * 0.5f, -height * 0.5f) *
-                    Matrix3x2.CreateScale(zx, zy) *
-                    Matrix3x2.CreateTranslation((float)(cmd.Ox - originX), (float)(cmd.Oy - originY));
-
-                rt.Transform = matrix;
-                DrawSource(rt, opacity, interpolation, blend);
+                rt.Transform = transform * toTarget;
+                DrawSource(rt, (float)Math.Clamp(cmd.Alpha, 0d, 1d), interpolation, blend);
             }
             rt.Transform = Matrix3x2.Identity;
             dc.EndDraw();
