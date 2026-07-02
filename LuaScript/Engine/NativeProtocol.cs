@@ -59,6 +59,8 @@ namespace LuaScript.Engine
         public const int CbKindSetAnchor = 8;
         public const int CbKindRequestPixels = 9;
         public const int CbKindFlushDraws = 10;
+        public const int CbKindSceneGet = 11;
+        public const int CbKindSceneSet = 12;
 
         public const int DrawRingCapacity = 4096;
         public const int DrawEntryDoubles = 24;
