@@ -26,7 +26,7 @@
 <tr><td><code>scene.height</code></td><td>シーンの縦解像度（ピクセル）</td></tr>
 <tr><td><code>scene.cx</code></td><td>横解像度の半分（<code>scene.width / 2</code>）</td></tr>
 <tr><td><code>scene.cy</code></td><td>縦解像度の半分（<code>scene.height / 2</code>）</td></tr>
-<tr><td><code>scene.set(name, value)</code></td><td>シーン単位の共有領域へ値を保存します</td></tr>
+<tr><td><code>scene.set(name, value)</code></td><td>シーン全体で共有する値を保存します</td></tr>
 <tr><td><code>scene.get(name)</code></td><td><code>scene.set()</code> で保存した値を取得します</td></tr>
 </table>
 
@@ -36,15 +36,15 @@
 <h2>scene.set / scene.get — シーン内の値共有</h2>
 
 <p>
-<code>scene.set(name, value)</code> はシーン単位の共有領域へ値を保存し、
-同じシーン内のすべての Lua スクリプトエフェクトから、アイテムやフレームをまたいで
-<code>scene.get(name)</code> で参照できます。MoonSharp とネイティブのどちらのエンジンでも動作します。
+<code>scene.set(name, value)</code> は、シーンごとに用意された共有領域へ値を保存します。
+保存した値は、同じシーンに置かれたすべての Lua スクリプトエフェクトから
+<code>scene.get(name)</code> で読み取れます。どちらの実行エンジンでも同じ動作をします。
 </p>
 
 <table>
 <tr><th>引数</th><th>説明</th></tr>
-<tr><td><code>name</code></td><td>値の名前（文字列）</td></tr>
-<tr><td><code>value</code></td><td>保存する値（数値・文字列・真偽値）。<code>nil</code> を渡すと削除</td></tr>
+<tr><td><code>name</code></td><td>値の名前を文字列で指定します</td></tr>
+<tr><td><code>value</code></td><td>保存する値を指定します。数値と文字列と真偽値を保存できます。<code>nil</code> を渡すと値を削除します</td></tr>
 </table>
 
 <pre><code>-- アイテムA: 自分の座標を共有する
@@ -53,14 +53,24 @@ scene.set("leader_x", obj.x)
 -- アイテムB: 共有された座標へ追従する
 obj.x = scene.get("leader_x") or 0</code></pre>
 
-<div class="note">
+<h3>値が見えるタイミング</h3>
+
 <ul>
-<li>数値・文字列・真偽値以外（テーブル・関数など）は保存されません。</li>
-<li>名前と文字列値は UTF-8 換算で 4095 バイトを超える部分が切り捨てられます。</li>
-<li>値はシーンごとに独立しており、YMM4 を終了するまでメモリ上に保持されます（プロジェクトファイルには保存されません）。</li>
-<li>アイテム間の評価順序は保証されないため、同一フレーム内での書き込みと読み取りの順序に依存する作りは避けてください。</li>
+<li>自分のスクリプトが書き込んだ値は、同じ実行の中で直後の <code>scene.get</code> からそのまま読み取れます。</li>
+<li>他のアイテムが書き込んだ値は、次のフレームの評価から読み取れます。同じフレームの中では、アイテムがどの順番で評価されても読み取れる値は変わりません。</li>
+<li>スクリプトがエラーまたはタイムアウトで終了した場合には、その実行の書き込みは共有領域へ反映されません。</li>
+<li>動画出力を開始すると、共有領域は空の状態から始まります。そのため、同じプロジェクトを出力すれば毎回同じ結果になります。</li>
 </ul>
-</div>
+
+<h3>制限</h3>
+
+<ul>
+<li>保存できる値は数値と文字列と真偽値だけです。テーブルや関数を渡した呼び出しは無視されます。</li>
+<li>名前と文字列の値は、UTF-8 で 4095 バイトを超える部分が切り捨てられます。</li>
+<li>1 つのシーンに保存できる名前は 4096 個までです。上限を超えた新しい名前への書き込みは無視されます。</li>
+<li>同じフレームの中で複数のアイテムが同じ名前へ書き込んだ場合には、どちらの値が残るかは保証されません。</li>
+<li>値は YMM4 を終了するまでメモリ上に保持されます。プロジェクトファイルには保存されません。</li>
+</ul>
 
 <h2>ymm4 — 環境・メタ情報</h2>
 

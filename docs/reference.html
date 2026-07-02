@@ -118,8 +118,8 @@
 <tr><th>メンバー</th><th>説明</th></tr>
 <tr><td><code>scene.width</code> / <code>scene.height</code></td><td>シーンの解像度</td></tr>
 <tr><td><code>scene.cx</code> / <code>scene.cy</code></td><td>解像度の半分</td></tr>
-<tr><td><code>scene.set(name, value)</code></td><td>シーン単位の共有値を保存（nil で削除）</td></tr>
-<tr><td><code>scene.get(name)</code></td><td>共有値を取得（未設定は nil）</td></tr>
+<tr><td><code>scene.set(name, value)</code></td><td>シーン全体で共有する値を保存します。nil を渡すと削除します</td></tr>
+<tr><td><code>scene.get(name)</code></td><td>共有された値を取得します。未設定の名前は nil を返します</td></tr>
 </table>
 
 <h2>ymm4</h2>
