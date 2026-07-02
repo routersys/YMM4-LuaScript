@@ -32,8 +32,8 @@ namespace LuaScript.Engine.Kernel
             builder.Append("    float inG = clamp(src.g * invA * 255.0, 0.0, 255.0);\n");
             builder.Append("    float inB = clamp(src.b * invA * 255.0, 0.0, 255.0);\n");
             builder.Append("    float inA = srcA * 255.0;\n");
-            builder.Append("    float px = uv.x * ").Append(Uniform(KernelUniform.Width)).Append(";\n");
-            builder.Append("    float py = uv.y * ").Append(Uniform(KernelUniform.Height)).Append(";\n");
+            builder.Append("    float px = uv.x * ").Append(Uniform(KernelUniform.Width)).Append(" - 0.5;\n");
+            builder.Append("    float py = uv.y * ").Append(Uniform(KernelUniform.Height)).Append(" - 0.5;\n");
 
             for (int i = 0; i < program.Bindings.Count; i++)
             {
@@ -42,21 +42,21 @@ namespace LuaScript.Engine.Kernel
                 builder.Append(";\n");
             }
 
-            builder.Append("    float outA = ");
+            builder.Append("    float outA = clamp(");
             EmitExpression(builder, program.OutputA);
-            builder.Append(";\n");
-            builder.Append("    float alphaK = clamp(outA, 0.0, 255.0) / 255.0;\n");
+            builder.Append(", 0.0, 255.0);\n");
+            builder.Append("    float alphaK = outA / 255.0;\n");
 
-            builder.Append("    float oR = clamp((");
+            builder.Append("    float oR = floor(clamp((");
             EmitExpression(builder, program.OutputR);
-            builder.Append(") * alphaK, 0.0, 255.0) / 255.0;\n");
-            builder.Append("    float oG = clamp((");
+            builder.Append(") * alphaK, 0.0, 255.0)) / 255.0;\n");
+            builder.Append("    float oG = floor(clamp((");
             EmitExpression(builder, program.OutputG);
-            builder.Append(") * alphaK, 0.0, 255.0) / 255.0;\n");
-            builder.Append("    float oB = clamp((");
+            builder.Append(") * alphaK, 0.0, 255.0)) / 255.0;\n");
+            builder.Append("    float oB = floor(clamp((");
             EmitExpression(builder, program.OutputB);
-            builder.Append(") * alphaK, 0.0, 255.0) / 255.0;\n");
-            builder.Append("    float oA = clamp(outA, 0.0, 255.0) / 255.0;\n");
+            builder.Append(") * alphaK, 0.0, 255.0)) / 255.0;\n");
+            builder.Append("    float oA = floor(outA) / 255.0;\n");
             builder.Append("    return float4(oR, oG, oB, oA);\n}\n");
 
             return builder.ToString();
