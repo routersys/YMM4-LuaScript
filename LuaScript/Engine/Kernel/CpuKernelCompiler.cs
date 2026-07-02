@@ -31,11 +31,15 @@ namespace LuaScript.Engine.Kernel
             [KFunc.Max] = Binary(nameof(Math.Max)),
         };
 
-        public static CpuKernel Compile(KernelProgram program)
+        public static CpuKernel Compile(KernelProgram program) =>
+            new(CompileRow(program), SimdKernelCompiler.TryCompile(program));
+
+        public static CpuKernel.RowDelegate CompileRow(KernelProgram program)
         {
             var buffer = Expression.Parameter(typeof(byte[]), "buffer");
-            var width = Expression.Parameter(typeof(int), "width");
             var rowBase = Expression.Parameter(typeof(int), "rowBase");
+            var xStart = Expression.Parameter(typeof(int), "xStart");
+            var xEnd = Expression.Parameter(typeof(int), "xEnd");
             var y = Expression.Parameter(typeof(double), "y");
             var uniforms = Expression.Parameter(typeof(double[]), "uniforms");
 
@@ -85,7 +89,7 @@ namespace LuaScript.Engine.Kernel
             var breakLabel = Expression.Label("break");
             var loop = Expression.Loop(
                 Expression.IfThenElse(
-                    Expression.LessThan(x, width),
+                    Expression.LessThan(x, xEnd),
                     Expression.Block(statements),
                     Expression.Break(breakLabel)),
                 breakLabel);
@@ -94,10 +98,10 @@ namespace LuaScript.Engine.Kernel
             locals.AddRange(inputs);
             locals.AddRange(slots);
 
-            var body = Expression.Block(locals, Expression.Assign(x, Constant(0)), loop);
+            var body = Expression.Block(locals, Expression.Assign(x, xStart), loop);
 
-            var lambda = Expression.Lambda<CpuKernel.RowDelegate>(body, buffer, width, rowBase, y, uniforms);
-            return new CpuKernel(lambda.Compile());
+            var lambda = Expression.Lambda<CpuKernel.RowDelegate>(body, buffer, rowBase, xStart, xEnd, y, uniforms);
+            return lambda.Compile();
         }
 
         private sealed record Context(
