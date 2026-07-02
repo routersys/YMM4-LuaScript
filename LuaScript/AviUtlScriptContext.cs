@@ -83,45 +83,19 @@ namespace LuaScript
 
         public IReadOnlyList<SceneObjectQuery> ObjectQueries => _objectQueries;
 
-        private SceneSharedValues? _sceneValues;
-        private string _sceneValuesKey = string.Empty;
-        private readonly List<SceneValueQuery> _sceneValueQueries = [];
+        private readonly SceneValueSession _sceneValues = new();
 
-        public IReadOnlyList<SceneValueQuery> SceneValueQueries => _sceneValueQueries;
+        public IReadOnlyList<SceneValueQuery> SceneValueQueries => _sceneValues.Queries;
 
-        public bool SceneValuesWritten { get; private set; }
+        public bool SceneValuesWritten => _sceneValues.HasWrites;
 
-        private SceneSharedValues SceneValues
-        {
-            get
-            {
-                if (_sceneValues is null || !string.Equals(_sceneValuesKey, SceneId, StringComparison.Ordinal))
-                {
-                    _sceneValues = SceneSharedValues.ForScene(SceneId);
-                    _sceneValuesKey = SceneId;
-                }
-                return _sceneValues;
-            }
-        }
+        internal void BeginSceneValues() => _sceneValues.Begin(SceneId, TimelineFrame, IsSaving);
 
-        internal void ClearSceneValueTracking()
-        {
-            _sceneValueQueries.Clear();
-            SceneValuesWritten = false;
-        }
+        internal void PublishSceneValues() => _sceneValues.Publish();
 
-        public SceneValue GetSceneValue(string name)
-        {
-            var value = SceneValues.Get(name);
-            _sceneValueQueries.Add(new SceneValueQuery(name, value));
-            return value;
-        }
+        public SceneValue GetSceneValue(string name) => _sceneValues.Get(name);
 
-        public void SetSceneValue(string name, SceneValue value)
-        {
-            SceneValuesWritten = true;
-            SceneValues.Set(name, value);
-        }
+        public void SetSceneValue(string name, SceneValue value) => _sceneValues.Set(name, value);
 
         private readonly List<AviUtlEffectRequest> _effectRequests = [];
 
