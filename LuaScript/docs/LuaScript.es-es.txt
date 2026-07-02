@@ -170,10 +170,18 @@
                 Obtiene un valor guardado con scene.set(). Devuelve nil para nombres
                 no establecidos.
                 Ejemplo: local x = scene.get("shared_x") or 0
+        * Los valores escritos por su propio script pueden leerse inmediatamente con
+          scene.get dentro de la misma ejecución. Los valores escritos por otros
+          elementos son visibles a partir del fotograma siguiente, por lo que el
+          resultado no depende del orden de evaluación dentro de un fotograma.
+        * Cuando un script termina con un error o por tiempo de espera, ninguna de
+          sus escrituras se aplica al área compartida.
+        * Al iniciar la exportación de video, el área compartida comienza vacía, por
+          lo que exportar el mismo proyecto siempre produce el mismo resultado.
+        * Se pueden guardar hasta 4096 nombres por escena. Las escrituras a nombres
+          nuevos por encima del límite se ignoran.
         * Los valores son independientes por escena y se mantienen en memoria hasta
-          que YMM4 se cierra (no se guardan en el archivo del proyecto).
-        * El orden de evaluación entre elementos no está garantizado; evite diseños
-          que dependan del orden de escritura/lectura dentro del mismo fotograma.
+          que YMM4 se cierra. No se guardan en el archivo del proyecto.
 
 
 - Tabla obj - Variables -

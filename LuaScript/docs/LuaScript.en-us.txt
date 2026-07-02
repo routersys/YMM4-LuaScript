@@ -170,10 +170,18 @@
         scene.get(name)
                 Retrieves a value stored with scene.set(). Returns nil for unset names.
                 Example: local x = scene.get("shared_x") or 0
-        * Values are independent per scene and kept in memory until YMM4 exits
-          (they are not saved into the project file).
-        * The evaluation order between items is not guaranteed, so avoid designs that
-          depend on write/read ordering within the same frame.
+        * Values written by your own script can be read back immediately with
+          scene.get within the same run. Values written by other items become
+          visible from the next frame, so the result does not depend on the order
+          in which items are evaluated within a frame.
+        * When a script ends with an error or a timeout, none of its writes are
+          applied to the shared area.
+        * When video export starts, the shared area starts empty, so exporting the
+          same project always produces the same result.
+        * Up to 4096 names can be stored per scene. Writes to new names beyond the
+          limit are ignored.
+        * Values are independent per scene and kept in memory until YMM4 exits.
+          They are not saved into the project file.
 
 
 - obj Table - Variables -

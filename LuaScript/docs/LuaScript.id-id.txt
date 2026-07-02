@@ -171,10 +171,18 @@
                 Mengambil nilai yang disimpan dengan scene.set(). Mengembalikan nil
                 untuk nama yang belum diatur.
                 Contoh: local x = scene.get("shared_x") or 0
+        * Nilai yang ditulis oleh skrip Anda sendiri dapat langsung dibaca kembali
+          dengan scene.get dalam eksekusi yang sama. Nilai yang ditulis oleh item
+          lain terlihat mulai frame berikutnya, sehingga hasilnya tidak bergantung
+          pada urutan evaluasi item dalam satu frame.
+        * Saat skrip berakhir dengan kesalahan atau batas waktu, tidak ada
+          penulisannya yang diterapkan ke area bersama.
+        * Saat ekspor video dimulai, area bersama dimulai dari keadaan kosong,
+          sehingga mengekspor proyek yang sama selalu menghasilkan hasil yang sama.
+        * Hingga 4096 nama dapat disimpan per adegan. Penulisan ke nama baru di
+          atas batas akan diabaikan.
         * Nilai bersifat independen per adegan dan disimpan di memori sampai YMM4
-          ditutup (tidak disimpan ke berkas proyek).
-        * Urutan evaluasi antar item tidak dijamin, jadi hindari desain yang
-          bergantung pada urutan tulis/baca dalam frame yang sama.
+          ditutup. Tidak disimpan ke berkas proyek.
 
 
 - Tabel obj - Variabel -
