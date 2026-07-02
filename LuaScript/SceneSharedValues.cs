@@ -26,40 +26,82 @@ namespace LuaScript
 
     internal sealed class SceneSharedValues
     {
-        public const int MaxNameBytes = NativeTagCapacity - 1;
-        public const int MaxTextBytes = NativeTagCapacity - 1;
-
-        private const int NativeTagCapacity = 4096;
+        public const int MaxNameBytes = 4095;
+        public const int MaxTextBytes = 4095;
+        public const int MaxEntries = 4096;
 
         private static readonly ConcurrentDictionary<string, SceneSharedValues> s_scenes = new(StringComparer.Ordinal);
 
-        private readonly Dictionary<string, SceneValue> _values = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, SceneValue> _committed = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, SceneValue> _pending = new(StringComparer.Ordinal);
         private readonly object _gate = new();
+        private long _generation = long.MinValue;
+        private bool _exporting;
 
         public static SceneSharedValues ForScene(string sceneId) =>
             s_scenes.GetOrAdd(sceneId, static _ => new SceneSharedValues());
 
-        public void Set(string name, SceneValue value)
+        public SceneValue Read(long generation, bool exporting, string name)
         {
-            name = TruncateUtf8(name, MaxNameBytes);
-            if (value.Kind == SceneValueKind.String)
-                value = SceneValue.FromString(TruncateUtf8(value.Text ?? string.Empty, MaxTextBytes));
-
             lock (_gate)
             {
-                if (value.Kind == SceneValueKind.Nil)
-                    _values.Remove(name);
-                else
-                    _values[name] = value;
+                Advance(generation, exporting);
+                return _committed.TryGetValue(name, out var value) ? value : SceneValue.Nil;
             }
         }
 
-        public SceneValue Get(string name)
+        public void Publish(long generation, bool exporting, Dictionary<string, SceneValue> writes)
         {
-            name = TruncateUtf8(name, MaxNameBytes);
             lock (_gate)
-                return _values.TryGetValue(name, out var value) ? value : SceneValue.Nil;
+            {
+                Advance(generation, exporting);
+                foreach (var pair in writes)
+                {
+                    if (pair.Value.Kind == SceneValueKind.Nil ||
+                        _pending.ContainsKey(pair.Key) ||
+                        _pending.Count < MaxEntries)
+                    {
+                        _pending[pair.Key] = pair.Value;
+                    }
+                }
+            }
         }
+
+        private void Advance(long generation, bool exporting)
+        {
+            if (exporting && (!_exporting || generation < _generation))
+            {
+                _committed.Clear();
+                _pending.Clear();
+                _generation = generation;
+            }
+            else if (generation != _generation)
+            {
+                foreach (var pair in _pending)
+                {
+                    if (pair.Value.Kind == SceneValueKind.Nil)
+                        _committed.Remove(pair.Key);
+                }
+                foreach (var pair in _pending)
+                {
+                    if (pair.Value.Kind != SceneValueKind.Nil &&
+                        (_committed.ContainsKey(pair.Key) || _committed.Count < MaxEntries))
+                    {
+                        _committed[pair.Key] = pair.Value;
+                    }
+                }
+                _pending.Clear();
+                _generation = generation;
+            }
+            _exporting = exporting;
+        }
+
+        public static string NormalizeName(string name) => TruncateUtf8(name, MaxNameBytes);
+
+        public static SceneValue NormalizeValue(SceneValue value) =>
+            value.Kind == SceneValueKind.String
+                ? SceneValue.FromString(TruncateUtf8(value.Text ?? string.Empty, MaxTextBytes))
+                : value;
 
         private static string TruncateUtf8(string text, int maxBytes)
         {
