@@ -387,6 +387,7 @@ local function applyLoadResult()
         dirty = true
         pixelsValid = true
         pdValid = false
+        pdDirty = false
         obj.w = newW; obj.h = newH
         obj.hw = newW / 2; obj.hh = newH / 2
         obj.cx = newW / 2; obj.cy = newH / 2
@@ -661,6 +662,7 @@ function obj.copybuffer(dst, src)
         dirty = true
         pixelsValid = true
         pdValid = false
+        pdDirty = false
         obj.w = w; obj.h = h
         obj.hw = w / 2; obj.hh = h / 2
         obj.cx = w / 2; obj.cy = h / 2

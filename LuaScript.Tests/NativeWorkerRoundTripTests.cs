@@ -232,6 +232,64 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void PixelData_StaleWritesDoNotResurrect_AfterLoad()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int iw = 2, ih = 2;
+            var decoded = new byte[iw * ih * 4];
+            for (int i = 0; i < decoded.Length; i++)
+                decoded[i] = (byte)((i * 19 + 7) & 0xFF);
+            Func<string, (byte[], int, int)> loadImage = _ => (decoded, iw, ih);
+
+            var pixels = new byte[4 * 4 * 4];
+            for (int i = 3; i < pixels.Length; i += 4)
+                pixels[i] = 255;
+
+            const string script =
+                "local pd = obj.getpixeldata() " +
+                "pd:set(1, 11) pd:set(2, 22) pd:set(3, 33) " +
+                "obj.load('image', 'p')";
+
+            bool ok = _worker.Execute(script, Fields(4, 4, 0d), NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, loadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out byte[]? result, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.True(bufferReplaced);
+            Assert.Equal(iw, rw);
+            Assert.Equal(ih, rh);
+            Assert.NotNull(result);
+            Assert.Equal(decoded, result!.AsSpan(0, decoded.Length).ToArray());
+        }
+
+        [Fact]
+        public void PixelData_StaleWritesDoNotResurrect_AfterCopyBuffer()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = (byte)((i * 29 + 3) & 0xFF);
+            pixels[3] = 255; pixels[7] = 255; pixels[11] = 255; pixels[15] = 255;
+            var original = (byte[])pixels.Clone();
+
+            const string script =
+                "obj.copybuffer('tmp','obj') " +
+                "local pd = obj.getpixeldata() " +
+                "pd:set(1, 99) pd:set(2, 98) pd:set(3, 97) " +
+                "obj.copybuffer('obj','tmp')";
+
+            bool ok = _worker.Execute(script, Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(original, pixels);
+        }
+
+        [Fact]
         public void PersistentWorker_HandlesMultipleCalls()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
