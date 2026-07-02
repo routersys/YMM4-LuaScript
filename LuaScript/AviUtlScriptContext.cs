@@ -185,19 +185,28 @@ namespace LuaScript
 
         private bool TryWriteBuffer(string id, byte[] data, int width, int height)
         {
+            int n = width * height * 4;
             switch (BufferKind(id, out string key))
             {
                 case 'o':
-                    ReplaceBuffer((byte[])data.Clone(), width, height);
+                    if (_copyOutputBuffer is null || _copyOutputBuffer.Length != n)
+                        _copyOutputBuffer = new byte[n];
+                    Buffer.BlockCopy(data, 0, _copyOutputBuffer, 0, n);
+                    ReplaceBuffer(_copyOutputBuffer, width, height);
                     return true;
                 case 't':
                 case 'c':
-                    _buffers[key] = ((byte[])data.Clone(), width, height);
+                    if (!_buffers.TryGetValue(key, out var existing) || existing.Data.Length != n)
+                        existing.Data = new byte[n];
+                    Buffer.BlockCopy(data, 0, existing.Data, 0, n);
+                    _buffers[key] = (existing.Data, width, height);
                     return false;
                 default:
                     return false;
             }
         }
+
+        private byte[]? _copyOutputBuffer;
 
         private static char BufferKind(string id, out string key)
         {
