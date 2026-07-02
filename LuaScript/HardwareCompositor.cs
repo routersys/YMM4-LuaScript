@@ -11,6 +11,8 @@ namespace LuaScript
 {
     internal sealed class HardwareCompositor : IBufferCompositor, IDisposable
     {
+        private const int MaxDimension = 8192;
+
         private readonly GraphicsDevicesAndContext _ctx;
         private ID2D1Bitmap1? _source;
         private ID2D1Bitmap1? _target;
@@ -25,18 +27,20 @@ namespace LuaScript
             _ctx = ctx;
         }
 
-        public unsafe void Compose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
+        public unsafe bool TryCompose(byte[] dst, int dstW, int dstH, byte[] src, int srcW, int srcH, in DrawCommand command)
         {
             if (srcW <= 0 || srcH <= 0 || dstW <= 0 || dstH <= 0)
-                return;
+                return true;
+            if (srcW > MaxDimension || srcH > MaxDimension || dstW > MaxDimension || dstH > MaxDimension)
+                return false;
             if (src.Length < srcW * srcH * 4 || dst.Length < dstW * dstH * 4)
-                return;
+                return false;
             if (!DrawTransform.TryResolve(command, srcW, srcH, out var transform))
-                return;
+                return true;
 
             float opacity = (float)Math.Clamp(command.Alpha, 0d, 1d);
             if (opacity <= 0f)
-                return;
+                return true;
 
             EnsureSource(srcW, srcH);
             EnsureTarget(dstW, dstH);
@@ -52,7 +56,7 @@ namespace LuaScript
 
             var dc = _ctx.DeviceContext;
             var rt = (ID2D1RenderTarget)dc;
-            var savedTarget = dc.Target;
+            using var savedTarget = dc.Target;
             dc.Target = _target;
             try
             {
@@ -85,6 +89,7 @@ namespace LuaScript
             {
                 _staging.Unmap();
             }
+            return true;
         }
 
         private void EnsureSource(int width, int height)
