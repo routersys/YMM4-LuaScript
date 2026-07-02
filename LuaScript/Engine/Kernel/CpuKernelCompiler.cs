@@ -155,6 +155,8 @@ namespace LuaScript.Engine.Kernel
 
         private static Expression BuildCall(KCall call, Context context)
         {
+            if (call.Func == KFunc.Fmod)
+                return Expression.Modulo(Build(call.Arguments[0], context), Build(call.Arguments[1], context));
             var method = Functions[call.Func];
             if (call.Arguments.Count == 1)
                 return Expression.Call(method, Build(call.Arguments[0], context));

@@ -80,6 +80,14 @@ namespace LuaScript.Engine.Kernel
                 return null;
             if (outerAxis == innerAxis)
                 return null;
+            if (_pixelDataVariable is not null &&
+                (string.Equals(outerVar, _pixelDataVariable, StringComparison.Ordinal) ||
+                 string.Equals(innerVar, _pixelDataVariable, StringComparison.Ordinal)))
+                return null;
+            if (_scope.ContainsKey(outerVar))
+                _scope.Remove(outerVar);
+            if (_scope.ContainsKey(innerVar))
+                _scope.Remove(innerVar);
 
             _widthVariable = outerAxis == KAxis.X ? outerVar : innerVar;
             _heightVariable = outerAxis == KAxis.Y ? outerVar : innerVar;
@@ -105,8 +113,8 @@ namespace LuaScript.Engine.Kernel
             if (body[0] is not LocalStmt { Names.Count: 1, Values.Count: 1 } baseStmt || !IsBaseIndex(baseStmt.Values[0]))
                 return null;
 
+            EnsureNotCoordinateName(baseStmt.Names[0]);
             _baseIndexVariable = baseStmt.Names[0];
-            EnsureNotCoordinateName(_baseIndexVariable);
             _coordsEnabled = true;
 
             KExpr? outR = null, outG = null, outB = null;
@@ -121,7 +129,7 @@ namespace LuaScript.Engine.Kernel
                         BindAssign(assign);
                         break;
                     case CallStmt { Call: MethodCallExpr set } when IsPixelDataSet(set, out int writeChannel):
-                        var value = Lower(set.Arguments[1]);
+                        var value = ClampChannel(Lower(set.Arguments[1]));
                         if (writeChannel == 0) outR = value;
                         else if (writeChannel == 1) outG = value;
                         else outB = value;
@@ -184,6 +192,18 @@ namespace LuaScript.Engine.Kernel
                 return false;
             channel--;
             return true;
+        }
+
+        private KExpr ClampChannel(KExpr value)
+        {
+            var bound = new KLocalRef(AddBinding(value));
+            return new KSelect(
+                new KCompare(KCompareOp.Less, bound, new KConst(0d)),
+                new KConst(0d),
+                new KSelect(
+                    new KCompare(KCompareOp.Greater, bound, new KConst(255d)),
+                    new KConst(255d),
+                    bound));
         }
 
         private bool TryChannelOffset(LuaExpr expression, int min, int max, out int offset)
@@ -284,6 +304,10 @@ namespace LuaScript.Engine.Kernel
             if (string.Equals(name, _widthVariable, StringComparison.Ordinal) ||
                 string.Equals(name, _heightVariable, StringComparison.Ordinal))
                 throw new KernelUnsupportedException("Local variable shadows a loop coordinate.");
+            if (_pixelDataVariable is not null && string.Equals(name, _pixelDataVariable, StringComparison.Ordinal))
+                throw new KernelUnsupportedException("Local variable shadows the pixel-data handle.");
+            if (_baseIndexVariable.Length > 0 && string.Equals(name, _baseIndexVariable, StringComparison.Ordinal))
+                throw new KernelUnsupportedException("Local variable shadows the base index.");
         }
 
         private int AddBinding(KExpr expression)

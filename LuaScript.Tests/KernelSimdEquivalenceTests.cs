@@ -23,6 +23,7 @@ namespace LuaScript.Tests
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,255-r) pd:set(i+2,g*g/255) pd:set(i+3,b) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,((r>128 and g<64) or (not (b>200))) and 255 or 0,g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,(r>=200) and 255 or 0,(g<=50) and 255 or 0,(b==0) and 255 or ((b~=0) and 100 or 0),a) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,r*3) pd:set(i+2,g-300) pd:set(i+3,b*2-255) end end")]
         public void SimdBlockMatchesScalarRow(string script)
         {
             var program = KernelExtractor.TryExtract(script);
@@ -54,6 +55,7 @@ namespace LuaScript.Tests
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,r^2/255,g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,255*math.sin(r/255),g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,math.atan2(r,g),b,a,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,math.fmod(r,64),g,b,a) end end")]
         public void SimdRejectsNonVectorizableKernels(string script)
         {
             var program = KernelExtractor.TryExtract(script);
