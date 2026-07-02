@@ -368,14 +368,22 @@ end
 local font = { family = "", size = 34, bold = false, italic = false, color = 0xFFFFFF }
 
 function obj.setfont(name, size, style, col1)
-    if name ~= nil then font.family = tostring(name) end
-    if size ~= nil then font.size = size end
-    if style ~= nil then
-        local s = math.floor(style)
-        font.bold = (s % 2) == 1
-        font.italic = (math.floor(s / 2) % 2) == 1
+    local nameType = type(name)
+    if nameType == "string" then
+        font.family = name
+    elseif nameType == "number" then
+        font.family = tostring(name)
     end
-    if col1 ~= nil then font.color = col1 end
+    local sizeNumber = tonumber(size)
+    if sizeNumber ~= nil then font.size = sizeNumber end
+    local styleNumber = tonumber(style)
+    if styleNumber ~= nil then
+        local flags = math.floor(styleNumber)
+        font.bold = (flags % 2) == 1
+        font.italic = (math.floor(flags / 2) % 2) == 1
+    end
+    local colorNumber = tonumber(col1)
+    if colorNumber ~= nil then font.color = colorNumber end
 end
 
 local function applyLoadResult()
