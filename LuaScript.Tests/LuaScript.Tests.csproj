@@ -31,6 +31,7 @@
     <Compile Include="..\LuaScript\Engine\ScriptDirective.cs" Link="Linked\ScriptDirective.cs" />
     <Compile Include="..\LuaScript\Engine\NativeProtocol.cs" Link="Linked\NativeProtocol.cs" />
     <Compile Include="..\LuaScript\Engine\ProcessJobObject.cs" Link="Linked\ProcessJobObject.cs" />
+    <Compile Include="..\LuaScript\Engine\PixelRegionAccess.cs" Link="Linked\PixelRegionAccess.cs" />
     <Compile Include="..\LuaScript\Engine\LuaJitWorker.cs" Link="Linked\LuaJitWorker.cs" />
     <Compile Include="..\LuaScript\DrawCommand.cs" Link="Linked\DrawCommand.cs" />
     <Compile Include="..\LuaScript\DrawPolyMath.cs" Link="Linked\DrawPolyMath.cs" />

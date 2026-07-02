@@ -110,8 +110,14 @@ namespace LuaScript
         private bool _hasExplicitDirective;
         private ScriptEngineKind _explicitDirectiveKind;
 
-        private byte[]? _nativeInputPixels;
-        private Func<byte[]>? _nativeLoadInput;
+        private PixelRegionAccess? _nativeUpload;
+        private PixelRegionAccess? _nativeReadIntoResult;
+        private PixelRegionAccess? _nativeWriteOutput;
+        private byte[]? _nativeResultBuffer;
+        private int _nativeReadLength;
+        private int _nativeOutputWidth;
+        private int _nativeOutputHeight;
+        private bool _nativeUploaded;
         private Func<string, int, SceneObjectInfo?>? _nativeResolveObject;
         private Func<string, int, double, double, double, (byte[] buffer, int w, int h)>? _nativeLoadFigure;
         private Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)>? _nativeLoadText;
@@ -848,7 +854,7 @@ namespace LuaScript
         {
             _nativeWorker ??= new LuaJitWorker(NativeDirectory);
             _nativeFields ??= new double[NativeProtocol.FieldCount];
-            _nativeLoadInput ??= () => _nativeInputPixels ??= LoadPendingInputPixels();
+            _nativeUpload ??= UploadNativeInputPixels;
             _nativeResolveObject ??= (tag, frame) => _context.ResolveObject(tag, frame, out var info) ? info : null;
             _nativeLoadFigure ??= NativeLoadFigure;
             _nativeLoadText ??= NativeLoadText;
@@ -859,10 +865,10 @@ namespace LuaScript
             _nativeSetAnchor ??= ResolveNativeAnchor;
 
             NativeFieldMap.ToFields(ctx, _nativeFields);
-            _nativeInputPixels = null;
+            _nativeUploaded = false;
 
             bool ok = _nativeWorker.Execute(
-                script, _nativeFields, ctx.StringParameters, _nativeLoadInput, imgW, imgH, NativeTimeoutMilliseconds,
+                script, _nativeFields, ctx.StringParameters, _nativeUpload, imgW, imgH, NativeTimeoutMilliseconds,
                 _nativeResolveObject,
                 _nativeLoadFigure,
                 _nativeLoadText,
@@ -871,7 +877,7 @@ namespace LuaScript
                 _nativeAddEffect,
                 _nativeAddDraw,
                 _nativeSetAnchor,
-                out bool dirty, out bool bufferReplaced, out byte[]? resultPixels,
+                out bool dirty, out bool bufferReplaced,
                 out int resultW, out int resultH, out string? error);
 
             if (!ok)
@@ -885,36 +891,75 @@ namespace LuaScript
 
             bool hasDraws = ctx.DrawCommands.Count > 0;
 
-            if (dirty && resultPixels is not null)
+            if (dirty)
             {
                 int outW = bufferReplaced ? resultW : imgW;
                 int outH = bufferReplaced ? resultH : imgH;
 
-                if (bufferReplaced)
-                    ctx.ReplaceBuffer(resultPixels, outW, outH);
-
                 if (hasDraws)
                 {
-                    ctx.SetResolvedBuffer(resultPixels, outW, outH);
+                    var result = ReadNativeResultPixels(outW, outH);
+                    if (bufferReplaced)
+                        ctx.ReplaceBuffer(result, outW, outH);
+                    else
+                        ctx.SetResolvedBuffer(result, outW, outH);
                     return true;
                 }
 
-                _pixelManager!.WritePixelsToOutput(resultPixels, outW, outH);
+                _nativeOutputWidth = outW;
+                _nativeOutputHeight = outH;
+                _nativeWorker.ReadPixels(_nativeWriteOutput ??= WriteNativeOutputPixels);
                 if (bufferReplaced)
-                    effectOutput = _pixelManager.GetTransformOutput(-outW / 2f, -outH / 2f);
+                    effectOutput = _pixelManager!.GetTransformOutput(-outW / 2f, -outH / 2f);
                 else
-                    effectOutput = _pixelManager.GetTransformOutput(bounds.Left, bounds.Top);
+                    effectOutput = _pixelManager!.GetTransformOutput(bounds.Left, bounds.Top);
                 return true;
             }
 
             if (hasDraws)
             {
-                ctx.SetResolvedBuffer(_nativeLoadInput(), imgW, imgH);
+                if (_nativeUploaded)
+                    ctx.SetResolvedBuffer(ReadNativeResultPixels(imgW, imgH), imgW, imgH);
                 return false;
             }
 
             effectOutput = null;
             return false;
+        }
+
+        private void UploadNativeInputPixels(nint address, long capacity)
+        {
+            _nativeUploaded = true;
+            _pixelLoaderSemaphore.Wait();
+            try
+            {
+                _pixelManager!.LoadInputPixelsInto(input!, _pixelBounds, _pixelWidth, _pixelHeight, address, capacity);
+            }
+            finally
+            {
+                _pixelLoaderSemaphore.Release();
+            }
+        }
+
+        private byte[] ReadNativeResultPixels(int width, int height)
+        {
+            int length = width * height * 4;
+            if (_nativeResultBuffer is null || _nativeResultBuffer.Length < length)
+                _nativeResultBuffer = new byte[length];
+            _nativeReadLength = length;
+            _nativeWorker!.ReadPixels(_nativeReadIntoResult ??= ReadNativePixelsIntoResult);
+            return _nativeResultBuffer;
+        }
+
+        private unsafe void ReadNativePixelsIntoResult(nint address, long capacity)
+        {
+            fixed (byte* destination = _nativeResultBuffer)
+                Buffer.MemoryCopy((void*)address, destination, _nativeResultBuffer!.Length, Math.Min(_nativeReadLength, capacity));
+        }
+
+        private void WriteNativeOutputPixels(nint address, long capacity)
+        {
+            _pixelManager!.WritePixelsToOutput(address, _nativeOutputWidth, _nativeOutputHeight);
         }
 
         private void ResolveNativeAnchor(string group, int count, bool is3D, int connection, double[] positions)

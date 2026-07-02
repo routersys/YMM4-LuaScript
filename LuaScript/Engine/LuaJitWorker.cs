@@ -29,7 +29,6 @@ namespace LuaScript.Engine
         private readonly double[] _anchorBuffer = new double[Anchor.AnchorSupport.MaxAnchors * 3];
         private int _lastCallbackTagLength = -1;
         private string _lastCallbackTagText = string.Empty;
-        private byte[]? _resultBuffer;
         private int _scriptVersion;
         private string? _lastScript;
         private byte[] _lastScriptBytes = Array.Empty<byte>();
@@ -52,7 +51,7 @@ namespace LuaScript.Engine
             string script,
             double[] fields,
             IReadOnlyDictionary<string, string> stringParameters,
-            Func<byte[]> loadPixels,
+            PixelRegionAccess loadPixels,
             int width,
             int height,
             int timeoutMs,
@@ -66,14 +65,12 @@ namespace LuaScript.Engine
             Action<string, int, bool, int, double[]> setAnchor,
             out bool pixelsDirty,
             out bool bufferReplaced,
-            out byte[]? resultPixels,
             out int resultWidth,
             out int resultHeight,
             out string? error)
         {
             pixelsDirty = false;
             bufferReplaced = false;
-            resultPixels = null;
             resultWidth = width;
             resultHeight = height;
             error = null;
@@ -114,7 +111,6 @@ namespace LuaScript.Engine
 
             _workEvent!.Set();
 
-            byte[]? uploadedPixels = null;
             var stopwatch = Stopwatch.StartNew();
             int status;
             while (true)
@@ -134,8 +130,15 @@ namespace LuaScript.Engine
                 int callbackKind = view.ReadInt32(NativeProtocol.OffCallbackKind);
                 if (callbackKind == NativeProtocol.CbKindRequestPixels)
                 {
-                    uploadedPixels ??= loadPixels();
-                    WritePixelRegion(uploadedPixels, uploadedPixels.Length);
+                    try
+                    {
+                        AccessPixelRegion(loadPixels);
+                    }
+                    catch
+                    {
+                        KillWorker();
+                        throw;
+                    }
                 }
                 else if (callbackKind == NativeProtocol.CbKindFlushDraws)
                 {
@@ -169,24 +172,31 @@ namespace LuaScript.Engine
             bufferReplaced = resultWidth != width || resultHeight != height;
 
             pixelsDirty = view.ReadInt32(NativeProtocol.OffPixelsDirty) != 0;
-            if (pixelsDirty)
+            if (pixelsDirty && (long)resultWidth * resultHeight * 4 > _allocatedSize - _pixelOffset)
             {
-                int pixelSize = resultWidth * resultHeight * 4;
-                if (!bufferReplaced && uploadedPixels is not null)
-                {
-                    ReadPixelRegion(uploadedPixels, pixelSize);
-                    resultPixels = uploadedPixels;
-                }
-                else
-                {
-                    if (_resultBuffer == null || _resultBuffer.Length < pixelSize)
-                        _resultBuffer = new byte[pixelSize];
-                    ReadPixelRegion(_resultBuffer, pixelSize);
-                    resultPixels = _resultBuffer;
-                }
+                error = "native worker reported a pixel buffer beyond capacity";
+                return false;
             }
 
             return true;
+        }
+
+        public void ReadPixels(PixelRegionAccess reader) => AccessPixelRegion(reader);
+
+        private unsafe void AccessPixelRegion(PixelRegionAccess access)
+        {
+            var handle = _view!.SafeMemoryMappedViewHandle;
+            byte* ptr = null;
+            handle.AcquirePointer(ref ptr);
+            try
+            {
+                long offset = _view.PointerOffset + _pixelOffset;
+                access((nint)(ptr + offset), (long)handle.ByteLength - offset);
+            }
+            finally
+            {
+                handle.ReleasePointer();
+            }
         }
 
         private unsafe void WritePixelRegion(byte[] source, int length)
@@ -198,22 +208,6 @@ namespace LuaScript.Engine
             {
                 fixed (byte* src = source)
                     Buffer.MemoryCopy(src, ptr + _view.PointerOffset + _pixelOffset, handle.ByteLength - (ulong)(_view.PointerOffset + _pixelOffset), (ulong)length);
-            }
-            finally
-            {
-                handle.ReleasePointer();
-            }
-        }
-
-        private unsafe void ReadPixelRegion(byte[] destination, int length)
-        {
-            var handle = _view!.SafeMemoryMappedViewHandle;
-            byte* ptr = null;
-            handle.AcquirePointer(ref ptr);
-            try
-            {
-                fixed (byte* dst = destination)
-                    Buffer.MemoryCopy(ptr + _view.PointerOffset + _pixelOffset, dst, destination.Length, length);
             }
             finally
             {

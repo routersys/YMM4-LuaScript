@@ -32,6 +32,79 @@ namespace LuaScript.Tests
             return f;
         }
 
+        private bool RunWorker(
+            string script,
+            double[] fields,
+            System.Collections.Generic.IReadOnlyDictionary<string, string> stringParameters,
+            Func<byte[]> loadPixels,
+            int width,
+            int height,
+            int timeoutMs,
+            Func<string, int, SceneObjectInfo?> resolveObject,
+            Func<string, int, double, double, double, (byte[] buffer, int w, int h)> loadFigure,
+            Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
+            Func<string, (byte[] buffer, int w, int h)> loadImage,
+            Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
+            Action<string, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, object>>> addEffect,
+            Action<DrawCommand> addDraw,
+            Action<string, int, bool, int, double[]> setAnchor,
+            out bool pixelsDirty,
+            out bool bufferReplaced,
+            out byte[]? resultPixels,
+            out int resultWidth,
+            out int resultHeight,
+            out string? error)
+        {
+            byte[]? uploaded = null;
+            bool ok = _worker.Execute(
+                script, fields, stringParameters,
+                (address, capacity) =>
+                {
+                    uploaded = loadPixels();
+                    System.Runtime.InteropServices.Marshal.Copy(uploaded, 0, address, uploaded.Length);
+                },
+                width, height, timeoutMs,
+                resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor,
+                out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
+
+            resultPixels = null;
+            if (ok && pixelsDirty)
+            {
+                int pixelSize = resultWidth * resultHeight * 4;
+                byte[] destination = !bufferReplaced && uploaded is not null && uploaded.Length >= pixelSize
+                    ? uploaded
+                    : new byte[pixelSize];
+                _worker.ReadPixels((address, capacity) =>
+                    System.Runtime.InteropServices.Marshal.Copy(address, destination, 0, pixelSize));
+                resultPixels = destination;
+            }
+            return ok;
+        }
+
+        [Fact]
+        public void PixelUpload_ProvidesRegionCoveringFrame()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 3, h = 2;
+            var pixels = new byte[w * h * 4];
+            long observedCapacity = -1;
+
+            bool ok = _worker.Execute(
+                "local r, g, b, a = obj.getpixel(0, 0) obj.x = a",
+                Fields(w, h, 0d), NoStringParams,
+                (address, capacity) =>
+                {
+                    observedCapacity = capacity;
+                    System.Runtime.InteropServices.Marshal.Copy(pixels, 0, address, pixels.Length);
+                },
+                w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(observedCapacity >= (long)w * h * 4);
+        }
+
         [Fact]
         public void TransformScript_WritesBackObjFields()
         {
@@ -40,7 +113,7 @@ namespace LuaScript.Tests
             var fields = Fields(4, 4, 2d);
             var pixels = new byte[4 * 4 * 4];
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.rz = obj.time * 90\nobj.alpha = 128",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
 
@@ -63,7 +136,7 @@ namespace LuaScript.Tests
                 ["file_image"] = "C:/サンプル/画像.png",
             };
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.x = string.len(obj.text) obj.alpha = string.len(obj.file_image)",
                 fields, stringParameters, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
@@ -82,7 +155,7 @@ namespace LuaScript.Tests
 
             var large = new System.Collections.Generic.Dictionary<string, string> { ["text"] = big };
             var fieldsLarge = Fields(2, 2, 0d);
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.x = string.len(obj.text)",
                 fieldsLarge, large, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
@@ -90,7 +163,7 @@ namespace LuaScript.Tests
 
             var small = new System.Collections.Generic.Dictionary<string, string> { ["text"] = "ok" };
             var fieldsSmall = Fields(2, 2, 0d);
-            ok = _worker.Execute(
+            ok = RunWorker(
                 "obj.x = string.len(obj.text)",
                 fieldsSmall, small, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
@@ -124,7 +197,7 @@ namespace LuaScript.Tests
                 "local gray = r*0.299 + g*0.587 + b*0.114 " +
                 "obj.setpixel(x,y,gray,gray,gray,a) end end";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -159,7 +232,7 @@ namespace LuaScript.Tests
                 "local gray=r*0.299+g*0.587+b*0.114 " +
                 "pd:set(base+1,gray) pd:set(base+2,gray) pd:set(base+3,gray) end end";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -198,7 +271,7 @@ namespace LuaScript.Tests
                 "local pd = obj.getpixeldata() " +
                 "obj.x = pd:get(1) obj.y = pd:get(2) obj.z = pd:get(3) obj.alpha = pd:get(4)";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(100d, fields[NativeProtocol.X]);
@@ -221,7 +294,7 @@ namespace LuaScript.Tests
                 "local r,g,b,a = obj.getpixel(0,0) " +
                 "obj.x = r obj.y = g obj.z = b obj.alpha = a";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -251,7 +324,7 @@ namespace LuaScript.Tests
                 "pd:set(1, 11) pd:set(2, 22) pd:set(3, 33) " +
                 "obj.load('image', 'p')";
 
-            bool ok = _worker.Execute(script, Fields(4, 4, 0d), NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, loadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+            bool ok = RunWorker(script, Fields(4, 4, 0d), NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, loadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? result, out int rw, out int rh, out string? error);
 
             Assert.True(ok, error);
@@ -281,7 +354,7 @@ namespace LuaScript.Tests
                 "pd:set(1, 99) pd:set(2, 98) pd:set(3, 97) " +
                 "obj.copybuffer('obj','tmp')";
 
-            bool ok = _worker.Execute(script, Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+            bool ok = RunWorker(script, Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
@@ -298,7 +371,7 @@ namespace LuaScript.Tests
             for (int k = 1; k <= 5; k++)
             {
                 var fields = Fields(2, 2, k);
-                bool ok = _worker.Execute("obj.x = obj.time * 10", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+                bool ok = RunWorker("obj.x = obj.time * 10", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
                 Assert.True(ok, error);
                 Assert.Equal(k * 10d, fields[NativeProtocol.X]);
             }
@@ -316,12 +389,12 @@ namespace LuaScript.Tests
             for (int k = 1; k <= 4; k++)
             {
                 var fa = Fields(2, 2, k);
-                bool okA = _worker.Execute(scriptA, fa, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorA);
+                bool okA = RunWorker(scriptA, fa, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorA);
                 Assert.True(okA, errorA);
                 Assert.Equal(k * 2d, fa[NativeProtocol.X]);
 
                 var fb = Fields(2, 2, k);
-                bool okB = _worker.Execute(scriptB, fb, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorB);
+                bool okB = RunWorker(scriptB, fb, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? errorB);
                 Assert.True(okB, errorB);
                 Assert.Equal(k * 3d, fb[NativeProtocol.X]);
             }
@@ -337,14 +410,14 @@ namespace LuaScript.Tests
 
             for (int k = 0; k < 2; k++)
             {
-                bool ok = _worker.Execute(broken, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+                bool ok = RunWorker(broken, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
                 Assert.False(ok);
                 Assert.False(string.IsNullOrEmpty(error));
                 Assert.DoesNotContain("timed out", error);
             }
 
             var fields = Fields(2, 2, 9d);
-            bool recovered = _worker.Execute("obj.x = obj.time", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? recoverError);
+            bool recovered = RunWorker("obj.x = obj.time", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? recoverError);
             Assert.True(recovered, recoverError);
             Assert.Equal(9d, fields[NativeProtocol.X]);
         }
@@ -357,13 +430,13 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool timedOut = _worker.Execute(
+            bool timedOut = RunWorker(
                 "local x=0 while true do x=x+1 end", fields, NoStringParams, () => pixels, 2, 2, 1500, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.False(timedOut);
             Assert.Contains("timed out", error);
 
             var fields2 = Fields(2, 2, 3d);
-            bool ok = _worker.Execute("obj.x = obj.time", fields2, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
+            bool ok = RunWorker("obj.x = obj.time", fields2, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(3d, fields2[NativeProtocol.X]);
         }
@@ -385,7 +458,7 @@ namespace LuaScript.Tests
                 "obj.zoom = o.zoom obj.rz = o.rz obj.alpha = o.alpha " +
                 "obj.sx = o.sy obj.rzr = o.rzr";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(12d, fields[NativeProtocol.X]);
@@ -417,13 +490,13 @@ namespace LuaScript.Tests
                 "local b = obj.getobject(\"a\") " +
                 "obj.x = a.x + b.x";
 
-            bool ok = _worker.Execute(script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
             Assert.Equal(1, calls);
             var fields = Fields(2, 2, 0d);
 
             x = 20d;
-            ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
+            ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(2, calls);
             Assert.Equal(40d, fields[NativeProtocol.X]);
@@ -440,7 +513,7 @@ namespace LuaScript.Tests
             const string script =
                 "local o = obj.getobject(\"missing\") obj.x = o == nil and 1 or 0";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(1d, fields[NativeProtocol.X]);
@@ -456,7 +529,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.draw() obj.draw(10, 20, 30, 2, 0.5, 0.25)",
                 fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -479,7 +552,7 @@ namespace LuaScript.Tests
             int total = NativeProtocol.DrawRingCapacity + 100;
             string script = "for i=1," + total + " do obj.draw(i,0,0,1,1,0) end";
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
 
@@ -499,7 +572,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.drawpoly(0,0,0, 10,0,0, 10,10,0, 0,10,0)",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -521,7 +594,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.drawpoly(0,0,0, 8,0,0, 8,8,0, 0,8,0, 1,1, 3,1, 3,3, 1,3, 0.5)",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -542,7 +615,7 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.setoption('antialias', 0) obj.x = obj.getoption('antialias') obj.y = obj.getoption('unset')",
                 fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -561,7 +634,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.draw() obj.setoption('antialias', 0) obj.draw()",
                 Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -581,7 +654,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.draw() obj.setoption('blend', 3) obj.draw()",
                 Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -601,7 +674,7 @@ namespace LuaScript.Tests
             var commands = new System.Collections.Generic.List<DrawCommand>();
             Action<DrawCommand> addDraw = commands.Add;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.setoption('blend', 11) obj.drawpoly(0,0,0, 10,0,0, 10,10,0, 0,10,0)",
                 Fields(4, 4, 0d), NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, addDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -619,7 +692,7 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
 
             var fTrue = Fields(2, 2, 0d);
-            bool okTrue = _worker.Execute(
+            bool okTrue = RunWorker(
                 "obj.setoption('draw_state', true)",
                 fTrue, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? errorTrue);
@@ -627,7 +700,7 @@ namespace LuaScript.Tests
             Assert.Equal(1d, fTrue[NativeProtocol.DrawState]);
 
             var fFalse = Fields(2, 2, 0d);
-            bool okFalse = _worker.Execute(
+            bool okFalse = RunWorker(
                 "obj.setoption('draw_state', false)",
                 fFalse, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? errorFalse);
@@ -635,7 +708,7 @@ namespace LuaScript.Tests
             Assert.Equal(2d, fFalse[NativeProtocol.DrawState]);
 
             var fUnset = Fields(2, 2, 0d);
-            bool okUnset = _worker.Execute(
+            bool okUnset = RunWorker(
                 "obj.x = 1",
                 fUnset, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? errorUnset);
@@ -673,7 +746,7 @@ namespace LuaScript.Tests
                 "obj.y = pos[1]\n" +
                 "obj.z = pos[3]";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000,
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000,
                 NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, setAnchor,
                 out _, out _, out _, out _, out _, out string? error);
 
@@ -703,7 +776,7 @@ namespace LuaScript.Tests
                 "obj.setoption('drawtarget','framebuffer')\n" +
                 "obj.copybuffer('obj','tmp')";
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 script, fields, NoStringParams, () => pixels, 2, 2, 5000,
                 NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
@@ -749,7 +822,7 @@ namespace LuaScript.Tests
             var pixels = new byte[4 * 4 * 4];
             var fields = Fields(4, 4, 0d);
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.setfont('Meiryo', 40, 3, 0x112233) obj.load('text', 'Hi')",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, loadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
@@ -789,7 +862,7 @@ namespace LuaScript.Tests
             var pixels = new byte[4 * 4 * 4];
             var fields = Fields(4, 4, 0d);
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.load('image', 'C:/sample.png')",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, loadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
@@ -826,7 +899,7 @@ namespace LuaScript.Tests
             var pixels = new byte[4 * 4 * 4];
             var fields = Fields(4, 4, 0d);
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.load('movie', 'C:/clip.mp4', 1.5)",
                 fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, loadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
@@ -851,7 +924,7 @@ namespace LuaScript.Tests
             var fields = Fields(2, 2, 0d);
             fields[NativeProtocol.Track0] = 42d;
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.x = obj.getvalue('track0') obj.y = obj.getvalue('alpha') obj.z = obj.getvalue('unknown')",
                 fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
@@ -880,7 +953,7 @@ namespace LuaScript.Tests
                 "for y=0,obj.h-1 do for x=0,obj.w-1 do obj.setpixel(x,y,0,0,0,0) end end " +
                 "obj.copybuffer('obj','tmp')";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.True(dirty);
@@ -899,11 +972,11 @@ namespace LuaScript.Tests
             stored[3] = 255; stored[7] = 255; stored[11] = 255; stored[15] = 255;
 
             var save = (byte[])stored.Clone();
-            bool ok = _worker.Execute("obj.copybuffer('cache:foo','obj')", Fields(w, h, 0d), NoStringParams, () => save, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker("obj.copybuffer('cache:foo','obj')", Fields(w, h, 0d), NoStringParams, () => save, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
 
             var blank = new byte[w * h * 4];
-            ok = _worker.Execute("obj.copybuffer('obj','cache:foo')", Fields(w, h, 0d), NoStringParams, () => blank, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out byte[]? restored, out _, out _, out error);
+            ok = RunWorker("obj.copybuffer('obj','cache:foo')", Fields(w, h, 0d), NoStringParams, () => blank, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out byte[]? restored, out _, out _, out error);
             Assert.True(ok, error);
             Assert.True(dirty);
             Assert.NotNull(restored);
@@ -920,7 +993,7 @@ namespace LuaScript.Tests
             Func<byte[]> loadPixels = () => { loads++; return pixels; };
 
             var fields = Fields(2, 2, 1d);
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "obj.x = obj.time * 10 obj.draw()",
                 fields, NoStringParams, loadPixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
@@ -941,7 +1014,7 @@ namespace LuaScript.Tests
             int loads = 0;
             Func<byte[]> loadPixels = () => { loads++; return pixels; };
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a = obj.getpixel(x,y) obj.setpixel(x,y,r,g,b,a) end end",
                 Fields(2, 2, 0d), NoStringParams, loadPixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
@@ -961,11 +1034,11 @@ namespace LuaScript.Tests
                 stored[i] = (byte)((i * 41 + 13) & 0xFF);
             stored[3] = 255; stored[7] = 255; stored[11] = 255; stored[15] = 255;
 
-            bool ok = _worker.Execute("obj.copybuffer('cache:sz','obj')", Fields(2, 2, 0d), NoStringParams, () => stored, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker("obj.copybuffer('cache:sz','obj')", Fields(2, 2, 0d), NoStringParams, () => stored, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
 
             var bigger = new byte[4 * 4 * 4];
-            ok = _worker.Execute("obj.copybuffer('obj','cache:sz')", Fields(4, 4, 0d), NoStringParams, () => bigger, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out bool bufferReplaced, out byte[]? restored, out int rw, out int rh, out error);
+            ok = RunWorker("obj.copybuffer('obj','cache:sz')", Fields(4, 4, 0d), NoStringParams, () => bigger, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out bool bufferReplaced, out byte[]? restored, out int rw, out int rh, out error);
             Assert.True(ok, error);
             Assert.True(dirty);
             Assert.True(bufferReplaced);
@@ -994,7 +1067,7 @@ namespace LuaScript.Tests
                 "obj.y = totalframe + framerate + layer " +
                 "obj.z = timelineframe + timelinetime";
 
-            bool ok = _worker.Execute(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
             Assert.Equal(30d, fields[NativeProtocol.X]);
@@ -1009,13 +1082,13 @@ namespace LuaScript.Tests
 
             var pixels = new byte[16];
 
-            bool ok = _worker.Execute(
+            bool ok = RunWorker(
                 "leak = 42 obj.leaked = 7 scene.custom = 1 ymm4.custom = 2",
                 Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.True(ok, error);
 
             var fields = Fields(2, 2, 0d);
-            ok = _worker.Execute(
+            ok = RunWorker(
                 "obj.x = (leak == nil and 1 or 0) + (obj.leaked == nil and 10 or 0) + (scene.custom == nil and 100 or 0) + (ymm4.custom == nil and 1000 or 0)",
                 fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
@@ -1030,12 +1103,12 @@ namespace LuaScript.Tests
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool ok = _worker.Execute("obj.x = missing.value", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            bool ok = RunWorker("obj.x = missing.value", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
             Assert.False(ok);
             Assert.False(string.IsNullOrEmpty(error));
 
             var fields2 = Fields(2, 2, 7d);
-            bool ok2 = _worker.Execute("obj.x = obj.time", fields2, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
+            bool ok2 = RunWorker("obj.x = obj.time", fields2, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok2, error);
             Assert.Equal(7d, fields2[NativeProtocol.X]);
         }

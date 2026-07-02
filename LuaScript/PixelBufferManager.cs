@@ -1,7 +1,6 @@
 using System;
 using Vortice;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Direct2D1.Effects;
@@ -29,10 +28,56 @@ namespace LuaScript
             _ctx = ctx;
         }
 
-        public byte[] LoadInputPixels(ID2D1Image input, RawRectF bounds, int width, int height)
+        public unsafe byte[] LoadInputPixels(ID2D1Image input, RawRectF bounds, int width, int height)
         {
             EnsureBitmaps(width, height);
+            RenderToStaging(input, bounds);
 
+            var mapped = _stagingBitmap!.Map(MapOptions.Read);
+            try
+            {
+                fixed (byte* destination = _pixelBuffer)
+                    CopyStagingRows(mapped.Bits, mapped.Pitch, destination, _pixelBuffer!.Length, width, height);
+            }
+            finally
+            {
+                _stagingBitmap.Unmap();
+            }
+
+            return _pixelBuffer!;
+        }
+
+        public unsafe void LoadInputPixelsInto(ID2D1Image input, RawRectF bounds, int width, int height, nint destination, long capacity)
+        {
+            EnsureBitmaps(width, height);
+            RenderToStaging(input, bounds);
+
+            var mapped = _stagingBitmap!.Map(MapOptions.Read);
+            try
+            {
+                CopyStagingRows(mapped.Bits, mapped.Pitch, (byte*)destination, capacity, width, height);
+            }
+            finally
+            {
+                _stagingBitmap.Unmap();
+            }
+        }
+
+        public unsafe void WritePixelsToOutput(byte[] pixels, int width, int height)
+        {
+            EnsureBitmaps(width, height);
+            fixed (byte* ptr = pixels)
+                _outputBitmap!.CopyFromMemory(new nint(ptr), width * 4);
+        }
+
+        public void WritePixelsToOutput(nint source, int width, int height)
+        {
+            EnsureBitmaps(width, height);
+            _outputBitmap!.CopyFromMemory(source, width * 4);
+        }
+
+        private void RenderToStaging(ID2D1Image input, RawRectF bounds)
+        {
             var dc = _ctx.DeviceContext;
             using var savedTarget = dc.Target;
 
@@ -44,37 +89,28 @@ namespace LuaScript
             dc.Target = savedTarget;
 
             _stagingBitmap!.CopyFromBitmap(_renderTarget!);
-
-            var mapped = _stagingBitmap.Map(MapOptions.Read);
-            try
-            {
-                if (mapped.Pitch == width * 4)
-                {
-                    Marshal.Copy(mapped.Bits, _pixelBuffer!, 0, width * height * 4);
-                }
-                else
-                {
-                    for (int row = 0; row < height; row++)
-                        Marshal.Copy(
-                            mapped.Bits + mapped.Pitch * row,
-                            _pixelBuffer!,
-                            row * width * 4,
-                            width * 4);
-                }
-            }
-            finally
-            {
-                _stagingBitmap.Unmap();
-            }
-
-            return _pixelBuffer!;
         }
 
-        public unsafe void WritePixelsToOutput(byte[] pixels, int width, int height)
+        private static unsafe void CopyStagingRows(nint bits, int pitch, byte* destination, long capacity, int width, int height)
         {
-            EnsureBitmaps(width, height);
-            fixed (byte* ptr = pixels)
-                _outputBitmap!.CopyFromMemory(new nint(ptr), width * 4);
+            long required = (long)width * height * 4;
+            if (required > capacity)
+                throw new InvalidOperationException("Pixel destination is smaller than the mapped region.");
+
+            byte* source = (byte*)bits;
+            if (pitch == width * 4)
+            {
+                Buffer.MemoryCopy(source, destination, capacity, required);
+                return;
+            }
+
+            long rowBytes = (long)width * 4;
+            for (int row = 0; row < height; row++)
+                Buffer.MemoryCopy(
+                    source + (long)pitch * row,
+                    destination + rowBytes * row,
+                    capacity - rowBytes * row,
+                    rowBytes);
         }
 
         public ID2D1Image GetTransformOutput(float left, float top)
