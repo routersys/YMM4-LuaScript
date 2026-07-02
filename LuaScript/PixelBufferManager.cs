@@ -18,6 +18,7 @@ namespace LuaScript
         private ID2D1Bitmap1? _stagingBitmap;
         private ID2D1Bitmap1? _outputBitmap;
         private AffineTransform2D? _transformEffect;
+        private ID2D1Image? _transformOutput;
         private byte[]? _pixelBuffer;
         private int _bitmapWidth;
         private int _bitmapHeight;
@@ -33,7 +34,7 @@ namespace LuaScript
             EnsureBitmaps(width, height);
 
             var dc = _ctx.DeviceContext;
-            var savedTarget = dc.Target;
+            using var savedTarget = dc.Target;
 
             dc.Target = _renderTarget;
             dc.BeginDraw();
@@ -82,6 +83,7 @@ namespace LuaScript
             {
                 _transformEffect = new AffineTransform2D(_ctx.DeviceContext);
                 _transformEffect.SetInput(0, _outputBitmap, true);
+                _transformOutput = _transformEffect.Output;
                 _cachedBounds = default;
             }
 
@@ -91,7 +93,7 @@ namespace LuaScript
                 _cachedBounds = new RawRectF(left, top, left, top);
             }
 
-            return _transformEffect.Output;
+            return _transformOutput!;
         }
 
         private void EnsureBitmaps(int width, int height)
@@ -101,10 +103,12 @@ namespace LuaScript
             _renderTarget?.Dispose();
             _stagingBitmap?.Dispose();
             _outputBitmap?.Dispose();
+            _transformOutput?.Dispose();
             _transformEffect?.Dispose();
             _renderTarget = null;
             _stagingBitmap = null;
             _outputBitmap = null;
+            _transformOutput = null;
             _transformEffect = null;
             _bitmapWidth = 0;
             _bitmapHeight = 0;
@@ -135,10 +139,12 @@ namespace LuaScript
             _renderTarget?.Dispose();
             _stagingBitmap?.Dispose();
             _outputBitmap?.Dispose();
+            _transformOutput?.Dispose();
             _transformEffect?.Dispose();
             _renderTarget = null;
             _stagingBitmap = null;
             _outputBitmap = null;
+            _transformOutput = null;
             _transformEffect = null;
         }
     }
