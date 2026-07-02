@@ -155,6 +155,26 @@
         scene.width   : Resolución horizontal (píxeles) de la escena (proyecto) [Solo lectura]
         scene.height  : Resolución vertical (píxeles) de la escena (proyecto) [Solo lectura]
 
+        scene.set(name, value)
+                Guarda un valor en un área compartida a nivel de escena.
+                El valor puede leerse con scene.get(name) desde todos los efectos de
+                script Lua de la misma escena, a través de elementos y fotogramas.
+                name  : Nombre del valor (cadena)
+                value : Valor a guardar (número, cadena o booleano). Pasar nil lo elimina.
+                * Los valores que no sean números, cadenas o booleanos (tablas,
+                  funciones, etc.) no se guardan.
+                * Los nombres y los valores de cadena se truncan más allá de 4095
+                  bytes en UTF-8.
+                Ejemplo: scene.set("shared_x", obj.x)
+        scene.get(name)
+                Obtiene un valor guardado con scene.set(). Devuelve nil para nombres
+                no establecidos.
+                Ejemplo: local x = scene.get("shared_x") or 0
+        * Los valores son independientes por escena y se mantienen en memoria hasta
+          que YMM4 se cierra (no se guardan en el archivo del proyecto).
+        * El orden de evaluación entre elementos no está garantizado; evite diseños
+          que dependan del orden de escritura/lectura dentro del mismo fotograma.
+
 
 - Tabla obj - Variables -
 
@@ -627,6 +647,54 @@
         anim.bezier(t, p0, p1, p2, p3): Evaluates cubic bezier curve at `t` (0.0~1.0)
 
 
+- Funciones globales compatibles con AviUtl -
+
+        Las siguientes funciones pueden llamarse directamente en el ámbito global.
+        Devuelven resultados idénticos en todos los motores de ejecución
+        (MoonSharp / nativo).
+
+        RGB(r, g, b)
+        RGB(col)
+        RGB(r1, g1, b1, r2, g2, b2)
+                Convierte entre un valor de color (0x000000-0xffffff) y sus
+                componentes rojo, verde y azul (0-255 cada uno). Con 3 argumentos
+                compone un único valor de color y con 1 argumento lo descompone en
+                r, g, b. Con 6 argumentos devuelve un color que cambia linealmente
+                del primer color al segundo según el tiempo transcurrido del objeto
+                (obj.time / obj.totaltime).
+                Ejemplo: col = RGB(64, 192, 255)          -- 0x40C0FF
+                Ejemplo: r, g, b = RGB(0x0080FF)          -- 0, 128, 255
+                Ejemplo: col = RGB(64,192,255, 128,64,0)  -- color inicial -> final
+
+        HSV(h, s, v)
+        HSV(col)
+        HSV(h1, s1, v1, h2, s2, v2)
+                Convierte entre un valor de color (0x000000-0xffffff) y tono (0-360),
+                saturación (0-100) y valor (0-100). Los argumentos funcionan como
+                en RGB().
+                Ejemplo: col = HSV(60, 100, 100)          -- 0xFFFF00
+                Ejemplo: h, s, v = HSV(0x0080FF)          -- 210, 100, 100
+
+        OR(a, b) / AND(a, b) / XOR(a, b)
+                Realiza operaciones bit a bit (or / and / or exclusivo) sobre enteros
+                de 32 bits. Las fracciones hasta exactamente 0.5 se truncan al
+                convertir a entero (2.50 -> 2, 2.51 -> 3).
+                Ejemplo: result = OR(8, 3)                -- 11
+
+        SHIFT(a, shift)
+                Realiza un desplazamiento aritmético. Un shift positivo desplaza a la
+                izquierda y uno negativo a la derecha.
+                Ejemplo: result = SHIFT(5, 3)             -- 40
+                Ejemplo: result = SHIFT(91, -2)           -- 22
+
+        debug_print(text)
+                Envía la cadena indicada a OutputDebugString(). Para depuración.
+                Los mensajes pueden verse con una herramienta de monitorización como
+                DebugView. Cuando ocurre un error de ejecución del script, el mensaje
+                de error también se envía automáticamente.
+                Ejemplo: debug_print(string.format("x = %d", obj.x))
+
+
 - Bibliotecas estándar disponibles -
 
         Biblioteca math:
@@ -792,14 +860,12 @@
                 x Carga de módulos mediante require y acceso arbitrario a archivos como
                   io / dofile (la carga de imagen / vídeo con obj.load sí se admite con
                   validación de cabecera).
-                x obj.setanchor, scene.set / scene.get, etc.
+                x obj.setanchor, etc.
 
 
 - Funciones no admitidas / Limitaciones -
 
         x obj.rand1(), obj.mes(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
-        x Las funciones como scene.set() y scene.get() de la tabla scene de AviUtl2 no son compatibles.
-          (Solo se pueden leer scene.width y scene.height)
         x El acceso arbitrario a archivos desde scripts (require, dofile, io, etc.) no es compatible.
           Solo obj.load("image"/"movie") carga archivos confirmados como medios genuinos
           mediante validación de la cabecera inicial.

@@ -157,6 +157,24 @@
         scene.cx      : Half of the scene's horizontal resolution (= scene.width / 2) [ReadOnly]
         scene.cy      : Half of the scene's vertical resolution (= scene.height / 2) [ReadOnly]
 
+        scene.set(name, value)
+                Stores a value in a shared area scoped to the scene.
+                The value can be read back with scene.get(name) from every Lua script
+                effect in the same scene, across items and frames.
+                name  : Name of the value (string)
+                value : Value to store (number, string, or boolean). Passing nil removes it.
+                * Values other than numbers, strings, and booleans (tables, functions,
+                  etc.) are not stored.
+                * Names and string values are truncated beyond 4095 bytes in UTF-8.
+                Example: scene.set("shared_x", obj.x)
+        scene.get(name)
+                Retrieves a value stored with scene.set(). Returns nil for unset names.
+                Example: local x = scene.get("shared_x") or 0
+        * Values are independent per scene and kept in memory until YMM4 exits
+          (they are not saved into the project file).
+        * The evaluation order between items is not guaranteed, so avoid designs that
+          depend on write/read ordering within the same frame.
+
 
 - obj Table - Variables -
 
@@ -623,6 +641,52 @@
         anim.bezier(t, p0, p1, p2, p3): Evaluates cubic bezier curve at `t` (0.0~1.0)
 
 
+- AviUtl-Compatible Global Functions -
+
+        The following functions can be called directly in the global scope.
+        They return identical results on every execution engine (MoonSharp / native).
+
+        RGB(r, g, b)
+        RGB(col)
+        RGB(r1, g1, b1, r2, g2, b2)
+                Converts between a color value (0x000000-0xffffff) and its red, green,
+                and blue components (0-255 each). With 3 arguments it composes a single
+                color value, and with 1 argument it decomposes into r, g, b. With 6
+                arguments it returns a color that changes linearly from the first color
+                to the second according to the object's elapsed time
+                (obj.time / obj.totaltime).
+                Example: col = RGB(64, 192, 255)          -- 0x40C0FF
+                Example: r, g, b = RGB(0x0080FF)          -- 0, 128, 255
+                Example: col = RGB(64,192,255, 128,64,0)  -- start color -> end color
+
+        HSV(h, s, v)
+        HSV(col)
+        HSV(h1, s1, v1, h2, s2, v2)
+                Converts between a color value (0x000000-0xffffff) and hue (0-360),
+                saturation (0-100), and value (0-100). The arguments work like RGB().
+                Example: col = HSV(60, 100, 100)          -- 0xFFFF00
+                Example: h, s, v = HSV(0x0080FF)          -- 210, 100, 100
+
+        OR(a, b) / AND(a, b) / XOR(a, b)
+                Performs bitwise operations (or / and / exclusive or) on 32-bit
+                integers. Fractions up to exactly 0.5 are truncated when converting to
+                integers (2.50 -> 2, 2.51 -> 3).
+                Example: result = OR(8, 3)                -- 11
+
+        SHIFT(a, shift)
+                Performs an arithmetic shift. A positive shift shifts left and a
+                negative shift shifts right.
+                Example: result = SHIFT(5, 3)             -- 40
+                Example: result = SHIFT(91, -2)           -- 22
+
+        debug_print(text)
+                Sends the given string to OutputDebugString(). For debugging.
+                Messages can be viewed with a debug monitor tool such as DebugView.
+                When a script execution error occurs, the error message is also sent
+                automatically.
+                Example: debug_print(string.format("x = %d", obj.x))
+
+
 - Available Standard Libraries -
 
         math library:
@@ -784,14 +848,12 @@
                 x Module loading via require, and arbitrary file access such as io /
                   dofile (image / video loading via obj.load is supported with header
                   validation).
-                x obj.setanchor, scene.set / scene.get, etc.
+                x obj.setanchor, etc.
 
 
 - Unsupported Features / Limitations -
 
         x obj.rand1(), obj.mes(), obj.setanchor(), etc. from AviUtl2 are not supported.
-        x Functions such as scene.set() and scene.get() in the AviUtl2 scene table are not supported.
-          (Only scene.width and scene.height can be read)
         x Arbitrary file access from scripts (require, dofile, io, etc.) is not supported.
           Only obj.load("image"/"movie") loads files confirmed to be genuine media by
           leading-header validation.

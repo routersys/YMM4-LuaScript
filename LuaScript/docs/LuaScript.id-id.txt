@@ -156,6 +156,26 @@
         scene.width   : Resolusi horizontal (piksel) adegan (proyek) [Hanya Baca]
         scene.height  : Resolusi vertikal (piksel) adegan (proyek) [Hanya Baca]
 
+        scene.set(name, value)
+                Menyimpan nilai ke area bersama yang dibatasi per adegan.
+                Nilai dapat dibaca kembali dengan scene.get(name) dari semua efek
+                skrip Lua dalam adegan yang sama, lintas item dan frame.
+                name  : Nama nilai (string)
+                value : Nilai yang disimpan (angka, string, atau boolean). Mengirim
+                        nil akan menghapusnya.
+                * Nilai selain angka, string, dan boolean (tabel, fungsi, dll.)
+                  tidak disimpan.
+                * Nama dan nilai string dipotong setelah 4095 byte dalam UTF-8.
+                Contoh: scene.set("shared_x", obj.x)
+        scene.get(name)
+                Mengambil nilai yang disimpan dengan scene.set(). Mengembalikan nil
+                untuk nama yang belum diatur.
+                Contoh: local x = scene.get("shared_x") or 0
+        * Nilai bersifat independen per adegan dan disimpan di memori sampai YMM4
+          ditutup (tidak disimpan ke berkas proyek).
+        * Urutan evaluasi antar item tidak dijamin, jadi hindari desain yang
+          bergantung pada urutan tulis/baca dalam frame yang sama.
+
 
 - Tabel obj - Variabel -
 
@@ -623,6 +643,53 @@
         anim.bezier(t, p0, p1, p2, p3): Evaluates cubic bezier curve at `t` (0.0~1.0)
 
 
+- Fungsi Global yang Kompatibel dengan AviUtl -
+
+        Fungsi-fungsi berikut dapat dipanggil langsung di lingkup global.
+        Semuanya mengembalikan hasil identik di setiap mesin eksekusi
+        (MoonSharp / native).
+
+        RGB(r, g, b)
+        RGB(col)
+        RGB(r1, g1, b1, r2, g2, b2)
+                Mengonversi antara nilai warna (0x000000-0xffffff) dan komponen
+                merah, hijau, biru (masing-masing 0-255). Dengan 3 argumen menyusun
+                satu nilai warna, dan dengan 1 argumen menguraikannya menjadi
+                r, g, b. Dengan 6 argumen mengembalikan warna yang berubah linear
+                dari warna pertama ke warna kedua sesuai waktu objek
+                (obj.time / obj.totaltime).
+                Contoh: col = RGB(64, 192, 255)          -- 0x40C0FF
+                Contoh: r, g, b = RGB(0x0080FF)          -- 0, 128, 255
+                Contoh: col = RGB(64,192,255, 128,64,0)  -- warna awal -> akhir
+
+        HSV(h, s, v)
+        HSV(col)
+        HSV(h1, s1, v1, h2, s2, v2)
+                Mengonversi antara nilai warna (0x000000-0xffffff) dan hue (0-360),
+                saturasi (0-100), serta value (0-100). Argumen bekerja seperti RGB().
+                Contoh: col = HSV(60, 100, 100)          -- 0xFFFF00
+                Contoh: h, s, v = HSV(0x0080FF)          -- 210, 100, 100
+
+        OR(a, b) / AND(a, b) / XOR(a, b)
+                Melakukan operasi bitwise (or / and / exclusive or) pada bilangan
+                bulat 32-bit. Pecahan hingga tepat 0.5 dibulatkan ke bawah saat
+                dikonversi ke bilangan bulat (2.50 -> 2, 2.51 -> 3).
+                Contoh: result = OR(8, 3)                -- 11
+
+        SHIFT(a, shift)
+                Melakukan pergeseran aritmetika. Shift positif menggeser ke kiri dan
+                shift negatif menggeser ke kanan.
+                Contoh: result = SHIFT(5, 3)             -- 40
+                Contoh: result = SHIFT(91, -2)           -- 22
+
+        debug_print(text)
+                Mengirim string yang ditentukan ke OutputDebugString(). Untuk
+                debugging. Pesan dapat dilihat dengan alat pemantau debug seperti
+                DebugView. Saat terjadi kesalahan eksekusi skrip, pesan kesalahan
+                juga dikirim secara otomatis.
+                Contoh: debug_print(string.format("x = %d", obj.x))
+
+
 - Pustaka Standar yang Tersedia -
 
         Pustaka math:
@@ -785,14 +852,12 @@
                 x Pemuatan modul melalui require, dan akses berkas sembarang seperti
                   io / dofile (pemuatan gambar / video via obj.load didukung dengan
                   validasi header).
-                x obj.setanchor, scene.set / scene.get, dll.
+                x obj.setanchor, dll.
 
 
 - Fitur yang Tidak Didukung / Batasan -
 
         x obj.rand1(), obj.mes(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
-        x Fungsi seperti scene.set() dan scene.get() dalam tabel scene AviUtl2 tidak didukung.
-          (Hanya scene.width dan scene.height yang dapat dibaca)
         x Akses berkas sembarang dari skrip (require, dofile, io, dll.) tidak didukung.
           Hanya obj.load("image"/"movie") yang memuat berkas yang dipastikan sebagai
           media asli melalui validasi header awal.

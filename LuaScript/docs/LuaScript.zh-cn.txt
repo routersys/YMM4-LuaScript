@@ -147,6 +147,23 @@
         scene.width   : 场景（项目）的水平分辨率（像素）[只读]
         scene.height  : 场景（项目）的垂直分辨率（像素）[只读]
 
+        scene.set(name, value)
+                将值保存到以场景为单位的共享区域。
+                同一场景内的所有 Lua 脚本效果都可以跨项目、跨帧通过
+                scene.get(name) 读取该值。
+                name  : 值的名称（字符串）
+                value : 要保存的值（数值、字符串、布尔值）。传入 nil 时删除。
+                * 数值、字符串、布尔值以外的类型（表、函数等）不会被保存。
+                * 名称和字符串值按 UTF-8 计算超过 4095 字节的部分将被截断。
+                例：scene.set("shared_x", obj.x)
+        scene.get(name)
+                获取通过 scene.set() 保存的值。未设置的名称返回 nil。
+                例：local x = scene.get("shared_x") or 0
+        * 值按场景相互独立，在 YMM4 退出前一直保留在内存中
+          （不会保存到项目文件）。
+        * 项目之间的求值顺序没有保证，请避免依赖同一帧内写入与读取顺序的
+          设计。
+
 
 - obj 表 - 变量 -
 
@@ -585,6 +602,47 @@
         anim.bezier(t, p0, p1, p2, p3): 计算 t(0.0～1.0) 时的三次贝塞尔曲线值
 
 
+- AviUtl 兼容的全局函数 -
+
+        以下函数可在全局作用域中直接调用。
+        在所有执行引擎（MoonSharp / 原生）上返回完全相同的结果。
+
+        RGB(r, g, b)
+        RGB(col)
+        RGB(r1, g1, b1, r2, g2, b2)
+                在颜色信息（0x000000～0xffffff）与红、绿、蓝（各 0～255）之间相互
+                转换。3 个参数时合成为一个颜色信息，1 个参数时分解为 r, g, b 三个值。
+                6 个参数时，返回随对象时间经过（obj.time / obj.totaltime）从第一种
+                颜色向第二种颜色线性变化的颜色信息。
+                例：col = RGB(64, 192, 255)          -- 0x40C0FF
+                例：r, g, b = RGB(0x0080FF)          -- 0, 128, 255
+                例：col = RGB(64,192,255, 128,64,0)  -- 起始色→结束色
+
+        HSV(h, s, v)
+        HSV(col)
+        HSV(h1, s1, v1, h2, s2, v2)
+                在颜色信息（0x000000～0xffffff）与色相（0～360）、饱和度（0～100）、
+                明度（0～100）之间相互转换。参数含义与 RGB() 相同。
+                例：col = HSV(60, 100, 100)          -- 0xFFFF00
+                例：h, s, v = HSV(0x0080FF)          -- 210, 100, 100
+
+        OR(a, b) / AND(a, b) / XOR(a, b)
+                以 32bit 整数进行位运算（或、与、异或）。
+                小数转换为整数时，恰好 0.5 及以下会被舍去（2.50→2、2.51→3）。
+                例：result = OR(8, 3)                -- 11
+
+        SHIFT(a, shift)
+                进行算术移位。shift 为正数时左移，为负数时右移。
+                例：result = SHIFT(5, 3)             -- 40
+                例：result = SHIFT(91, -2)           -- 22
+
+        debug_print(text)
+                将指定字符串发送到 OutputDebugString()。用于调试。
+                可通过 DebugView 等调试监视工具查看消息。
+                此外，脚本发生执行错误时会自动发送错误消息。
+                例：debug_print(string.format("x = %d", obj.x))
+
+
 - 可用标准库 -
 
         math 库：
@@ -734,14 +792,12 @@
         调用它们的脚本不会按预期运行。
                 × 通过 require 加载模块，以及 io / dofile 等任意文件访问
                   (obj.load 的图像 / 视频加载已带文件头校验支持)。
-                × obj.setanchor、scene.set / scene.get 等。
+                × obj.setanchor 等。
 
 
 - 不支持项目·限制事项 -
 
         × 不支持 AviUtl2 的 obj.rand1()、obj.mes()、obj.setanchor() 等。
-        × 不支持 AviUtl2 scene 表中的 scene.set()、scene.get() 等函数。
-          （仅支持读取 scene.width 和 scene.height）
         × 不支持脚本进行任意文件访问（require、dofile、io 等）。
           仅 obj.load("image"/"movie") 会加载经文件头校验确认为真正媒体的文件。
         × 修改 obj.z 会反映到绘制中（包含在 ReadBack 中），
