@@ -35,6 +35,7 @@ namespace LuaScript.Engine
         private bool _scriptWritten;
         private readonly Dictionary<string, byte[]> _stringNameBytes = new(StringComparer.Ordinal);
         private byte[] _stringValueBytes = new byte[256];
+        private byte[] _sceneValueBytes = new byte[256];
 
         public LuaJitWorker(string nativeDir)
         {
@@ -63,6 +64,8 @@ namespace LuaScript.Engine
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
             Action<string, int, bool, int, double[]> setAnchor,
+            Func<string, SceneValue> sceneGetValue,
+            Action<string, SceneValue> sceneSetValue,
             out bool pixelsDirty,
             out bool bufferReplaced,
             out int resultWidth,
@@ -146,7 +149,7 @@ namespace LuaScript.Engine
                 }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor, sceneGetValue, sceneSetValue);
                 }
                 _workEvent.Set();
             }
@@ -276,7 +279,9 @@ namespace LuaScript.Engine
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
-            Action<string, int, bool, int, double[]> setAnchor)
+            Action<string, int, bool, int, double[]> setAnchor,
+            Func<string, SceneValue> sceneGetValue,
+            Action<string, SceneValue> sceneSetValue)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
             switch (kind)
@@ -302,7 +307,77 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindSetAnchor:
                     ResolveSetAnchorCallback(view, setAnchor);
                     break;
+                case NativeProtocol.CbKindSceneGet:
+                    ResolveSceneGetCallback(view, sceneGetValue);
+                    break;
+                case NativeProtocol.CbKindSceneSet:
+                    ResolveSceneSetCallback(view, sceneSetValue);
+                    break;
             }
+        }
+
+        private void ResolveSceneGetCallback(MemoryMappedViewAccessor view, Func<string, SceneValue> getValue)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string name = ResolveTag(tagLen);
+
+            SceneValue value;
+            try { value = getValue(name); }
+            catch { value = SceneValue.Nil; }
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            view.Write(rOff + 0 * 8, (double)value.Kind);
+            view.Write(rOff + 1 * 8, value.Number);
+            if (value.Kind == SceneValueKind.String)
+            {
+                string text = value.Text ?? string.Empty;
+                int maxBytes = Encoding.UTF8.GetMaxByteCount(text.Length);
+                if (_sceneValueBytes.Length < maxBytes)
+                    _sceneValueBytes = new byte[Math.Max(maxBytes, _sceneValueBytes.Length * 2)];
+                int length = Encoding.UTF8.GetBytes(text, 0, text.Length, _sceneValueBytes, 0);
+                if (length > NativeProtocol.CallbackTagMax)
+                    length = NativeProtocol.CallbackTagMax;
+                view.WriteArray(NativeProtocol.CallbackTagOffset, _sceneValueBytes, 0, length);
+                view.Write(NativeProtocol.OffCallbackTagLen, length);
+            }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveSceneSetCallback(MemoryMappedViewAccessor view, Action<string, SceneValue> setValue)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            var kind = (SceneValueKind)(int)view.ReadDouble(rOff + 0 * 8);
+            double number = view.ReadDouble(rOff + 1 * 8);
+
+            string name;
+            SceneValue value;
+            if (kind == SceneValueKind.String)
+            {
+                int separator = Array.IndexOf(_callbackTag, (byte)0, 0, tagLen);
+                int nameLength = separator >= 0 ? separator : tagLen;
+                name = Encoding.UTF8.GetString(_callbackTag, 0, nameLength);
+                value = SceneValue.FromString(separator >= 0
+                    ? Encoding.UTF8.GetString(_callbackTag, separator + 1, tagLen - separator - 1)
+                    : string.Empty);
+            }
+            else
+            {
+                name = ResolveTag(tagLen);
+                value = kind switch
+                {
+                    SceneValueKind.Number => SceneValue.FromNumber(number),
+                    SceneValueKind.Boolean => SceneValue.FromBoolean(number != 0d),
+                    _ => SceneValue.Nil,
+                };
+            }
+
+            try { setValue(name, value); }
+            catch { }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private void ResolveSetAnchorCallback(MemoryMappedViewAccessor view, Action<string, int, bool, int, double[]> setAnchor)
