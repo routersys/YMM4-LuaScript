@@ -20,6 +20,9 @@ namespace LuaScript.Tests
 
         private readonly LuaJitWorker _worker = new(NativeDir);
 
+        private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
+        private Action<string, SceneValue> _sceneSet = (_, _) => { };
+
         public void Dispose() => _worker.Dispose();
 
         private static double[] Fields(int w, int h, double time)
@@ -65,6 +68,7 @@ namespace LuaScript.Tests
                 },
                 width, height, timeoutMs,
                 resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor,
+                _sceneGet, _sceneSet,
                 out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
 
             resultPixels = null;
@@ -99,6 +103,7 @@ namespace LuaScript.Tests
                     System.Runtime.InteropServices.Marshal.Copy(pixels, 0, address, pixels.Length);
                 },
                 w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                _sceneGet, _sceneSet,
                 out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
@@ -1093,6 +1098,125 @@ namespace LuaScript.Tests
                 fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out error);
             Assert.True(ok, error);
             Assert.Equal(1111d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
+        public void SceneSet_RoundTripsAllValueKinds()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var store = new SceneSharedValues();
+            _sceneGet = store.Get;
+            _sceneSet = store.Set;
+
+            var pixels = new byte[16];
+            const string script =
+                "scene.set('num', 12.5) " +
+                "scene.set('text', 'こんにちは') " +
+                "scene.set('flag', true) " +
+                "scene.set('gone', 1) scene.set('gone', nil) " +
+                "scene.set(1, 'ignored') " +
+                "scene.set('table', {})";
+
+            bool ok = RunWorker(script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(SceneValue.FromNumber(12.5), store.Get("num"));
+            Assert.Equal(SceneValue.FromString("こんにちは"), store.Get("text"));
+            Assert.Equal(SceneValue.FromBoolean(true), store.Get("flag"));
+            Assert.Equal(SceneValue.Nil, store.Get("gone"));
+            Assert.Equal(SceneValue.Nil, store.Get("table"));
+        }
+
+        [Fact]
+        public void SceneGet_ReturnsAllValueKinds()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var store = new SceneSharedValues();
+            store.Set("num", SceneValue.FromNumber(-3.25));
+            store.Set("text", SceneValue.FromString("値テキスト"));
+            store.Set("flag", SceneValue.FromBoolean(true));
+            _sceneGet = store.Get;
+            _sceneSet = store.Set;
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "obj.x = scene.get('num') " +
+                "obj.y = string.len(scene.get('text')) " +
+                "obj.z = scene.get('flag') == true and 1 or 0 " +
+                "obj.alpha = (scene.get('missing') == nil and 1 or 0) + (scene.get(7) == nil and 10 or 0)";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(-3.25d, fields[NativeProtocol.X]);
+            Assert.Equal(System.Text.Encoding.UTF8.GetByteCount("値テキスト"), fields[NativeProtocol.Y]);
+            Assert.Equal(1d, fields[NativeProtocol.Z]);
+            Assert.Equal(11d, fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void SceneValues_RoundTripWithinWorkerRun()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var store = new SceneSharedValues();
+            _sceneGet = store.Get;
+            _sceneSet = store.Set;
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "scene.set('counter', (scene.get('counter') or 0) + 1) " +
+                "obj.x = scene.get('counter')";
+
+            for (int i = 1; i <= 3; i++)
+            {
+                bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+                Assert.True(ok, error);
+                Assert.Equal(i, fields[NativeProtocol.X]);
+            }
+        }
+
+        [Fact]
+        public void GlobalFunctions_MatchOracleInsideWorker()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "obj.x = OR(8, 3) + AND(12, 6) + XOR(25, 11) " +
+                "obj.y = SHIFT(5, 3) + SHIFT(91, -2) " +
+                "obj.z = RGB(64, 192, 255) " +
+                "obj.alpha = HSV(60, 100, 100)";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(11d + 4d + 18d, fields[NativeProtocol.X]);
+            Assert.Equal(40d + 22d, fields[NativeProtocol.Y]);
+            Assert.Equal(0x40C0FF, fields[NativeProtocol.Z]);
+            Assert.Equal(0xFFFF00, fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void RgbInterpolation_UsesObjectTimeRatio()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 1d);
+            fields[NativeProtocol.TotalTime] = 4d;
+
+            bool ok = RunWorker(
+                "obj.x = RGB(0, 0, 0, 100, 200, 40)",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(Compat.AviUtlGlobalFunctions.RgbInterpolate(0, 0, 0, 100, 200, 40, 0.25), fields[NativeProtocol.X]);
         }
 
         [Fact]
