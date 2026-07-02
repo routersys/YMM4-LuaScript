@@ -171,6 +171,7 @@ namespace LuaScript
                     CoreModules.ErrorHandling);
                 script.Options.ScriptLoader = new DisabledFileScriptLoader();
                 script.AttachDebugger(_debugger);
+                AviUtlGlobalRegistrar.RegisterFunctions(script.Globals, CurrentTimeRatio);
                 _script = script;
             }
 
@@ -227,6 +228,7 @@ namespace LuaScript
                 if (isFirstSetup)
                 {
                     var sceneTable = new Table(script);
+                    RegisterSceneCallbacks(sceneTable);
                     script.Globals["scene"] = sceneTable;
 
                     var objTable = new Table(script);
@@ -252,6 +254,7 @@ namespace LuaScript
                     if (!ReferenceEquals(script.Globals.Get("scene").Table, _sceneTable))
                     {
                         var sceneTable = new Table(script);
+                        RegisterSceneCallbacks(sceneTable);
                         script.Globals["scene"] = sceneTable;
                         _sceneTable = sceneTable;
                         _sceneTableSnapshot = null;
@@ -423,6 +426,24 @@ namespace LuaScript
                 }
                 foreach (var key in buffer)
                     script.Globals[key] = DynValue.Nil;
+            }
+
+            private double CurrentTimeRatio() =>
+                _activeContext is { TotalTime: > 0d } context ? context.Time / context.TotalTime : 0d;
+
+            private void RegisterSceneCallbacks(Table scene) =>
+                SceneTableRegistrar.RegisterFunctions(scene, GetSceneValue, SetSceneValue);
+
+            private SceneValue GetSceneValue(string name)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                return _activeContext?.GetSceneValue(name) ?? SceneValue.Nil;
+            }
+
+            private void SetSceneValue(string name, SceneValue value)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                _activeContext?.SetSceneValue(name, value);
             }
 
             private void RegisterObjectCallbacks(Table obj)
