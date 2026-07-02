@@ -7,23 +7,25 @@ namespace LuaScript
         private readonly List<SceneValueQuery> _queries = [];
 
         private SceneSharedValues? _store;
+        private object _scope = new();
         private string _sceneId = string.Empty;
         private long _generation;
-        private bool _exporting;
+        private int _layer;
 
         public bool HasWrites => _writes.Count > 0;
 
         public IReadOnlyList<SceneValueQuery> Queries => _queries;
 
-        public void Begin(string sceneId, long generation, bool exporting)
+        public void Begin(object scope, string sceneId, long generation, int layer)
         {
-            if (!string.Equals(_sceneId, sceneId, StringComparison.Ordinal))
+            if (!ReferenceEquals(_scope, scope) || !string.Equals(_sceneId, sceneId, StringComparison.Ordinal))
             {
                 _store = null;
+                _scope = scope;
                 _sceneId = sceneId;
             }
             _generation = generation;
-            _exporting = exporting;
+            _layer = layer;
             _writes.Clear();
             _reads.Clear();
             _queries.Clear();
@@ -36,7 +38,7 @@ namespace LuaScript
                 return written;
             if (_reads.TryGetValue(name, out var cached))
                 return cached;
-            var value = Store.Read(_generation, _exporting, name);
+            var value = Store.Read(_generation, name);
             _reads[name] = value;
             _queries.Add(new SceneValueQuery(name, value));
             return value;
@@ -59,9 +61,9 @@ namespace LuaScript
         {
             if (_writes.Count == 0)
                 return;
-            Store.Publish(_generation, _exporting, _writes);
+            Store.Publish(_generation, _layer, _writes);
         }
 
-        private SceneSharedValues Store => _store ??= SceneSharedValues.ForScene(_sceneId);
+        private SceneSharedValues Store => _store ??= SceneSharedValues.ForScene(_scope, _sceneId);
     }
 }
