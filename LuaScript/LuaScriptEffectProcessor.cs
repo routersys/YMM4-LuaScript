@@ -297,7 +297,11 @@ namespace LuaScript
 
             if (!_isFirst && key == _cachedKey && !_cachedSceneValuesWritten &&
                 (_cachedQueries.Length == 0 || QueriesMatch(_cachedQueries, GetFrameResolver())) &&
-                (_cachedSceneValueQueries.Length == 0 || SceneValuesMatch(_cachedSceneValueQueries, SceneSharedValues.ForScene(ResolveSceneId(key.SceneId)))))
+                (_cachedSceneValueQueries.Length == 0 || SceneValuesMatch(
+                    _cachedSceneValueQueries,
+                    SceneSharedValues.ForScene(ResolveSceneId(key.SceneId)),
+                    key.TimelineFrame,
+                    key.Usage == TimelineSourceUsage.Exporting)))
             {
                 effectOutput = _cachedEffectOutput;
                 return _cachedOutputDesc ?? inDesc;
@@ -357,6 +361,8 @@ namespace LuaScript
                             effectOutput = null;
                         }
                     }
+
+                    ctx.PublishSceneValues();
 
                     if (ctx.DrawCommands.Count > 0)
                     {
@@ -469,11 +475,11 @@ namespace LuaScript
             return new SceneObjectResolver([.. entries], desc.FPS);
         }
 
-        private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values)
+        private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values, long generation, bool exporting)
         {
             for (int i = 0; i < queries.Length; i++)
             {
-                if (values.Get(queries[i].Name) != queries[i].Result)
+                if (values.Read(generation, exporting, queries[i].Name) != queries[i].Result)
                     return false;
             }
             return true;
@@ -605,6 +611,7 @@ namespace LuaScript
             ctx.SceneId = ResolveSceneId(key.SceneId);
             ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
             PopulateStringParameters(ctx);
+            ctx.BeginSceneValues();
         }
 
         private static double ClampTrack(double value, AviUtlParameterLayout layout, int index)
