@@ -6,6 +6,7 @@ namespace LuaScript.Tests
     {
         private sealed class Harness
         {
+            private readonly object _scope = new();
             private readonly string _sceneId = Guid.NewGuid().ToString();
             private long _generation;
 
@@ -18,7 +19,7 @@ namespace LuaScript.Tests
                 var scene = new Table(Script);
                 SceneTableRegistrar.RegisterFunctions(scene, Session.Get, Session.Set);
                 Script.Globals["scene"] = scene;
-                Session.Begin(_sceneId, _generation, false);
+                Session.Begin(_scope, _sceneId, _generation, 0);
             }
 
             public DynValue Run(string code)
@@ -31,7 +32,7 @@ namespace LuaScript.Tests
             public void NextFrame()
             {
                 _generation++;
-                Session.Begin(_sceneId, _generation, false);
+                Session.Begin(_scope, _sceneId, _generation, 0);
             }
 
             public SceneValue Stored(string name)
