@@ -42,7 +42,7 @@ namespace LuaScript
             bool Check3,
             bool HasColor,
             int Color,
-            string Script,
+            int ScriptVersion,
             int StringsVersion,
             TimelineSourceUsage Usage,
             Guid SceneId,
@@ -75,6 +75,9 @@ namespace LuaScript
         private bool _nativeWarned;
         private bool _effectChainWarned;
         private bool _gpuWarned;
+
+        private string? _scriptKeyRef;
+        private int _scriptKeyVersion;
 
         private string _kernelSource = string.Empty;
         private bool _kernelResolved;
@@ -242,6 +245,11 @@ namespace LuaScript
             var fps = desc.FPS;
             var time = desc.ItemPosition.Time.TotalSeconds;
             var script = item.Script ?? string.Empty;
+            if (!ReferenceEquals(script, _scriptKeyRef))
+            {
+                _scriptKeyRef = script;
+                _scriptKeyVersion++;
+            }
 
             var layout = item.Layout;
             var t0 = ClampTrack(item.Track0.GetValue(frame, length, fps), layout, 0);
@@ -261,7 +269,7 @@ namespace LuaScript
                 t0, t1, t2, t3,
                 s0, s1, s2, s3,
                 c0, c1, c2, c3, hasColor, colorRgb,
-                script, RefreshStringParameters(),
+                _scriptKeyVersion, RefreshStringParameters(),
                 desc.Usage, desc.SceneId,
                 desc.TimelinePosition.Frame,
                 desc.TimelinePosition.Time.TotalSeconds,
