@@ -14,8 +14,8 @@
 <h1>scene と ymm4</h1>
 
 <p>
-<code>scene</code> はシーンの解像度を、<code>ymm4</code> はグループ・タイムライン・再生状態などの
-環境情報を提供します。どちらも読み取り専用です。
+<code>scene</code> はシーンの解像度とシーン単位の共有値を、<code>ymm4</code> はグループ・タイムライン・再生状態などの
+環境情報を提供します。
 </p>
 
 <h2>scene — シーン情報</h2>
@@ -26,15 +26,41 @@
 <tr><td><code>scene.height</code></td><td>シーンの縦解像度（ピクセル）</td></tr>
 <tr><td><code>scene.cx</code></td><td>横解像度の半分（<code>scene.width / 2</code>）</td></tr>
 <tr><td><code>scene.cy</code></td><td>縦解像度の半分（<code>scene.height / 2</code>）</td></tr>
+<tr><td><code>scene.set(name, value)</code></td><td>シーン単位の共有領域へ値を保存します</td></tr>
+<tr><td><code>scene.get(name)</code></td><td><code>scene.set()</code> で保存した値を取得します</td></tr>
 </table>
-
-<div class="note">
-このプラグインで使える <code>scene</code> は解像度の読み取りのみです。
-AviUtl の <code>scene.set()</code> / <code>scene.get()</code> のような機能はありません。
-</div>
 
 <h3>シーンサイズに対する相対配置</h3>
 <pre><code>obj.x = scene.cx * obj.track0 / 100</code></pre>
+
+<h2>scene.set / scene.get — シーン内の値共有</h2>
+
+<p>
+<code>scene.set(name, value)</code> はシーン単位の共有領域へ値を保存し、
+同じシーン内のすべての Lua スクリプトエフェクトから、アイテムやフレームをまたいで
+<code>scene.get(name)</code> で参照できます。MoonSharp とネイティブのどちらのエンジンでも動作します。
+</p>
+
+<table>
+<tr><th>引数</th><th>説明</th></tr>
+<tr><td><code>name</code></td><td>値の名前（文字列）</td></tr>
+<tr><td><code>value</code></td><td>保存する値（数値・文字列・真偽値）。<code>nil</code> を渡すと削除</td></tr>
+</table>
+
+<pre><code>-- アイテムA: 自分の座標を共有する
+scene.set("leader_x", obj.x)
+
+-- アイテムB: 共有された座標へ追従する
+obj.x = scene.get("leader_x") or 0</code></pre>
+
+<div class="note">
+<ul>
+<li>数値・文字列・真偽値以外（テーブル・関数など）は保存されません。</li>
+<li>名前と文字列値は UTF-8 換算で 4095 バイトを超える部分が切り捨てられます。</li>
+<li>値はシーンごとに独立しており、YMM4 を終了するまでメモリ上に保持されます（プロジェクトファイルには保存されません）。</li>
+<li>アイテム間の評価順序は保証されないため、同一フレーム内での書き込みと読み取りの順序に依存する作りは避けてください。</li>
+</ul>
+</div>
 
 <h2>ymm4 — 環境・メタ情報</h2>
 

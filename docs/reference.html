@@ -30,6 +30,16 @@
 <tr><td><code>math</code> / <code>string</code> / <code>table</code> / <code>bit32</code></td><td>標準ライブラリ</td></tr>
 </table>
 
+<h2>グローバル関数（AviUtl 互換）</h2>
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>RGB(r, g, b)</code> / <code>RGB(col)</code> / <code>RGB(r1, g1, b1, r2, g2, b2)</code></td><td>色情報と RGB 各要素の相互変換（6 引数は時間変化）</td></tr>
+<tr><td><code>HSV(h, s, v)</code> / <code>HSV(col)</code> / <code>HSV(h1, s1, v1, h2, s2, v2)</code></td><td>色情報と HSV 各要素の相互変換（6 引数は時間変化）</td></tr>
+<tr><td><code>OR(a, b)</code> / <code>AND(a, b)</code> / <code>XOR(a, b)</code></td><td>32bit 整数のビット演算</td></tr>
+<tr><td><code>SHIFT(a, shift)</code></td><td>算術シフト（正で左、負で右）</td></tr>
+<tr><td><code>debug_print(text)</code></td><td>OutputDebugString() へ文字列を送信</td></tr>
+</table>
+
 <h2>obj（変更可能）</h2>
 <table>
 <tr><th>メンバー</th><th>説明</th></tr>
@@ -108,6 +118,8 @@
 <tr><th>メンバー</th><th>説明</th></tr>
 <tr><td><code>scene.width</code> / <code>scene.height</code></td><td>シーンの解像度</td></tr>
 <tr><td><code>scene.cx</code> / <code>scene.cy</code></td><td>解像度の半分</td></tr>
+<tr><td><code>scene.set(name, value)</code></td><td>シーン単位の共有値を保存（nil で削除）</td></tr>
+<tr><td><code>scene.get(name)</code></td><td>共有値を取得（未設定は nil）</td></tr>
 </table>
 
 <h2>ymm4</h2>

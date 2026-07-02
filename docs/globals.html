@@ -65,9 +65,33 @@ local b = bit32.band(color, 0x0000FF)</code></pre>
 <tr><th>テーブル</th><th>役割</th><th>参照</th></tr>
 <tr><td><code>obj</code></td><td>描画対象の座標・回転・拡大率・不透明度と各種関数</td><td><a href="obj.html">obj</a> / <a href="obj-functions.html">obj の関数</a></td></tr>
 <tr><td><code>anim</code></td><td>補間・波・ノイズ・色変換などのアニメーション関数</td><td><a href="anim.html">anim</a></td></tr>
-<tr><td><code>scene</code></td><td>シーンの解像度</td><td><a href="scene-ymm4.html">scene</a></td></tr>
+<tr><td><code>scene</code></td><td>シーンの解像度とシーン単位の共有値（<code>scene.set</code> / <code>scene.get</code>）</td><td><a href="scene-ymm4.html">scene</a></td></tr>
 <tr><td><code>ymm4</code></td><td>グループ・タイムライン・再生状態などの環境情報</td><td><a href="scene-ymm4.html">ymm4</a></td></tr>
 </table>
+
+<h2>グローバル関数（AviUtl 互換）</h2>
+
+<p>
+以下の関数はグローバルスコープから直接呼び出せます。
+MoonSharp とネイティブのどちらのエンジンでも同一の結果を返します。
+</p>
+
+<table>
+<tr><th>関数</th><th>説明</th></tr>
+<tr><td><code>RGB(r, g, b)</code></td><td>RGB 各要素（0 ～ 255）を 1 つの色情報（<code>0xRRGGBB</code>）へ合成</td></tr>
+<tr><td><code>RGB(col)</code></td><td>色情報を <code>r, g, b</code> の 3 値へ分解</td></tr>
+<tr><td><code>RGB(r1, g1, b1, r2, g2, b2)</code></td><td>オブジェクトの時間経過（<code>obj.time / obj.totaltime</code>）で一色目から二色目へ直線的に変化する色情報を返す</td></tr>
+<tr><td><code>HSV(h, s, v)</code> / <code>HSV(col)</code> / <code>HSV(h1, s1, v1, h2, s2, v2)</code></td><td>色相（0 ～ 360）・彩度（0 ～ 100）・明度（0 ～ 100）と色情報の相互変換。引数の意味は <code>RGB()</code> と同様</td></tr>
+<tr><td><code>OR(a, b)</code> / <code>AND(a, b)</code> / <code>XOR(a, b)</code></td><td>32bit 整数のビット演算。小数は 0.5 ちょうどまでを切り捨てて整数化（2.50 → 2、2.51 → 3）</td></tr>
+<tr><td><code>SHIFT(a, shift)</code></td><td>算術シフト。<code>shift</code> が正で左シフト、負で右シフト</td></tr>
+<tr><td><code>debug_print(text)</code></td><td>文字列を <code>OutputDebugString()</code> へ送信。DebugView などで確認できる。スクリプトの実行エラーも自動で送信される</td></tr>
+</table>
+
+<pre><code>col = RGB(64, 192, 255)          -- 0x40C0FF
+r, g, b = RGB(0x0080FF)          -- 0, 128, 255
+col = HSV(60, 100, 100)          -- 0xFFFF00
+result = SHIFT(5, 3)             -- 40
+debug_print(string.format("x = %d", obj.x))</code></pre>
 
 <p>標準ライブラリのテーブルもグローバルに置かれています。</p>
 

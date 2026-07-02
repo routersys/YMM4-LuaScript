@@ -19,7 +19,8 @@
 <li>タイムアウト 5 秒: 1 フレームのスクリプト実行が 5 秒を超えると中断され、そのフレームは
   元の映像のままになります。無限ループや極端に重い処理に注意してください。</li>
 <li>フレーム間で状態は保持されない: 組み込み以外のグローバル変数は毎フレームリセットされます。
-  前フレームの計算結果を変数に貯めることはできません。時間変化は <code>time</code> や <code>obj.t</code> から計算します。</li>
+  時間変化は <code>time</code> や <code>obj.t</code> から計算します。フレームやアイテムをまたいで値を
+  共有したい場合は <a href="scene-ymm4.html"><code>scene.set()</code> / <code>scene.get()</code></a> を使ってください。</li>
 <li>ファイルアクセス不可: <code>require</code>・<code>dofile</code>・<code>io</code> などは使えません。</li>
 <li>使えない標準ライブラリ: <code>io</code>・<code>os</code>・<code>debug</code>・<code>coroutine</code>・
   <code>package</code>・<code>ffi</code> は無効です（<a href="stdlib.html">標準ライブラリ</a>）。</li>
@@ -38,7 +39,6 @@
 <h2>非対応の機能</h2>
 
 <ul>
-<li><code>scene.set()</code> や <code>scene.get()</code> はありません。<code>scene</code> は解像度の読み取りだけに対応します。</li>
 <li><code>obj.setanchor()</code> など、本ドキュメントに記載のない AviUtl 関数は対応していません。</li>
 <li><code>obj.effect</code> は、AviUtl／AviUtl2 互換マップに宣言したエフェクト名と、YMM4 に読み込まれている映像エフェクトの名前・キーワードを解決します。
   名前が見つからない・適用に失敗した場合は、そのフレームでは元の映像がそのまま使われます。
@@ -59,7 +59,8 @@
 <tr><td>スクリプトを書いても見た目が変わらない</td><td>値を <code>obj</code> に代入しているか（グローバル変数に入れても反映されません）。
   例: <code>obj.x = ...</code>。読み取り専用メンバーに代入していないか。</td></tr>
 <tr><td>トラックバーや色が表示されない</td><td>指定子や使用状況によって表示が決まります。<a href="directives.html">パラメータ指定子</a> の表示条件を確認してください。</td></tr>
-<tr><td>前のフレームの値が消える</td><td>仕様です。グローバル変数はフレーム間で保持されません。</td></tr>
+<tr><td>前のフレームの値が消える</td><td>仕様です。グローバル変数はフレーム間で保持されません。
+  持ち越したい値は <code>scene.set()</code> / <code>scene.get()</code> で共有してください。</td></tr>
 <tr><td>処理が中断される / フレームが描画されない</td><td>5 秒のタイムアウトに達している可能性があります。ループ回数を減らすか、
   ピクセル処理を <a href="engines.html">カーネルやネイティブ</a>に任せられる形にしてください。</td></tr>
 <tr><td><code>--!native</code> を指定しても速くならない</td><td>プラグインの隣に <code>native</code> フォルダが配置されていないと MoonSharp で実行されます。
