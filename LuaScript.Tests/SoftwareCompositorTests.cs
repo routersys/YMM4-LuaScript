@@ -62,21 +62,21 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void Compose_AffineCommand_MatchesDrawInto()
+        public void TryCompose_AffineCommand_MatchesDrawInto()
         {
             var src = Solid(1, 1, 10, 20, 30, 255);
             var actual = new byte[3 * 3 * 4];
             var expected = new byte[3 * 3 * 4];
             var command = new DrawCommand(1.5, 1.5, 0d, 1d, 1d, 0d, Antialias: 0d);
 
-            new SoftwareCompositor().Compose(actual, 3, 3, src, 1, 1, command);
+            Assert.True(SoftwareCompositor.Instance.TryCompose(actual, 3, 3, src, 1, 1, command));
             SoftwareCompositor.DrawInto(expected, 3, 3, src, 1, 1, 1.5, 1.5, 1d, 0d, 1d, linear: false);
 
             Assert.Equal(expected, actual);
         }
 
         [Fact]
-        public void Compose_PolyCommand_MatchesDrawPolyInto()
+        public void TryCompose_PolyCommand_MatchesDrawPolyInto()
         {
             var src = Solid(2, 2, 40, 50, 60, 255);
             var actual = new byte[2 * 2 * 4];
@@ -89,14 +89,14 @@ namespace LuaScript.Tests
             ];
             var command = new DrawCommand(0d, 0d, 0d, 1d, 1d, 0d, poly, Antialias: 0d);
 
-            new SoftwareCompositor().Compose(actual, 2, 2, src, 2, 2, command);
+            Assert.True(SoftwareCompositor.Instance.TryCompose(actual, 2, 2, src, 2, 2, command));
             SoftwareCompositor.DrawPolyInto(expected, 2, 2, src, 2, 2, poly, 1d, linear: false);
 
             Assert.Equal(expected, actual);
         }
 
         [Fact]
-        public void Compose_AntialiasCommand_UsesLinearSampling()
+        public void TryCompose_AntialiasCommand_UsesLinearSampling()
         {
             var src = new byte[2 * 1 * 4];
             src[3] = 255;
@@ -108,7 +108,7 @@ namespace LuaScript.Tests
             var expected = new byte[4 * 1 * 4];
             var command = new DrawCommand(2d, 0.5, 0d, 2d, 1d, 0d, Antialias: 1d);
 
-            new SoftwareCompositor().Compose(actual, 4, 1, src, 2, 1, command);
+            Assert.True(SoftwareCompositor.Instance.TryCompose(actual, 4, 1, src, 2, 1, command));
             SoftwareCompositor.DrawInto(expected, 4, 1, src, 2, 1, 2d, 0.5, 2d, 0d, 1d, linear: true);
 
             Assert.Equal(expected, actual);
