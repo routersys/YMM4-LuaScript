@@ -21,6 +21,7 @@ namespace LuaScript
             "obj", "scene", "anim", "ymm4",
             "math", "string", "table", "bit32",
             "type", "tostring", "tonumber", "select", "error", "assert", "print",
+            "debug_print", "RGB", "HSV", "OR", "AND", "XOR", "SHIFT",
             "ipairs", "pairs", "next",
             "unpack",
             "setmetatable", "getmetatable", "rawget", "rawset", "rawequal", "rawlen",
@@ -76,7 +77,8 @@ namespace LuaScript
                 "bit32.btest", "bit32.countlz", "bit32.countrz"
             ]),
             ("scene", [
-                "scene.width", "scene.height", "scene.cx", "scene.cy"
+                "scene.width", "scene.height", "scene.cx", "scene.cy",
+                "scene.set", "scene.get"
             ]),
             ("anim", [
                 "anim.tau", "anim.e", "anim.phi", "anim.sqrt2",
