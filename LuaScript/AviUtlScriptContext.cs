@@ -91,7 +91,7 @@ namespace LuaScript
 
         internal void ClearEffects() => _effectRequests.Clear();
 
-        internal IBufferCompositor Compositor { get; set; } = new SoftwareCompositor();
+        internal IBufferCompositor Compositor { get; set; } = SoftwareCompositor.Instance;
 
         private readonly List<DrawCommand> _drawCommands = [];
 
@@ -141,7 +141,7 @@ namespace LuaScript
                 _buffers["t"] = temp;
             }
 
-            Compositor.Compose(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, command);
+            Compositor.TryCompose(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, command);
         }
 
         private readonly Dictionary<string, (byte[] Data, int Width, int Height)> _buffers = new(StringComparer.Ordinal);
