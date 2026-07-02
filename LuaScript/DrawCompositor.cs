@@ -18,6 +18,7 @@ namespace LuaScript
         private ID2D1Bitmap1? _source;
         private ID2D1Bitmap1? _target;
         private AffineTransform2D? _placement;
+        private ID2D1Image? _placementOutput;
         private Opacity? _opacityEffect;
         private ID2D1Image? _opacityOutput;
         private int _sourceWidth;
@@ -70,7 +71,7 @@ namespace LuaScript
 
             var dc = _ctx.DeviceContext;
             var rt = (ID2D1RenderTarget)dc;
-            var savedTarget = dc.Target;
+            using var savedTarget = dc.Target;
 
             dc.Target = _target;
             dc.BeginDraw();
@@ -95,7 +96,7 @@ namespace LuaScript
             dc.Target = savedTarget;
 
             _placement!.TransformMatrix = Matrix3x2.CreateTranslation(originX, originY);
-            return _placement.Output;
+            return _placementOutput!;
         }
 
         private void DrawSource(ID2D1RenderTarget rt, float opacity, BitmapInterpolationMode interpolation, Blend blend)
@@ -140,8 +141,10 @@ namespace LuaScript
             if (_target is not null && _targetWidth == width && _targetHeight == height)
                 return;
 
+            _placementOutput?.Dispose();
             _placement?.Dispose();
             _target?.Dispose();
+            _placementOutput = null;
             _placement = null;
 
             _target = _ctx.DeviceContext.CreateEmptyBitmap(width, height, BitmapOptions.Target);
@@ -150,15 +153,18 @@ namespace LuaScript
 
             _placement = new AffineTransform2D(_ctx.DeviceContext);
             _placement.SetInput(0, _target, true);
+            _placementOutput = _placement.Output;
         }
 
         public void Dispose()
         {
+            _placementOutput?.Dispose();
             _placement?.Dispose();
             _opacityOutput?.Dispose();
             _opacityEffect?.Dispose();
             _source?.Dispose();
             _target?.Dispose();
+            _placementOutput = null;
             _placement = null;
             _opacityOutput = null;
             _opacityEffect = null;
