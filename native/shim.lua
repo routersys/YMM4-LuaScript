@@ -327,6 +327,194 @@ function aviutl_rand(a, b, seed, frame)
     return v
 end
 
+ffi.cdef [[
+int MultiByteToWideChar(unsigned int cp, unsigned long flags, const char* src, int srclen, wchar_t* dst, int dstlen);
+void OutputDebugStringW(const wchar_t* text);
+]]
+
+local CP_UTF8 = 65001
+local debugBuffer = ffi.new("wchar_t[?]", 256)
+local debugCapacity = 256
+
+function debug_print(text)
+    local s = tostring(text)
+    local wide = 0
+    if #s > 0 then
+        wide = ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, #s, nil, 0)
+        if wide <= 0 then return end
+    end
+    if wide + 1 > debugCapacity then
+        debugCapacity = wide + 1
+        debugBuffer = ffi.new("wchar_t[?]", debugCapacity)
+    end
+    if wide > 0 then
+        ffi.C.MultiByteToWideChar(CP_UTF8, 0, s, #s, debugBuffer, wide)
+    end
+    debugBuffer[wide] = 0
+    ffi.C.OutputDebugStringW(debugBuffer)
+end
+
+local ceil = math.ceil
+
+local function tobitop(v)
+    v = tonumber(v) or 0
+    if v ~= v then return 0 end
+    if v <= -2147483648 then return -2147483648 end
+    if v >= 2147483647 then return 2147483647 end
+    return ceil(v - 0.5)
+end
+
+function OR(a, b) return bit.bor(tobitop(a), tobitop(b)) end
+
+function AND(a, b) return bit.band(tobitop(a), tobitop(b)) end
+
+function XOR(a, b) return bit.bxor(tobitop(a), tobitop(b)) end
+
+function SHIFT(a, shift)
+    local v = tobitop(a)
+    local n = tobitop(shift)
+    if n >= 0 then return bit.lshift(v, n) end
+    return bit.arshift(v, -n)
+end
+
+local function tocolorchannel(v)
+    if v ~= v or v <= 0 then return 0 end
+    if v >= 255 then return 255 end
+    return floor(v)
+end
+
+local function tocolor(v)
+    v = tonumber(v) or 0
+    if v ~= v then return 0 end
+    if v <= -2147483648 then
+        v = -2147483648
+    elseif v >= 2147483647 then
+        v = 2147483647
+    end
+    return floor(v) % 0x1000000
+end
+
+local function wraphue(h)
+    if h ~= h or h == math.huge or h == -math.huge then return 0 end
+    local wrapped = h - floor(h / 360) * 360
+    if wrapped >= 360 then return 0 end
+    return wrapped
+end
+
+local function clampratio(v)
+    if v ~= v or v <= 0 then return 0 end
+    if v >= 100 then return 1 end
+    return v / 100
+end
+
+local function roundhalfup(v)
+    return floor(v + 0.5)
+end
+
+local function rgbcompose(r, g, b)
+    r = tonumber(r) or 0
+    g = tonumber(g) or 0
+    b = tonumber(b) or 0
+    return tocolorchannel(r) * 0x10000 + tocolorchannel(g) * 0x100 + tocolorchannel(b)
+end
+
+local function hsvcompose(h, s, v)
+    h = wraphue(tonumber(h) or 0)
+    s = clampratio(tonumber(s) or 0)
+    v = clampratio(tonumber(v) or 0)
+
+    local c = v * s
+    local x = c * (1 - abs(fmod(h / 60, 2) - 1))
+    local m = v - c
+    local sector = floor(h / 60)
+
+    local r, g, b
+    if sector == 0 then r, g, b = c, x, 0
+    elseif sector == 1 then r, g, b = x, c, 0
+    elseif sector == 2 then r, g, b = 0, c, x
+    elseif sector == 3 then r, g, b = 0, x, c
+    elseif sector == 4 then r, g, b = x, 0, c
+    else r, g, b = c, 0, x end
+
+    return tocolorchannel(roundhalfup((r + m) * 255)) * 0x10000 +
+        tocolorchannel(roundhalfup((g + m) * 255)) * 0x100 +
+        tocolorchannel(roundhalfup((b + m) * 255))
+end
+
+local timeRatio = 0
+
+function aviutl_set_time_ratio(t)
+    t = tonumber(t) or 0
+    if t ~= t then t = 0 end
+    timeRatio = t
+end
+
+function RGB(...)
+    local n = select("#", ...)
+    if n >= 6 then
+        local r1, g1, b1, r2, g2, b2 = ...
+        r1 = tonumber(r1) or 0
+        g1 = tonumber(g1) or 0
+        b1 = tonumber(b1) or 0
+        r2 = tonumber(r2) or 0
+        g2 = tonumber(g2) or 0
+        b2 = tonumber(b2) or 0
+        local t = timeRatio
+        return rgbcompose(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t)
+    end
+    if n >= 3 then
+        return rgbcompose(...)
+    end
+    if n >= 1 then
+        local c = tocolor((...))
+        return floor(c / 0x10000) % 0x100, floor(c / 0x100) % 0x100, c % 0x100
+    end
+    return nil
+end
+
+function HSV(...)
+    local n = select("#", ...)
+    if n >= 6 then
+        local h1, s1, v1, h2, s2, v2 = ...
+        h1 = tonumber(h1) or 0
+        s1 = tonumber(s1) or 0
+        v1 = tonumber(v1) or 0
+        h2 = tonumber(h2) or 0
+        s2 = tonumber(s2) or 0
+        v2 = tonumber(v2) or 0
+        local t = timeRatio
+        return hsvcompose(h1 + (h2 - h1) * t, s1 + (s2 - s1) * t, v1 + (v2 - v1) * t)
+    end
+    if n >= 3 then
+        return hsvcompose(...)
+    end
+    if n >= 1 then
+        local c = tocolor((...))
+        local r = floor(c / 0x10000) % 0x100
+        local g = floor(c / 0x100) % 0x100
+        local b = c % 0x100
+        local rf = r / 255
+        local gf = g / 255
+        local bf = b / 255
+        local max = math.max(rf, gf, bf)
+        local min = math.min(rf, gf, bf)
+        local delta = max - min
+        local hue = 0
+        if delta > 0 then
+            if max == rf then
+                hue = 60 * (fmod(fmod((gf - bf) / delta, 6) + 6, 6))
+            elseif max == gf then
+                hue = 60 * ((bf - rf) / delta + 2)
+            else
+                hue = 60 * ((rf - gf) / delta + 4)
+            end
+        end
+        local sat = max > 0 and delta / max * 100 or 0
+        return roundhalfup(hue), roundhalfup(sat), roundhalfup(max * 100)
+    end
+    return nil
+end
+
 local function noise_hash(x, y, z)
     local n = tou(umul32(tou(x), 374761393) + umul32(tou(y), 668265263) + umul32(tou(z), 1013904223))
     n = umul32(tou(bit.bxor(n, bit.rshift(n, 13))), 1274126177)
