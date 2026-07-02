@@ -41,7 +41,7 @@ namespace LuaScript.Engine
         public const int ErrorMax = 4 * 1024;
 
         public const int CallbackTagOffset = ErrorOffset + ErrorMax;
-        public const int CallbackTagMax = 4096;
+        public const int CallbackTagMax = 8192;
         public const int CallbackResultOffset = CallbackTagOffset + CallbackTagMax;
         public const int CallbackResultCount = 8;
 
