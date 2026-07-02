@@ -1100,14 +1100,26 @@ namespace LuaScript.Tests
             Assert.Equal(1111d, fields[NativeProtocol.X]);
         }
 
+        private Dictionary<string, SceneValue> BindSceneValues()
+        {
+            var values = new Dictionary<string, SceneValue>(StringComparer.Ordinal);
+            _sceneGet = name => values.TryGetValue(name, out var value) ? value : SceneValue.Nil;
+            _sceneSet = (name, value) =>
+            {
+                if (value.Kind == SceneValueKind.Nil)
+                    values.Remove(name);
+                else
+                    values[name] = value;
+            };
+            return values;
+        }
+
         [Fact]
         public void SceneSet_RoundTripsAllValueKinds()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
-            var store = new SceneSharedValues();
-            _sceneGet = store.Get;
-            _sceneSet = store.Set;
+            var values = BindSceneValues();
 
             var pixels = new byte[16];
             const string script =
@@ -1121,11 +1133,11 @@ namespace LuaScript.Tests
             bool ok = RunWorker(script, Fields(2, 2, 0d), NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
-            Assert.Equal(SceneValue.FromNumber(12.5), store.Get("num"));
-            Assert.Equal(SceneValue.FromString("こんにちは"), store.Get("text"));
-            Assert.Equal(SceneValue.FromBoolean(true), store.Get("flag"));
-            Assert.Equal(SceneValue.Nil, store.Get("gone"));
-            Assert.Equal(SceneValue.Nil, store.Get("table"));
+            Assert.Equal(SceneValue.FromNumber(12.5), values["num"]);
+            Assert.Equal(SceneValue.FromString("こんにちは"), values["text"]);
+            Assert.Equal(SceneValue.FromBoolean(true), values["flag"]);
+            Assert.False(values.ContainsKey("gone"));
+            Assert.False(values.ContainsKey("table"));
         }
 
         [Fact]
@@ -1133,12 +1145,10 @@ namespace LuaScript.Tests
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
-            var store = new SceneSharedValues();
-            store.Set("num", SceneValue.FromNumber(-3.25));
-            store.Set("text", SceneValue.FromString("値テキスト"));
-            store.Set("flag", SceneValue.FromBoolean(true));
-            _sceneGet = store.Get;
-            _sceneSet = store.Set;
+            var values = BindSceneValues();
+            values["num"] = SceneValue.FromNumber(-3.25);
+            values["text"] = SceneValue.FromString("値テキスト");
+            values["flag"] = SceneValue.FromBoolean(true);
 
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
@@ -1158,13 +1168,11 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void SceneValues_RoundTripWithinWorkerRun()
+        public void SceneValues_RoundTripAcrossWorkerRuns()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
-            var store = new SceneSharedValues();
-            _sceneGet = store.Get;
-            _sceneSet = store.Set;
+            BindSceneValues();
 
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
@@ -1178,6 +1186,105 @@ namespace LuaScript.Tests
                 Assert.True(ok, error);
                 Assert.Equal(i, fields[NativeProtocol.X]);
             }
+        }
+
+        [Fact]
+        public void SceneGet_CachesRepeatedReadsWithinRun_AndResetsPerRun()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            int hostReads = 0;
+            _sceneGet = _ => { hostReads++; return SceneValue.FromNumber(42d); };
+
+            var pixels = new byte[16];
+            const string script =
+                "local total = 0 " +
+                "for i = 1, 100 do total = total + scene.get('key') end " +
+                "obj.x = total";
+
+            for (int run = 1; run <= 2; run++)
+            {
+                var fields = Fields(2, 2, 0d);
+                bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+                Assert.True(ok, error);
+                Assert.Equal(4200d, fields[NativeProtocol.X]);
+                Assert.Equal(run, hostReads);
+            }
+        }
+
+        [Fact]
+        public void SceneSet_IsReadBackWithoutHostRead()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            int hostReads = 0;
+            _sceneGet = _ => { hostReads++; return SceneValue.Nil; };
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "scene.set('key', 7) " +
+                "obj.x = scene.get('key') " +
+                "scene.set('key', nil) " +
+                "obj.y = scene.get('key') == nil and 1 or 0";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, hostReads);
+            Assert.Equal(7d, fields[NativeProtocol.X]);
+            Assert.Equal(1d, fields[NativeProtocol.Y]);
+        }
+
+        [Fact]
+        public void SceneStrings_CarryMaximumLengthNameAndValue()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var values = BindSceneValues();
+            string longName = new string('n', SceneSharedValues.MaxNameBytes);
+            string longValue = new string('v', SceneSharedValues.MaxTextBytes);
+            values[longName] = SceneValue.FromString(longValue);
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            string script =
+                "local name = string.rep('n', " + SceneSharedValues.MaxNameBytes + ") " +
+                "obj.x = string.len(scene.get(name)) " +
+                "scene.set(name, string.rep('w', " + (SceneSharedValues.MaxTextBytes + 500) + ")) " +
+                "obj.y = string.len(scene.get(name))";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(SceneSharedValues.MaxTextBytes, fields[NativeProtocol.X]);
+            Assert.Equal(SceneSharedValues.MaxTextBytes, fields[NativeProtocol.Y]);
+            Assert.Equal(SceneSharedValues.MaxTextBytes, values[longName].Text!.Length);
+            Assert.True(values[longName].Text!.All(c => c == 'w'));
+        }
+
+        [Fact]
+        public void SceneStrings_TruncateAtUtf8Boundary()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var values = BindSceneValues();
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            string script =
+                "scene.set('key', string.rep('あ', 2000)) " +
+                "obj.x = string.len(scene.get('key'))";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            int expectedBytes = SceneSharedValues.MaxTextBytes / 3 * 3;
+            Assert.Equal(expectedBytes, fields[NativeProtocol.X]);
+            var stored = values["key"];
+            Assert.Equal(SceneValueKind.String, stored.Kind);
+            Assert.Equal(expectedBytes / 3, stored.Text!.Length);
+            Assert.True(stored.Text!.All(c => c == 'あ'));
         }
 
         [Fact]
