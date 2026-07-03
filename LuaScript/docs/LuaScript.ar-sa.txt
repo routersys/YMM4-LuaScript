@@ -510,6 +510,25 @@
                           "alpha","sx","sy","track0"~"track3","time","frame" إلخ.
                 المُرجَع : رقم (0 لهدف غير معروف).
 
+        ○ obj.getinfo(name)
+                يحصل على معلومات بيئية متنوعة. الاسم غير المدعوم يُرجِع nil.
+                  "script_path" : يُرجِع مسار مجلد تثبيت الإضافة. ينتهي بفاصل مسار.
+                  "filter"      : يُرجِع ما إذا كانت المعالجة تجري كتأثير مُرشِّح. هذه
+                                  الإضافة تُرجِع true دائمًا.
+                  "saving"      : يُرجِع ما إذا كان الفيديو قيد التصدير (true أثناء
+                                  التصدير فقط).
+                  "image_max"   : يُرجِع الحجم الأقصى للصورة كعرض وارتفاع.
+                  "bpm"         : يُرجِع إيقاع شبكة BPM والميزان والزمن المرجعي
+                                  (بالثواني). يكون الإيقاع 0 عند عدم ضبط شبكة BPM.
+                  "clock"       : يُرجِع الزمن المنقضي منذ بدء YMM4 بالثواني.
+                  "script_time" : يُرجِع الزمن المنقضي منذ بدء السكربت بالمِلّي ثانية.
+                  "version"     : يُرجِع إصدار المضيف كرقم
+                                  major*10000 + minor*100 + build.
+                يعمل في كلا المحركين.
+                مثال: if obj.getinfo("saving") == false then
+                        obj.drawpoly(...)  -- إظهار إطار أثناء التحرير فقط
+                      end
+
         ○ obj.setoption(name, value) / obj.getoption(name)
                 يضبط / يحصل على خيار. الخيارات غير المدعومة تُقبَل كي لا توقف
                 النص (getoption يُرجع القيمة المحفوظة، و0 إن لم تُضبط).
@@ -784,7 +803,7 @@
                 يُدعم الرسم والتركيب عبر obj.draw / obj.drawpoly، وعمليات المخزن
                 عبر obj.copybuffer، والتوليد والتحميل عبر
                 obj.load("figure"/"text"/"image"/"movie")، و obj.setfont، و obj.effect،
-                و obj.getvalue، و obj.setoption / obj.getoption / obj.pixeloption.
+                و obj.getvalue، و obj.getinfo، و obj.setoption / obj.getoption / obj.pixeloption.
                 انظر "جدول obj - الدوال" للتفاصيل.
 
         ○ خريطة توافق AviUtl / AviUtl2 لـ obj.effect

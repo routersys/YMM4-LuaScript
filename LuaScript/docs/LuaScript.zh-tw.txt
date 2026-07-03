@@ -496,6 +496,22 @@
                          "alpha","sx","sy","track0"～"track3","time","frame" 等。
                 回傳值 : 數值(未知目標回傳 0)。
 
+        ○ obj.getinfo(名稱)
+                取得各種環境資訊。未支援的名稱回傳 nil。
+                  "script_path" : 回傳外掛安裝資料夾的路徑，結尾附有路徑分隔字元。
+                  "filter"      : 回傳是否正在作為濾鏡效果處理。本外掛始終回傳 true。
+                  "saving"      : 回傳是否正在輸出影片(僅輸出時為 true)。
+                  "image_max"   : 以寬度, 高度兩個值回傳最大影像尺寸。
+                  "bpm"         : 回傳 BPM 格線的速度, 拍號, 基準時間(秒)。
+                                  未設定 BPM 格線時速度為 0。
+                  "clock"       : 以秒回傳自 YMM4 啟動以來的經過時間。
+                  "script_time" : 以毫秒回傳自腳本開始執行以來的經過時間。
+                  "version"     : 以 major×10000+minor×100+build 的數值回傳本體版本。
+                在兩個引擎中皆可使用。
+                範例：if obj.getinfo("saving") == false then
+                        obj.drawpoly(...)  -- 僅在編輯時顯示框線
+                      end
+
         ○ obj.setoption(名稱, 值) / obj.getoption(名稱)
                 設定 / 取得選項。未支援的項目也會被接受，不會中斷腳本
                 (getoption 回傳設定值，未設定為 0)。
@@ -758,7 +774,7 @@
         ○ 繪製·合成·載入
                 支援 obj.draw / obj.drawpoly 的繪製合成、obj.copybuffer 的緩衝區操作、
                 obj.load("figure"/"text"/"image"/"movie") 的產生與載入、obj.setfont、
-                obj.effect、obj.getvalue 以及 obj.setoption / obj.getoption /
+                obj.effect、obj.getvalue、obj.getinfo 以及 obj.setoption / obj.getoption /
                 obj.pixeloption。詳情請參閱「obj 表 - 函式」。
 
         ○ obj.effect 的 AviUtl / AviUtl2 相容對應表

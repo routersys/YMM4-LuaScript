@@ -525,6 +525,31 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", dll.
                 Mengembalikan: sebuah angka (0 untuk target yang tidak dikenal).
 
+        o obj.getinfo(name)
+                Mengambil berbagai informasi lingkungan. Nama yang tidak didukung
+                mengembalikan nil.
+                  "script_path" : Mengembalikan jalur folder pemasangan plugin.
+                                  Diakhiri dengan pemisah jalur.
+                  "filter"      : Mengembalikan apakah sedang diproses sebagai efek
+                                  filter. Plugin ini selalu mengembalikan true.
+                  "saving"      : Mengembalikan apakah video sedang diekspor
+                                  (true hanya selama ekspor).
+                  "image_max"   : Mengembalikan ukuran gambar maksimum sebagai lebar,
+                                  tinggi.
+                  "bpm"         : Mengembalikan tempo, ketukan, dan waktu acuan (detik)
+                                  dari grid BPM. Tempo bernilai 0 bila grid BPM belum
+                                  diatur.
+                  "clock"       : Mengembalikan waktu berlalu sejak YMM4 dijalankan,
+                                  dalam detik.
+                  "script_time" : Mengembalikan waktu berlalu sejak skrip dimulai,
+                                  dalam milidetik.
+                  "version"     : Mengembalikan versi host sebagai angka
+                                  major*10000 + minor*100 + build.
+                Bekerja di kedua mesin.
+                Contoh: if obj.getinfo("saving") == false then
+                          obj.drawpoly(...)  -- tampilkan bingkai hanya saat mengedit
+                        end
+
         o obj.setoption(name, value) / obj.getoption(name)
                 Mengatur / mengambil opsi. Opsi yang tidak didukung tetap diterima
                 sehingga tidak menghentikan skrip (getoption mengembalikan nilai
@@ -816,7 +841,7 @@
                 Penggambaran dan komposisi dengan obj.draw / obj.drawpoly, operasi
                 buffer dengan obj.copybuffer, pembuatan dan pemuatan dengan
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue, serta obj.setoption / obj.getoption / obj.pixeloption
+                obj.getvalue, obj.getinfo, serta obj.setoption / obj.getoption / obj.pixeloption
                 didukung. Lihat "Tabel obj - Fungsi" untuk detailnya.
 
         o Peta kompatibilitas AviUtl / AviUtl2 untuk obj.effect

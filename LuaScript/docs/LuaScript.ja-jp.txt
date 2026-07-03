@@ -511,6 +511,25 @@
                          "alpha","sx","sy","track0"～"track3","time","frame" 等。
                 戻り値 : 数値(未知の対象は 0)。
 
+        ○obj.getinfo(名前)
+                各種の環境情報を取得します。未対応の名前は nil を返します。
+                  "script_path" : プラグインの設置フォルダのパスを返します。末尾に
+                                  区切り文字が付きます。
+                  "filter"      : フィルタ効果として処理中かどうかを返します。本
+                                  プラグインでは常に true になります。
+                  "saving"      : 動画を出力中かどうかを返します(出力中のみ true)。
+                  "image_max"   : 最大画像サイズを幅, 高さの2値で返します。
+                  "bpm"         : BPMグリッドのテンポ, 拍子, 基準時間(秒)を返します。
+                                  BPMグリッドが未設定のときテンポは 0 になります。
+                  "clock"       : YMM4起動からの経過時間を秒で返します。
+                  "script_time" : スクリプト実行開始からの経過時間をミリ秒で返します。
+                  "version"     : 本体のバージョンを major×10000+minor×100+build の
+                                  数値で返します。
+                両エンジンで動きます。
+                例：if obj.getinfo("saving") == false then
+                      obj.drawpoly(...)  -- 編集中のみ枠を表示する
+                    end
+
         ○obj.setoption(名前, 値) / obj.getoption(名前)
                 オプションを設定 / 取得します。未対応の項目も受理してスクリプトを
                 停止させません(getoption は設定値を返し、未設定は 0)。
@@ -790,7 +809,7 @@
         ○描画・合成・読み込み
                 obj.draw / obj.drawpoly による描画合成、obj.copybuffer による
                 バッファ操作、obj.load("figure"/"text"/"image"/"movie") による生成・
-                読み込み、obj.setfont、obj.effect、obj.getvalue、obj.setoption /
+                読み込み、obj.setfont、obj.effect、obj.getvalue、obj.getinfo、obj.setoption /
                 obj.getoption / obj.pixeloption に対応します。詳細は「obj テーブル -
                 関数」を参照してください。
 

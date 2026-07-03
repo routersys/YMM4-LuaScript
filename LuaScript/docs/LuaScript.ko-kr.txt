@@ -506,6 +506,25 @@
                          "alpha","sx","sy","track0"～"track3","time","frame" 등.
                 반환값 : 숫자(알 수 없는 대상은 0).
 
+        ○ obj.getinfo(이름)
+                각종 환경 정보를 가져옵니다. 지원하지 않는 이름은 nil을 반환합니다.
+                  "script_path" : 플러그인 설치 폴더의 경로를 반환합니다. 끝에 경로
+                                  구분 문자가 붙습니다.
+                  "filter"      : 필터 효과로 처리 중인지 반환합니다. 이 플러그인은
+                                  항상 true를 반환합니다.
+                  "saving"      : 동영상을 출력 중인지 반환합니다(출력 중에만 true).
+                  "image_max"   : 최대 이미지 크기를 너비, 높이 두 값으로 반환합니다.
+                  "bpm"         : BPM 그리드의 템포, 박자, 기준 시간(초)을 반환합니다.
+                                  BPM 그리드가 설정되지 않았을 때 템포는 0입니다.
+                  "clock"       : YMM4 시작 이후 경과 시간을 초 단위로 반환합니다.
+                  "script_time" : 스크립트 실행 시작 이후 경과 시간을 밀리초로 반환합니다.
+                  "version"     : 본체 버전을 major×10000+minor×100+build 숫자로
+                                  반환합니다.
+                두 엔진 모두에서 작동합니다.
+                예: if obj.getinfo("saving") == false then
+                      obj.drawpoly(...)  -- 편집 중에만 테두리 표시
+                    end
+
         ○ obj.setoption(이름, 값) / obj.getoption(이름)
                 옵션을 설정 / 가져옵니다. 지원하지 않는 항목도 받아들여
                 스크립트를 중단시키지 않습니다(getoption은 설정값을 반환, 미설정은 0).
@@ -783,7 +802,7 @@
         ○ 그리기·합성·로드
                 obj.draw / obj.drawpoly에 의한 그리기 합성, obj.copybuffer에 의한
                 버퍼 조작, obj.load("figure"/"text"/"image"/"movie")에 의한 생성·로드,
-                obj.setfont, obj.effect, obj.getvalue, 그리고 obj.setoption /
+                obj.setfont, obj.effect, obj.getvalue, obj.getinfo, 그리고 obj.setoption /
                 obj.getoption / obj.pixeloption을 지원합니다. 자세한 내용은
                 "obj 테이블 - 함수"를 참조하세요.
 

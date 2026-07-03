@@ -527,6 +527,28 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", etc.
                 Returns: a number (0 for an unknown target).
 
+        o obj.getinfo(name)
+                Gets various environment information. An unsupported name returns nil.
+                  "script_path" : Returns the path of the plugin install folder. It
+                                  ends with a path separator.
+                  "filter"      : Returns whether a filter effect is being processed.
+                                  This plugin always returns true.
+                  "saving"      : Returns whether the video is being exported
+                                  (true only while exporting).
+                  "image_max"   : Returns the maximum image size as width, height.
+                  "bpm"         : Returns the BPM grid tempo, beat, and reference time
+                                  (seconds). The tempo is 0 when no BPM grid is set.
+                  "clock"       : Returns the elapsed time since YMM4 started, in
+                                  seconds.
+                  "script_time" : Returns the elapsed time since the script started,
+                                  in milliseconds.
+                  "version"     : Returns the host version as the number
+                                  major*10000 + minor*100 + build.
+                Works in both engines.
+                Example: if obj.getinfo("saving") == false then
+                           obj.drawpoly(...)  -- show a frame only while editing
+                         end
+
         o obj.setoption(name, value) / obj.getoption(name)
                 Sets / gets an option. Unsupported options are accepted so they do
                 not stop the script (getoption returns the stored value, 0 if unset).
@@ -812,7 +834,7 @@
                 Drawing and compositing with obj.draw / obj.drawpoly, buffer
                 operations with obj.copybuffer, generation and loading with
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue, and obj.setoption / obj.getoption / obj.pixeloption are
+                obj.getvalue, obj.getinfo, and obj.setoption / obj.getoption / obj.pixeloption are
                 supported. See "obj Table - Functions" for details.
 
         o AviUtl / AviUtl2 compatibility map for obj.effect

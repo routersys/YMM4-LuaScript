@@ -496,6 +496,22 @@
                          "alpha","sx","sy","track0"～"track3","time","frame" 等。
                 返回值 : 数值(未知目标返回 0)。
 
+        ○ obj.getinfo(名称)
+                获取各种环境信息。不支持的名称返回 nil。
+                  "script_path" : 返回插件安装文件夹的路径，末尾带有路径分隔符。
+                  "filter"      : 返回是否正在作为滤镜效果处理。本插件始终返回 true。
+                  "saving"      : 返回是否正在导出视频(仅导出时为 true)。
+                  "image_max"   : 以宽度, 高度两个值返回最大图像尺寸。
+                  "bpm"         : 返回 BPM 网格的速度, 拍号, 基准时间(秒)。
+                                  未设置 BPM 网格时速度为 0。
+                  "clock"       : 以秒返回自 YMM4 启动以来的经过时间。
+                  "script_time" : 以毫秒返回自脚本开始执行以来的经过时间。
+                  "version"     : 以 major×10000+minor×100+build 的数值返回本体版本。
+                在两个引擎中均可使用。
+                示例：if obj.getinfo("saving") == false then
+                        obj.drawpoly(...)  -- 仅在编辑时显示框线
+                      end
+
         ○ obj.setoption(名称, 值) / obj.getoption(名称)
                 设置 / 获取选项。未支持的项目也会被接受，不会中断脚本
                 (getoption 返回设置值，未设置为 0)。
@@ -757,7 +773,7 @@
         ○ 绘制·合成·加载
                 支持 obj.draw / obj.drawpoly 的绘制合成、obj.copybuffer 的缓冲区操作、
                 obj.load("figure"/"text"/"image"/"movie") 的生成与加载、obj.setfont、
-                obj.effect、obj.getvalue 以及 obj.setoption / obj.getoption /
+                obj.effect、obj.getvalue、obj.getinfo 以及 obj.setoption / obj.getoption /
                 obj.pixeloption。详情请参阅“obj 表 - 函数”。
 
         ○ obj.effect 的 AviUtl / AviUtl2 兼容映射

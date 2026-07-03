@@ -527,6 +527,30 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", etc.
                 Devuelve: un número (0 para un target desconocido).
 
+        o obj.getinfo(nombre)
+                Obtiene diversa información del entorno. Un nombre no admitido
+                devuelve nil.
+                  "script_path" : Devuelve la ruta de la carpeta de instalación del
+                                  plugin. Termina con un separador de ruta.
+                  "filter"      : Devuelve si se está procesando como efecto de filtro.
+                                  Este plugin siempre devuelve true.
+                  "saving"      : Devuelve si se está exportando el vídeo
+                                  (true solo durante la exportación).
+                  "image_max"   : Devuelve el tamaño máximo de imagen como ancho, alto.
+                  "bpm"         : Devuelve el tempo, el compás y el tiempo de
+                                  referencia (segundos) de la cuadrícula BPM. El tempo
+                                  es 0 cuando no hay cuadrícula BPM configurada.
+                  "clock"       : Devuelve el tiempo transcurrido desde que se inició
+                                  YMM4, en segundos.
+                  "script_time" : Devuelve el tiempo transcurrido desde que empezó el
+                                  script, en milisegundos.
+                  "version"     : Devuelve la versión del host como el número
+                                  major*10000 + minor*100 + build.
+                Funciona en ambos motores.
+                Ejemplo: if obj.getinfo("saving") == false then
+                           obj.drawpoly(...)  -- mostrar un marco solo al editar
+                         end
+
         o obj.setoption(nombre, valor) / obj.getoption(nombre)
                 Establece / obtiene una opción. Las opciones no admitidas se aceptan
                 para no detener el script (getoption devuelve el valor guardado, 0 si
@@ -822,7 +846,7 @@
                 Se admiten el dibujo y composición con obj.draw / obj.drawpoly, las
                 operaciones de búfer con obj.copybuffer, la generación y carga con
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue y obj.setoption / obj.getoption / obj.pixeloption.
+                obj.getvalue, obj.getinfo y obj.setoption / obj.getoption / obj.pixeloption.
                 Consulte "Tabla obj - Funciones" para más detalles.
 
         o Mapa de compatibilidad AviUtl / AviUtl2 para obj.effect
