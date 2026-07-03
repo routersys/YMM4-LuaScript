@@ -31,7 +31,7 @@ namespace LuaScript.Engine
 
         public const int HeaderSize = 64;
 
-        public const int FieldCount = 64;
+        public const int FieldCount = 67;
         public const int FieldsOffset = HeaderSize;
 
         public const int ScriptOffset = FieldsOffset + FieldCount * 8;
@@ -143,6 +143,10 @@ namespace LuaScript.Engine
         public const int Slider2 = 60;
         public const int Slider3 = 61;
         public const int DrawState = 62;
+        public const int Bpm = 63;
+        public const int BpmBeat = 64;
+        public const int BpmOffset = 65;
+        public const int HostVersion = 66;
 
         public const int FirstWritableField = X;
         public const int LastWritableField = Rzr;
