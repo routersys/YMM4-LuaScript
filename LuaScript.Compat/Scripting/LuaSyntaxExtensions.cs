@@ -4,10 +4,12 @@ namespace LuaScript.Compat
 {
     internal static class LuaSyntaxExtensions
     {
-        public static string Rewrite(string source)
+        public static string Rewrite(string source) => RewriteWithMap(source).Code;
+
+        public static (string Code, int[] ChangedLines) RewriteWithMap(string source)
         {
             if (string.IsNullOrEmpty(source))
-                return source;
+                return (source, []);
 
             var tokens = LuaSyntaxLexer.Tokenize(source);
             var context = new LuaRewriteContext(tokens);
@@ -40,7 +42,7 @@ namespace LuaScript.Compat
                 }
             }
 
-            return context.Changed ? context.Serialize() : source;
+            return context.Changed ? (context.Serialize(), context.ChangedLines) : (source, []);
         }
     }
 }
