@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using LuaScript.Anchor;
 using LuaScript.Api;
 using LuaScript.Compat;
@@ -61,9 +62,12 @@ namespace LuaScript
             private IMediaSourceLoader? _mediaLoader;
             private readonly AviUtlFontState _fontState = new();
 
+            private static readonly Stopwatch s_clock = Stopwatch.StartNew();
+
             private Script? _script;
             private DynValue? _compiledChunk;
             private string _lastCompiledCode = string.Empty;
+            private long _scriptStartTimestamp;
             private CancellationToken _activeCancellation;
             private AviUtlScriptContext? _activeContext;
 
@@ -134,6 +138,7 @@ namespace LuaScript
                     EnsureScriptIntegrity();
                     EnsureCompiled(_jobCode);
                     SetupGlobals(context);
+                    _scriptStartTimestamp = Stopwatch.GetTimestamp();
                     _script!.Call(_compiledChunk!);
                     ReadBackGlobals(context);
                     _jobException = null;
@@ -749,6 +754,28 @@ namespace LuaScript
 
                 _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
                 return DynValue.Void;
+            }
+
+            [LuaFunction("getinfo")]
+            private DynValue GetInfo(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Nil;
+
+                var ctx = _activeContext;
+                return args[0].String switch
+                {
+                    "script_path" => DynValue.NewString(ctx.ScriptPath),
+                    "filter" => DynValue.True,
+                    "saving" => DynValue.NewBoolean(ctx.IsSaving),
+                    "image_max" => DynValue.NewTuple(DynValue.NewNumber(ctx.SceneWidth), DynValue.NewNumber(ctx.SceneHeight)),
+                    "bpm" => DynValue.NewTuple(DynValue.NewNumber(ctx.Bpm), DynValue.NewNumber(ctx.BpmBeat), DynValue.NewNumber(ctx.BpmOffset)),
+                    "clock" => DynValue.NewNumber(s_clock.Elapsed.TotalSeconds),
+                    "script_time" => DynValue.NewNumber(Stopwatch.GetElapsedTime(_scriptStartTimestamp).TotalMilliseconds),
+                    "version" => DynValue.NewNumber(ctx.HostVersion),
+                    _ => DynValue.Nil,
+                };
             }
 
             private double CurrentAntialias() =>
