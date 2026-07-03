@@ -1,22 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace LuaScript.Anchor
 {
-    internal enum AnchorConnection
-    {
-        None,
-        Line,
-        Loop,
-        Star,
-        Arm,
-    }
-
-    internal readonly record struct AnchorOptions(AnchorConnection Connection, bool Is3D);
-
-    internal readonly record struct AnchorRequestData(string Group, int Count, AnchorConnection Connection, bool Is3D);
-
     internal static class AnchorSupport
     {
         public const int MaxAnchors = 32;
