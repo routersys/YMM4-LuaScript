@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using LuaScript.Compat;
 using LuaScript.Engine;
 
 namespace LuaScript.Tests
@@ -149,6 +150,25 @@ namespace LuaScript.Tests
             Assert.True(ok, error);
             Assert.Equal(5d, fields[NativeProtocol.X]);
             Assert.Equal(System.Text.Encoding.UTF8.GetByteCount("C:/サンプル/画像.png"), fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void IsNotOperator_RunsAfterTransform()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var fields = Fields(2, 2, 0d);
+            var pixels = new byte[16];
+
+            string script = AviUtlScript.Transform("obj.x = (1 is not 2) and 7 or 0\nobj.y = (2 is not 2) and 7 or 0");
+
+            bool ok = RunWorker(
+                script,
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(7d, fields[NativeProtocol.X]);
+            Assert.Equal(0d, fields[NativeProtocol.Y]);
         }
 
         [Fact]
