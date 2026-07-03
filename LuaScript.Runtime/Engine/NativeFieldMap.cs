@@ -68,6 +68,10 @@ namespace LuaScript.Engine
             f[NativeProtocol.IsPaused] = ctx.IsPaused ? 1d : 0d;
             f[NativeProtocol.TimelineFrame] = ctx.TimelineFrame;
             f[NativeProtocol.TimelineTime] = ctx.TimelineTime;
+            f[NativeProtocol.Bpm] = ctx.Bpm;
+            f[NativeProtocol.BpmBeat] = ctx.BpmBeat;
+            f[NativeProtocol.BpmOffset] = ctx.BpmOffset;
+            f[NativeProtocol.HostVersion] = ctx.HostVersion;
         }
 
         public static void FromFields(double[] f, AviUtlScriptContext ctx)
