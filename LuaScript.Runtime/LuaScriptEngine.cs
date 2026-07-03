@@ -1,4 +1,5 @@
 using LuaScript.Anchor;
+using LuaScript.Api;
 using LuaScript.Compat;
 using MoonSharp.Interpreter;
 using MoonSharp.Interpreter.Debugging;
@@ -6,13 +7,14 @@ using MoonSharp.Interpreter.Loaders;
 
 namespace LuaScript
 {
-    internal sealed class LuaScriptEngine : IDisposable
+    internal sealed partial class LuaScriptEngine : IDisposable
     {
         private readonly record struct ExecutionResult(
             LuaScriptException? Exception,
             bool TimedOut);
 
-        private sealed class ExecutionThread : IDisposable
+        [LuaTable("obj")]
+        private sealed partial class ExecutionThread : IDisposable
         {
             private sealed class CancellationDebugger : IDebugger
             {
@@ -75,6 +77,9 @@ namespace LuaScript
             private HashSet<string>? _ymm4TableSnapshot;
             private CancellationToken _activeCancellation;
             private AviUtlScriptContext? _activeContext;
+
+            private AviUtlGlobalRegistrar? _globalRegistrar;
+            private SceneTableRegistrar? _sceneRegistrar;
 
             internal ExecutionThread(Func<IMediaSourceLoader> mediaLoaderFactory)
             {
@@ -167,7 +172,8 @@ namespace LuaScript
                     CoreModules.ErrorHandling);
                 script.Options.ScriptLoader = new DisabledFileScriptLoader();
                 script.AttachDebugger(_debugger);
-                AviUtlGlobalRegistrar.RegisterFunctions(script.Globals, CurrentTimeRatio);
+                _globalRegistrar = new AviUtlGlobalRegistrar(CurrentTimeRatio);
+                _globalRegistrar.RegisterLuaMembers(script.Globals);
                 _script = script;
             }
 
@@ -224,7 +230,7 @@ namespace LuaScript
                     script.Globals["scene"] = sceneTable;
 
                     var objTable = new Table(script);
-                    RegisterObjectCallbacks(objTable);
+                    RegisterLuaMembers(objTable);
                     script.Globals["obj"] = objTable;
 
                     var animTable = new Table(script);
@@ -255,7 +261,7 @@ namespace LuaScript
                     if (!ReferenceEquals(script.Globals.Get("obj").Table, _objTable))
                     {
                         var objTable = new Table(script);
-                        RegisterObjectCallbacks(objTable);
+                        RegisterLuaMembers(objTable);
                         script.Globals["obj"] = objTable;
                         _objTable = objTable;
                         _objTableSnapshot = null;
@@ -284,72 +290,10 @@ namespace LuaScript
                     ResetUserTableKeys(_ymm4Table!, _ymm4TableSnapshot);
                 }
 
-                script.Globals["time"] = ctx.Time;
-                script.Globals["frame"] = ctx.Frame;
-                script.Globals["totalframe"] = ctx.TotalFrame;
-                script.Globals["framerate"] = ctx.Framerate;
-                script.Globals["timelineframe"] = ctx.TimelineFrame;
-                script.Globals["timelinetime"] = ctx.TimelineTime;
-                script.Globals["layer"] = ctx.Layer;
-
-                _sceneTable!["width"] = ctx.SceneWidth;
-                _sceneTable!["height"] = ctx.SceneHeight;
-                _sceneTable!["cx"] = ctx.SceneWidth / 2d;
-                _sceneTable!["cy"] = ctx.SceneHeight / 2d;
-
-                Ymm4TableRegistrar.UpdateVariables(_ymm4Table!, ctx);
-
-                _objTable!["w"] = ctx.ImageWidth;
-                _objTable!["h"] = ctx.ImageHeight;
-                _objTable!["hw"] = ctx.ImageWidth / 2d;
-                _objTable!["hh"] = ctx.ImageHeight / 2d;
-                _objTable!["cx"] = ctx.ImageWidth / 2d;
-                _objTable!["cy"] = ctx.ImageHeight / 2d;
-                _objTable!["cz"] = 0d;
-                _objTable!["diagonal"] = Math.Sqrt((double)ctx.ImageWidth * ctx.ImageWidth + (double)ctx.ImageHeight * ctx.ImageHeight);
-                _objTable!["x"] = ctx.X;
-                _objTable!["y"] = ctx.Y;
-                _objTable!["z"] = ctx.Z;
-                _objTable!["ox"] = ctx.Ox;
-                _objTable!["oy"] = ctx.Oy;
-                _objTable!["oz"] = ctx.Oz;
-                _objTable!["sx"] = ctx.Sx;
-                _objTable!["sy"] = ctx.Sy;
-                _objTable!["sz"] = 1d;
-                _objTable!["zoom"] = ctx.Zoom;
-                _objTable!["aspect"] = ctx.Aspect;
-                _objTable!["alpha"] = ctx.Alpha;
-                _objTable!["rx"] = ctx.Rx;
-                _objTable!["ry"] = ctx.Ry;
-                _objTable!["rz"] = ctx.Rz;
-                _objTable!["rxr"] = ctx.RxRad;
-                _objTable!["ryr"] = ctx.RyRad;
-                _objTable!["rzr"] = ctx.RzRad;
-                _objTable!["track0"] = ctx.Track0;
-                _objTable!["track1"] = ctx.Track1;
-                _objTable!["track2"] = ctx.Track2;
-                _objTable!["track3"] = ctx.Track3;
-                _objTable!["slider0"] = ctx.Slider0;
-                _objTable!["slider1"] = ctx.Slider1;
-                _objTable!["slider2"] = ctx.Slider2;
-                _objTable!["slider3"] = ctx.Slider3;
-                foreach (var parameter in ctx.StringParameters)
-                    _objTable![parameter.Key] = parameter.Value;
-                _objTable!["check0"] = ctx.Check0;
-                _objTable!["check1"] = ctx.Check1;
-                _objTable!["check2"] = ctx.Check2;
-                _objTable!["check3"] = ctx.Check3;
-                if (ctx.HasColor)
-                    script.Globals["color"] = ctx.ColorValue;
-                _objTable!["time"] = ctx.Time;
-                _objTable!["frame"] = ctx.Frame;
-                _objTable!["totalframe"] = ctx.TotalFrame;
-                _objTable!["totaltime"] = ctx.TotalTime;
-                _objTable!["t"] = ctx.TotalFrame > 0 ? ctx.Frame / (double)ctx.TotalFrame : 0d;
-                _objTable!["framerate"] = ctx.Framerate;
-                _objTable!["layer"] = ctx.Layer;
-                _objTable!["index"] = ctx.Index;
-                _objTable!["num"] = ctx.Num;
+                _globalRegistrar!.UpdateLuaMembers(script.Globals, ctx);
+                _sceneRegistrar!.UpdateLuaMembers(_sceneTable!, ctx);
+                Ymm4TableRegistrar.UpdateLuaMembers(_ymm4Table!, ctx);
+                UpdateLuaMembers(_objTable!, ctx);
 
                 if (isFirstSetup)
                 {
@@ -423,8 +367,11 @@ namespace LuaScript
             private double CurrentTimeRatio() =>
                 _activeContext is { TotalTime: > 0d } context ? context.Time / context.TotalTime : 0d;
 
-            private void RegisterSceneCallbacks(Table scene) =>
-                SceneTableRegistrar.RegisterFunctions(scene, GetSceneValue, SetSceneValue);
+            private void RegisterSceneCallbacks(Table scene)
+            {
+                _sceneRegistrar = new SceneTableRegistrar(GetSceneValue, SetSceneValue);
+                _sceneRegistrar.RegisterLuaMembers(scene);
+            }
 
             private SceneValue GetSceneValue(string name)
             {
@@ -438,302 +385,489 @@ namespace LuaScript
                 _activeContext?.SetSceneValue(name, value);
             }
 
-            private void RegisterObjectCallbacks(Table obj)
+            [LuaVariable("w")]
+            private int W(AviUtlScriptContext ctx) => ctx.ImageWidth;
+
+            [LuaVariable("h")]
+            private int H(AviUtlScriptContext ctx) => ctx.ImageHeight;
+
+            [LuaVariable("hw")]
+            private double Hw(AviUtlScriptContext ctx) => ctx.ImageWidth / 2d;
+
+            [LuaVariable("hh")]
+            private double Hh(AviUtlScriptContext ctx) => ctx.ImageHeight / 2d;
+
+            [LuaVariable("diagonal")]
+            private double Diagonal(AviUtlScriptContext ctx) => Math.Sqrt((double)ctx.ImageWidth * ctx.ImageWidth + (double)ctx.ImageHeight * ctx.ImageHeight);
+
+            [LuaVariable("cx")]
+            private double Cx(AviUtlScriptContext ctx) => ctx.ImageWidth / 2d;
+
+            [LuaVariable("cy")]
+            private double Cy(AviUtlScriptContext ctx) => ctx.ImageHeight / 2d;
+
+            [LuaVariable("cz")]
+            private double Cz(AviUtlScriptContext ctx) => 0d;
+
+            [LuaVariable("x")]
+            private double X(AviUtlScriptContext ctx) => ctx.X;
+
+            [LuaVariable("y")]
+            private double Y(AviUtlScriptContext ctx) => ctx.Y;
+
+            [LuaVariable("z")]
+            private double Z(AviUtlScriptContext ctx) => ctx.Z;
+
+            [LuaVariable("ox")]
+            private double Ox(AviUtlScriptContext ctx) => ctx.Ox;
+
+            [LuaVariable("oy")]
+            private double Oy(AviUtlScriptContext ctx) => ctx.Oy;
+
+            [LuaVariable("oz")]
+            private double Oz(AviUtlScriptContext ctx) => ctx.Oz;
+
+            [LuaVariable("sx")]
+            private double Sx(AviUtlScriptContext ctx) => ctx.Sx;
+
+            [LuaVariable("sy")]
+            private double Sy(AviUtlScriptContext ctx) => ctx.Sy;
+
+            [LuaVariable("sz", InCatalog = false)]
+            private double Sz(AviUtlScriptContext ctx) => 1d;
+
+            [LuaVariable("zoom")]
+            private double Zoom(AviUtlScriptContext ctx) => ctx.Zoom;
+
+            [LuaVariable("alpha")]
+            private double Alpha(AviUtlScriptContext ctx) => ctx.Alpha;
+
+            [LuaVariable("aspect")]
+            private double Aspect(AviUtlScriptContext ctx) => ctx.Aspect;
+
+            [LuaVariable("rx")]
+            private double Rx(AviUtlScriptContext ctx) => ctx.Rx;
+
+            [LuaVariable("ry")]
+            private double Ry(AviUtlScriptContext ctx) => ctx.Ry;
+
+            [LuaVariable("rz")]
+            private double Rz(AviUtlScriptContext ctx) => ctx.Rz;
+
+            [LuaVariable("rxr")]
+            private double Rxr(AviUtlScriptContext ctx) => ctx.RxRad;
+
+            [LuaVariable("ryr")]
+            private double Ryr(AviUtlScriptContext ctx) => ctx.RyRad;
+
+            [LuaVariable("rzr")]
+            private double Rzr(AviUtlScriptContext ctx) => ctx.RzRad;
+
+            [LuaVariable("track0")]
+            private double Track0(AviUtlScriptContext ctx) => ctx.Track0;
+
+            [LuaVariable("track1")]
+            private double Track1(AviUtlScriptContext ctx) => ctx.Track1;
+
+            [LuaVariable("track2")]
+            private double Track2(AviUtlScriptContext ctx) => ctx.Track2;
+
+            [LuaVariable("track3")]
+            private double Track3(AviUtlScriptContext ctx) => ctx.Track3;
+
+            [LuaVariable("slider0")]
+            private double Slider0(AviUtlScriptContext ctx) => ctx.Slider0;
+
+            [LuaVariable("slider1")]
+            private double Slider1(AviUtlScriptContext ctx) => ctx.Slider1;
+
+            [LuaVariable("slider2")]
+            private double Slider2(AviUtlScriptContext ctx) => ctx.Slider2;
+
+            [LuaVariable("slider3")]
+            private double Slider3(AviUtlScriptContext ctx) => ctx.Slider3;
+
+            [LuaVariable("check0")]
+            private bool Check0(AviUtlScriptContext ctx) => ctx.Check0;
+
+            [LuaVariable("check1")]
+            private bool Check1(AviUtlScriptContext ctx) => ctx.Check1;
+
+            [LuaVariable("check2")]
+            private bool Check2(AviUtlScriptContext ctx) => ctx.Check2;
+
+            [LuaVariable("check3")]
+            private bool Check3(AviUtlScriptContext ctx) => ctx.Check3;
+
+            [LuaVariable("text")]
+            private string? Text(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("text", out var value) ? value : null;
+
+            [LuaVariable("font")]
+            private string? Font(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("font", out var value) ? value : null;
+
+            [LuaVariable("dir")]
+            private string? Dir(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("dir", out var value) ? value : null;
+
+            [LuaVariable("file_video")]
+            private string? FileVideo(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_video", out var value) ? value : null;
+
+            [LuaVariable("file_audio")]
+            private string? FileAudio(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_audio", out var value) ? value : null;
+
+            [LuaVariable("file_image")]
+            private string? FileImage(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_image", out var value) ? value : null;
+
+            [LuaVariable("file_project")]
+            private string? FileProject(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_project", out var value) ? value : null;
+
+            [LuaVariable("file_mp4")]
+            private string? FileMp4(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_mp4", out var value) ? value : null;
+
+            [LuaVariable("file_exo")]
+            private string? FileExo(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_exo", out var value) ? value : null;
+
+            [LuaVariable("file_subtitle")]
+            private string? FileSubtitle(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_subtitle", out var value) ? value : null;
+
+            [LuaVariable("file_shader")]
+            private string? FileShader(AviUtlScriptContext ctx) => ctx.StringParameters.TryGetValue("file_shader", out var value) ? value : null;
+
+            [LuaVariable("time")]
+            private double Time(AviUtlScriptContext ctx) => ctx.Time;
+
+            [LuaVariable("totaltime")]
+            private double Totaltime(AviUtlScriptContext ctx) => ctx.TotalTime;
+
+            [LuaVariable("t")]
+            private double T(AviUtlScriptContext ctx) => ctx.TotalFrame > 0 ? ctx.Frame / (double)ctx.TotalFrame : 0d;
+
+            [LuaVariable("frame")]
+            private int Frame(AviUtlScriptContext ctx) => ctx.Frame;
+
+            [LuaVariable("totalframe")]
+            private int Totalframe(AviUtlScriptContext ctx) => ctx.TotalFrame;
+
+            [LuaVariable("framerate")]
+            private int Framerate(AviUtlScriptContext ctx) => ctx.Framerate;
+
+            [LuaVariable("layer")]
+            private int Layer(AviUtlScriptContext ctx) => ctx.Layer;
+
+            [LuaVariable("index")]
+            private int Index(AviUtlScriptContext ctx) => ctx.Index;
+
+            [LuaVariable("num")]
+            private int Num(AviUtlScriptContext ctx) => ctx.Num;
+            [LuaFunction("getobject")]
+            private DynValue GetObject(ScriptExecutionContext execCtx, CallbackArguments args)
             {
-                obj["getobject"] = DynValue.NewCallback((execCtx, args) =>
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count == 0)
+                    return DynValue.Nil;
+                var tag = args[0];
+                if (tag.Type != DataType.String)
+                    return DynValue.Nil;
+                int frame = _activeContext.TimelineFrame;
+                if (args.Count >= 2)
                 {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count == 0)
+                    var frameArg = args[1];
+                    if (frameArg.Type != DataType.Number)
                         return DynValue.Nil;
-                    var tag = args[0];
-                    if (tag.Type != DataType.String)
-                        return DynValue.Nil;
-                    int frame = _activeContext.TimelineFrame;
-                    if (args.Count >= 2)
+                    frame = (int)frameArg.Number;
+                }
+                if (!_activeContext.ResolveObject(tag.String, frame, out var info))
+                    return DynValue.Nil;
+                return BuildObjectTable(execCtx.GetScript(), info);
+            }
+
+            [LuaFunction("getpixel")]
+            private DynValue GetPixel(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null) return DynValue.Nil;
+                int x = (int)(args[0].CastToNumber() ?? 0d);
+                int y = (int)(args[1].CastToNumber() ?? 0d);
+                var (r, g, b, a) = _activeContext.GetPixel(x, y);
+                return DynValue.NewTuple(
+                    DynValue.NewNumber(r),
+                    DynValue.NewNumber(g),
+                    DynValue.NewNumber(b),
+                    DynValue.NewNumber(a));
+            }
+
+            [LuaFunction("setpixel")]
+            private DynValue SetPixel(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null) return DynValue.Void;
+                int x = (int)(args[0].CastToNumber() ?? 0d);
+                int y = (int)(args[1].CastToNumber() ?? 0d);
+                double r = args[2].CastToNumber() ?? 0d;
+                double g = args[3].CastToNumber() ?? 0d;
+                double b = args[4].CastToNumber() ?? 0d;
+                double a = args.Count > 5 ? args[5].CastToNumber() ?? 255d : 255d;
+                _activeContext.SetPixel(x, y, r, g, b, a);
+                return DynValue.Void;
+            }
+
+            [LuaFunction("getpixeldata")]
+            private DynValue GetPixelData()
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null) return DynValue.Nil;
+                _activeContext.EnsurePixelBuffer();
+                return UserData.Create(new PixelDataProxy(_activeContext));
+            }
+
+            [LuaFunction("putpixeldata")]
+            private DynValue PutPixelData() => DynValue.Void;
+
+            [LuaFunction("rand")]
+            private DynValue Rand(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                double frameDefault = _activeContext?.Frame ?? 0d;
+                double a = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                double b = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                double seed = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                double frame = args.Count > 3 ? args[3].CastToNumber() ?? frameDefault : frameDefault;
+                return DynValue.NewNumber(AviUtlRandom.Next(a, b, seed, frame));
+            }
+
+            [LuaFunction("load")]
+            private DynValue Load(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Void;
+
+                switch (args[0].String)
+                {
+                    case "figure" when args.Count >= 4:
+                        LoadFigure(
+                            args[1].Type == DataType.String ? args[1].String : string.Empty,
+                            (int)(args[2].CastToNumber() ?? 0d),
+                            args[3].CastToNumber() ?? 0d,
+                            args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d,
+                            args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d);
+                        break;
+                    case "text":
+                        LoadText(args.Count > 1 && args[1].Type == DataType.String ? args[1].String : string.Empty);
+                        break;
+                    case "image" when args.Count > 1 && args[1].Type == DataType.String:
+                        LoadImage(args[1].String);
+                        break;
+                    case "movie" when args.Count > 1 && args[1].Type == DataType.String:
+                        LoadMovie(
+                            args[1].String,
+                            args.Count > 2 ? args[2].CastToNumber() ?? _activeContext.Time : _activeContext.Time);
+                        break;
+                }
+                return DynValue.Void;
+            }
+
+            [LuaFunction("setfont")]
+            private DynValue SetFont(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                _fontState.Apply(
+                    args.Count > 0 ? args[0] : DynValue.Nil,
+                    args.Count > 1 ? args[1] : DynValue.Nil,
+                    args.Count > 2 ? args[2] : DynValue.Nil,
+                    args.Count > 3 ? args[3] : DynValue.Nil);
+                return DynValue.Void;
+            }
+
+            [LuaFunction("draw")]
+            private DynValue Draw(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null)
+                    return DynValue.Void;
+
+                double ox = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                double oy = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                double oz = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                double zoom = args.Count > 3 ? args[3].CastToNumber() ?? 1d : 1d;
+                double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
+                double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
+
+                _activeContext.SubmitDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias(), CurrentBlend()));
+                return DynValue.Void;
+            }
+
+            [LuaFunction("drawpoly")]
+            private DynValue DrawPoly(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 12)
+                    return DynValue.Void;
+
+                var poly = new double[DrawPolyMath.Length];
+                for (int i = 0; i < 12; i++)
+                    poly[i] = args[i].CastToNumber() ?? 0d;
+
+                if (args.Count >= 20)
+                {
+                    for (int i = 0; i < 8; i++)
+                        poly[12 + i] = args[12 + i].CastToNumber() ?? 0d;
+                }
+                else
+                {
+                    double w = _activeContext.ImageWidth;
+                    double h = _activeContext.ImageHeight;
+                    poly[12] = 0d; poly[13] = 0d;
+                    poly[14] = w; poly[15] = 0d;
+                    poly[16] = w; poly[17] = h;
+                    poly[18] = 0d; poly[19] = h;
+                }
+
+                poly[20] = args.Count switch
+                {
+                    13 => args[12].CastToNumber() ?? 1d,
+                    >= 21 => args[20].CastToNumber() ?? 1d,
+                    _ => 1d,
+                };
+
+                _activeContext.SubmitDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias(), CurrentBlend()));
+                return DynValue.Void;
+            }
+
+            [LuaFunction("copybuffer")]
+            private DynValue CopyBuffer(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 2 ||
+                    args[0].Type != DataType.String || args[1].Type != DataType.String)
+                    return DynValue.Void;
+
+                if (_activeContext.CopyBuffer(args[0].String, args[1].String))
+                    RefreshObjDimensions();
+                return DynValue.Void;
+            }
+
+            [LuaFunction("getvalue")]
+            private DynValue GetValue(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.NewNumber(0d);
+                var value = _objTable!.Get(args[0].String);
+                return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
+            }
+
+            [LuaFunction("setoption")]
+            private DynValue SetOption(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Void;
+                var name = args[0].String;
+                var value = args.Count > 1 ? args[1] : DynValue.True;
+                _options[name] = value;
+                if (name == "draw_state" && _activeContext is not null)
+                    _activeContext.DrawStateOverride = value.Type == DataType.Boolean
+                        ? value.Boolean
+                        : (value.CastToNumber() ?? 0d) != 0d;
+                if (name == "drawtarget" && _activeContext is not null)
+                {
+                    if (value.Type == DataType.String && value.String == "tempbuffer")
                     {
-                        var frameArg = args[1];
-                        if (frameArg.Type != DataType.Number)
-                            return DynValue.Nil;
-                        frame = (int)frameArg.Number;
-                    }
-                    if (!_activeContext.ResolveObject(tag.String, frame, out var info))
-                        return DynValue.Nil;
-                    return BuildObjectTable(execCtx.GetScript(), info);
-                });
-
-                obj["getpixel"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null) return DynValue.Nil;
-                    int x = (int)(args[0].CastToNumber() ?? 0d);
-                    int y = (int)(args[1].CastToNumber() ?? 0d);
-                    var (r, g, b, a) = _activeContext.GetPixel(x, y);
-                    return DynValue.NewTuple(
-                        DynValue.NewNumber(r),
-                        DynValue.NewNumber(g),
-                        DynValue.NewNumber(b),
-                        DynValue.NewNumber(a));
-                });
-
-                obj["setpixel"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null) return DynValue.Void;
-                    int x = (int)(args[0].CastToNumber() ?? 0d);
-                    int y = (int)(args[1].CastToNumber() ?? 0d);
-                    double r = args[2].CastToNumber() ?? 0d;
-                    double g = args[3].CastToNumber() ?? 0d;
-                    double b = args[4].CastToNumber() ?? 0d;
-                    double a = args.Count > 5 ? args[5].CastToNumber() ?? 255d : 255d;
-                    _activeContext.SetPixel(x, y, r, g, b, a);
-                    return DynValue.Void;
-                });
-
-                obj["getpixeldata"] = DynValue.NewCallback((_, _) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null) return DynValue.Nil;
-                    _activeContext.EnsurePixelBuffer();
-                    return UserData.Create(new PixelDataProxy(_activeContext));
-                });
-
-                obj["putpixeldata"] = DynValue.NewCallback((_, _) => DynValue.Void);
-
-                obj["rand"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    double frameDefault = _activeContext?.Frame ?? 0d;
-                    double a = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
-                    double b = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
-                    double seed = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
-                    double frame = args.Count > 3 ? args[3].CastToNumber() ?? frameDefault : frameDefault;
-                    return DynValue.NewNumber(AviUtlRandom.Next(a, b, seed, frame));
-                });
-
-                obj["load"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.Void;
-
-                    switch (args[0].String)
-                    {
-                        case "figure" when args.Count >= 4:
-                            LoadFigure(
-                                args[1].Type == DataType.String ? args[1].String : string.Empty,
-                                (int)(args[2].CastToNumber() ?? 0d),
-                                args[3].CastToNumber() ?? 0d,
-                                args.Count > 4 ? args[4].CastToNumber() ?? 0d : 0d,
-                                args.Count > 5 ? Math.Clamp(args[5].CastToNumber() ?? 0d, -1d, 1d) : 0d);
-                            break;
-                        case "text":
-                            LoadText(args.Count > 1 && args[1].Type == DataType.String ? args[1].String : string.Empty);
-                            break;
-                        case "image" when args.Count > 1 && args[1].Type == DataType.String:
-                            LoadImage(args[1].String);
-                            break;
-                        case "movie" when args.Count > 1 && args[1].Type == DataType.String:
-                            LoadMovie(
-                                args[1].String,
-                                args.Count > 2 ? args[2].CastToNumber() ?? _activeContext.Time : _activeContext.Time);
-                            break;
-                    }
-                    return DynValue.Void;
-                });
-
-                obj["setfont"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    _fontState.Apply(
-                        args.Count > 0 ? args[0] : DynValue.Nil,
-                        args.Count > 1 ? args[1] : DynValue.Nil,
-                        args.Count > 2 ? args[2] : DynValue.Nil,
-                        args.Count > 3 ? args[3] : DynValue.Nil);
-                    return DynValue.Void;
-                });
-
-                obj["effect"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.Void;
-
-                    string name = args[0].String;
-                    var arguments = new List<KeyValuePair<string, object>>();
-                    for (int i = 1; i + 1 < args.Count; i += 2)
-                    {
-                        if (args[i].Type != DataType.String)
-                            continue;
-                        var value = args[i + 1];
-                        object boxed = value.Type switch
-                        {
-                            DataType.Number => value.Number,
-                            DataType.Boolean => value.Boolean,
-                            DataType.String => value.String,
-                            _ => value.CastToNumber() ?? 0d,
-                        };
-                        arguments.Add(new KeyValuePair<string, object>(args[i].String, boxed));
-                    }
-
-                    _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
-                    return DynValue.Void;
-                });
-
-                obj["draw"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null)
-                        return DynValue.Void;
-
-                    double ox = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
-                    double oy = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
-                    double oz = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
-                    double zoom = args.Count > 3 ? args[3].CastToNumber() ?? 1d : 1d;
-                    double alpha = args.Count > 4 ? args[4].CastToNumber() ?? 1d : 1d;
-                    double aspect = args.Count > 5 ? args[5].CastToNumber() ?? 0d : 0d;
-
-                    _activeContext.SubmitDraw(new DrawCommand(ox, oy, oz, zoom, alpha, aspect, null, CurrentAntialias(), CurrentBlend()));
-                    return DynValue.Void;
-                });
-
-                obj["drawpoly"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count < 12)
-                        return DynValue.Void;
-
-                    var poly = new double[DrawPolyMath.Length];
-                    for (int i = 0; i < 12; i++)
-                        poly[i] = args[i].CastToNumber() ?? 0d;
-
-                    if (args.Count >= 20)
-                    {
-                        for (int i = 0; i < 8; i++)
-                            poly[12 + i] = args[12 + i].CastToNumber() ?? 0d;
+                        bool hasSize = args.Count > 3;
+                        int w = hasSize ? (int)(args[2].CastToNumber() ?? 0d) : 0;
+                        int h = hasSize ? (int)(args[3].CastToNumber() ?? 0d) : 0;
+                        _activeContext.SetDrawTarget(true, w, h, hasSize);
                     }
                     else
                     {
-                        double w = _activeContext.ImageWidth;
-                        double h = _activeContext.ImageHeight;
-                        poly[12] = 0d; poly[13] = 0d;
-                        poly[14] = w; poly[15] = 0d;
-                        poly[16] = w; poly[17] = h;
-                        poly[18] = 0d; poly[19] = h;
+                        _activeContext.SetDrawTarget(false, 0, 0, false);
                     }
+                }
+                return DynValue.Void;
+            }
 
-                    poly[20] = args.Count switch
+            [LuaFunction("getoption")]
+            private DynValue GetOption(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.NewNumber(0d);
+                return _options.TryGetValue(args[0].String, out var value) ? value : DynValue.NewNumber(0d);
+            }
+
+            [LuaFunction("pixeloption")]
+            private DynValue PixelOption(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Void;
+                _pixelOptions[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
+                return DynValue.Void;
+            }
+
+            [LuaFunction("setanchor")]
+            private DynValue SetAnchor(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || _script is null || args.Count < 2 || args[0].Type != DataType.String)
+                    return DynValue.NewNumber(0d);
+
+                var anchorName = args[0].String;
+                int count = AnchorSupport.ClampCount((int)(args[1].CastToNumber() ?? 0d));
+                if (string.Equals(anchorName, AnchorSupport.TrackGroup, StringComparison.Ordinal))
+                    return DynValue.NewNumber(0d);
+
+                var connection = AnchorConnection.None;
+                bool is3D = false;
+                for (int i = 2; i < args.Count; i++)
+                {
+                    if (args[i].Type == DataType.String)
+                        AnchorSupport.ApplyOption(args[i].String, ref connection, ref is3D);
+                }
+
+                int stride = is3D ? 3 : 2;
+                var table = new Table(_script);
+                var source = _activeContext.AnchorSource;
+                for (int i = 0; i < count; i++)
+                {
+                    AnchorSupport.ResolvePosition(source, anchorName, i, out double x, out double y, out double z);
+                    table.Set(i * stride + 1, DynValue.NewNumber(x));
+                    table.Set(i * stride + 2, DynValue.NewNumber(y));
+                    if (is3D)
+                        table.Set(i * stride + 3, DynValue.NewNumber(z));
+                }
+                _script.Globals.Set(anchorName, DynValue.NewTable(table));
+
+                _activeContext.AddAnchorRequest(new AnchorRequestData(anchorName, count, connection, is3D));
+                return DynValue.NewNumber(count);
+            }
+
+            [LuaFunction("effect")]
+            private DynValue Effect(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Void;
+
+                string name = args[0].String;
+                var arguments = new List<KeyValuePair<string, object>>();
+                for (int i = 1; i + 1 < args.Count; i += 2)
+                {
+                    if (args[i].Type != DataType.String)
+                        continue;
+                    var value = args[i + 1];
+                    object boxed = value.Type switch
                     {
-                        13 => args[12].CastToNumber() ?? 1d,
-                        >= 21 => args[20].CastToNumber() ?? 1d,
-                        _ => 1d,
+                        DataType.Number => value.Number,
+                        DataType.Boolean => value.Boolean,
+                        DataType.String => value.String,
+                        _ => value.CastToNumber() ?? 0d,
                     };
+                    arguments.Add(new KeyValuePair<string, object>(args[i].String, boxed));
+                }
 
-                    _activeContext.SubmitDraw(new DrawCommand(0d, 0d, 0d, 1d, poly[20], 0d, poly, CurrentAntialias(), CurrentBlend()));
-                    return DynValue.Void;
-                });
-
-                obj["copybuffer"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || args.Count < 2 ||
-                        args[0].Type != DataType.String || args[1].Type != DataType.String)
-                        return DynValue.Void;
-
-                    if (_activeContext.CopyBuffer(args[0].String, args[1].String))
-                        RefreshObjDimensions();
-                    return DynValue.Void;
-                });
-
-                obj["getvalue"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.NewNumber(0d);
-                    var value = _objTable!.Get(args[0].String);
-                    return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
-                });
-
-                obj["setanchor"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (_activeContext is null || _script is null || args.Count < 2 || args[0].Type != DataType.String)
-                        return DynValue.NewNumber(0d);
-
-                    var anchorName = args[0].String;
-                    int count = AnchorSupport.ClampCount((int)(args[1].CastToNumber() ?? 0d));
-                    if (string.Equals(anchorName, AnchorSupport.TrackGroup, StringComparison.Ordinal))
-                        return DynValue.NewNumber(0d);
-
-                    var connection = AnchorConnection.None;
-                    bool is3D = false;
-                    for (int i = 2; i < args.Count; i++)
-                    {
-                        if (args[i].Type == DataType.String)
-                            AnchorSupport.ApplyOption(args[i].String, ref connection, ref is3D);
-                    }
-
-                    int stride = is3D ? 3 : 2;
-                    var table = new Table(_script);
-                    var source = _activeContext.AnchorSource;
-                    for (int i = 0; i < count; i++)
-                    {
-                        AnchorSupport.ResolvePosition(source, anchorName, i, out double x, out double y, out double z);
-                        table.Set(i * stride + 1, DynValue.NewNumber(x));
-                        table.Set(i * stride + 2, DynValue.NewNumber(y));
-                        if (is3D)
-                            table.Set(i * stride + 3, DynValue.NewNumber(z));
-                    }
-                    _script.Globals.Set(anchorName, DynValue.NewTable(table));
-
-                    _activeContext.AddAnchorRequest(new AnchorRequestData(anchorName, count, connection, is3D));
-                    return DynValue.NewNumber(count);
-                });
-
-                obj["setoption"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.Void;
-                    var name = args[0].String;
-                    var value = args.Count > 1 ? args[1] : DynValue.True;
-                    _options[name] = value;
-                    if (name == "draw_state" && _activeContext is not null)
-                        _activeContext.DrawStateOverride = value.Type == DataType.Boolean
-                            ? value.Boolean
-                            : (value.CastToNumber() ?? 0d) != 0d;
-                    if (name == "drawtarget" && _activeContext is not null)
-                    {
-                        if (value.Type == DataType.String && value.String == "tempbuffer")
-                        {
-                            bool hasSize = args.Count > 3;
-                            int w = hasSize ? (int)(args[2].CastToNumber() ?? 0d) : 0;
-                            int h = hasSize ? (int)(args[3].CastToNumber() ?? 0d) : 0;
-                            _activeContext.SetDrawTarget(true, w, h, hasSize);
-                        }
-                        else
-                        {
-                            _activeContext.SetDrawTarget(false, 0, 0, false);
-                        }
-                    }
-                    return DynValue.Void;
-                });
-
-                obj["getoption"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.NewNumber(0d);
-                    return _options.TryGetValue(args[0].String, out var value) ? value : DynValue.NewNumber(0d);
-                });
-
-                obj["pixeloption"] = DynValue.NewCallback((_, args) =>
-                {
-                    _activeCancellation.ThrowIfCancellationRequested();
-                    if (args.Count == 0 || args[0].Type != DataType.String)
-                        return DynValue.Void;
-                    _pixelOptions[args[0].String] = args.Count > 1 ? args[1] : DynValue.True;
-                    return DynValue.Void;
-                });
+                _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
+                return DynValue.Void;
             }
 
             private double CurrentAntialias() =>
