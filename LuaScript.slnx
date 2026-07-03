@@ -10,6 +10,9 @@
   <Project Path="LuaScript.Kernel/LuaScript.Kernel.csproj">
     <Platform Solution="*|x64" Project="Any CPU" />
   </Project>
+  <Project Path="LuaScript.Media/LuaScript.Media.csproj">
+    <Platform Solution="*|x64" Project="Any CPU" />
+  </Project>
   <Project Path="LuaScript.Runtime/LuaScript.Runtime.csproj">
     <Platform Solution="*|x64" Project="Any CPU" />
   </Project>

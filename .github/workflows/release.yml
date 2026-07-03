@@ -75,6 +75,7 @@ jobs:
           Copy-Item "$outDir/LuaScript.dll"           "$stageRoot/"
           Copy-Item "$outDir/LuaScript.Kernel.dll"    "$stageRoot/"
           Copy-Item "$outDir/LuaScript.Compat.dll"    "$stageRoot/"
+          Copy-Item "$outDir/LuaScript.Media.dll"     "$stageRoot/"
           Copy-Item "$outDir/LuaScript.Runtime.dll"   "$stageRoot/"
           Copy-Item "$outDir/MoonSharp.Interpreter.dll" "$stageRoot/"
           Copy-Item "$outDir/native/luajit.exe" "$stageRoot/native/"

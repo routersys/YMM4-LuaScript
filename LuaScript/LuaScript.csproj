@@ -97,6 +97,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\LuaScript.Kernel\LuaScript.Kernel.csproj" />
 		<ProjectReference Include="..\LuaScript.Compat\LuaScript.Compat.csproj" />
+		<ProjectReference Include="..\LuaScript.Media\LuaScript.Media.csproj" />
 		<ProjectReference Include="..\LuaScript.Runtime\LuaScript.Runtime.csproj" />
 	</ItemGroup>
 
