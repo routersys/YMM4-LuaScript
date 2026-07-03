@@ -147,6 +147,7 @@ namespace LuaScript
         private string _sourceScript = string.Empty;
         private string _runnableScript = string.Empty;
         private int[] _runnableLineMap = [];
+        private int[] _runnableChangedLines = [];
         private bool _runnableCached;
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
@@ -214,9 +215,10 @@ namespace LuaScript
             if (_runnableCached && string.Equals(source, _sourceScript, StringComparison.Ordinal))
                 return _runnableScript;
 
-            var (code, lineMap) = AviUtlScript.TransformWithMap(source);
+            var (code, lineMap, changedLines) = AviUtlScript.TransformWithMap(source);
             _runnableScript = code;
             _runnableLineMap = lineMap;
+            _runnableChangedLines = changedLines;
             _sourceScript = source;
             _runnableCached = true;
             return _runnableScript;
@@ -232,10 +234,18 @@ namespace LuaScript
         private LuaScriptDiagnostic CreateDiagnostic(LuaScriptDiagnosticKind kind, string message)
         {
             var diagnostic = LuaScriptDiagnosticParser.Parse(kind, message);
-            return diagnostic.Line > 0
-                ? diagnostic with { Line = MapRunnableLine(diagnostic.Line) }
-                : diagnostic;
+            if (diagnostic.Line <= 0)
+                return diagnostic;
+
+            if (IsRunnableLineRewritten(diagnostic.Line))
+                diagnostic = diagnostic with { Column = 0, Length = 0 };
+
+            return diagnostic with { Line = MapRunnableLine(diagnostic.Line) };
         }
+
+        private bool IsRunnableLineRewritten(int runnableLine)
+            => _runnableChangedLines.Length != 0
+                && Array.BinarySearch(_runnableChangedLines, runnableLine) >= 0;
 
         private int MapRunnableLine(int runnableLine)
         {
