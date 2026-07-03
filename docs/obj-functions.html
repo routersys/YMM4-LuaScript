@@ -170,6 +170,7 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される。<code>blend</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の合成モードを番号で指定する。番号は下記の「合成モード」を参照。<code>draw_state</code> は真偽値で、<code>true</code> なら作業画像を出力し、<code>false</code> なら入力をそのまま通す。<code>drawtarget</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の描画先を <code>"framebuffer"</code> と <code>"tempbuffer"</code> で切り替える。詳細は下記の「描画先」を参照</td></tr>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
+<tr><td><code>obj.getinfo(name)</code></td><td>各種の環境情報を名前で取得する。詳細は下記の「環境情報」を参照</td></tr>
 <tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
 <tr><td><code>obj.setanchor(name, count [, option, ...])</code></td><td>プレビュー上にドラッグ可能なアンカーポイントを表示し、その座標を <code>name</code> の Lua 変数へ格納する。設置数を返す。詳細は下記の「アンカーポイント」を参照</td></tr>
 </table>
@@ -271,6 +272,29 @@ obj.copybuffer("obj", "tmp")</code></pre>
 obj.setanchor("pos", num, "loop")
 for i = 0, num - 1 do
   obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+end</code></pre>
+
+<h3>環境情報</h3>
+
+<p>
+<code>obj.getinfo(name)</code> は、<code>name</code> で指定した環境情報を返します。対応していない名前を指定したときは <code>nil</code> を返します。
+<code>"image_max"</code> は幅と高さの2値を返し、<code>"bpm"</code> はテンポと拍子と基準時間の3値を返します。両エンジンで動きます。
+</p>
+
+<table>
+<tr><th>name</th><th>戻り値</th></tr>
+<tr><td><code>"script_path"</code></td><td>プラグインの設置フォルダのパスを返す。末尾には区切り文字が付く</td></tr>
+<tr><td><code>"filter"</code></td><td>フィルタ効果として処理中かどうかを返す。本プラグインでは常に <code>true</code> になる</td></tr>
+<tr><td><code>"saving"</code></td><td>動画を出力中のときだけ <code>true</code> を返す</td></tr>
+<tr><td><code>"image_max"</code></td><td>最大画像サイズを幅と高さで返す</td></tr>
+<tr><td><code>"bpm"</code></td><td>BPMグリッドのテンポと拍子と基準時間を返す。基準時間の単位は秒とする。BPMグリッドを設定していないときはテンポが <code>0</code> になる</td></tr>
+<tr><td><code>"clock"</code></td><td>YMM4の起動からの経過時間を秒で返す</td></tr>
+<tr><td><code>"script_time"</code></td><td>スクリプトの実行開始からの経過時間をミリ秒で返す</td></tr>
+<tr><td><code>"version"</code></td><td>本体のバージョンを <code>major×10000+minor×100+build</code> の数値で返す</td></tr>
+</table>
+
+<pre><code>if obj.getinfo("saving") == false then
+  obj.drawpoly(-100,-100,0, 100,-100,0, 100,100,0, -100,100,0)
 end</code></pre>
 
 <h3>互換マップ</h3>
