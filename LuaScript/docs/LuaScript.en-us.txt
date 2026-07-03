@@ -758,11 +758,31 @@
         transformed before execution, so they work the same on every engine.
         The insides of strings and comments are not transformed.
 
-        o is not
-                a is not b is treated as an inequality and means the same as a ~= b.
+        o is / is not
+                a is b means a == b, and a is not b means a ~= b.
                 Example: if frame is not 0 then
                            obj.x = 100
                          end
+
+        o != / ! / && / ||
+                != means ~=, ! means not, && means and, and || means or.
+
+        o Compound assignment (+= -= *= /= %= ^= ..=)
+                x += 1 expands to x = x + (1). ..= concatenates strings.
+
+        o ?? (nil coalescing)
+                a ?? b returns b only when a is nil. It does not fall back on false.
+
+        o ??= / ||= / &&=
+                x ??= b assigns only when x is nil.
+                x ||= b is x = x or (b), and x &&= b is x = x and (b).
+
+        o ++
+                x++ expands to x = x + 1. Use it as a statement on its own line.
+
+        o Range for (<start..stop>)
+                for i in <0..10> do is the same as for i = 0, 10 do and includes the end.
+                <0..<10> excludes the end. <0..10, 2> uses a step of 2.
 
 
 - Script Examples -

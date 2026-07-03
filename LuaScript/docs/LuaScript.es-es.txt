@@ -768,12 +768,31 @@
         transforma antes de ejecutarse, por lo que funcionan igual en todos los
         motores. El interior de las cadenas y los comentarios no se transforma.
 
-        o is not
-                a is not b se trata como una desigualdad y significa lo mismo que
-                a ~= b.
+        o is / is not
+                a is b significa a == b, y a is not b significa a ~= b.
                 Ejemplo: if frame is not 0 then
                            obj.x = 100
                          end
+
+        o != / ! / && / ||
+                != significa ~=, ! significa not, && significa and y || significa or.
+
+        o Asignación compuesta (+= -= *= /= %= ^= ..=)
+                x += 1 se expande a x = x + (1). ..= concatena cadenas.
+
+        o ?? (fusión de nil)
+                a ?? b devuelve b solo cuando a es nil. No recurre a false.
+
+        o ??= / ||= / &&=
+                x ??= b asigna solo cuando x es nil.
+                x ||= b es x = x or (b), y x &&= b es x = x and (b).
+
+        o ++
+                x++ se expande a x = x + 1. Úsalo como una sentencia en su propia línea.
+
+        o for de rango (<inicio..fin>)
+                for i in <0..10> do es igual que for i = 0, 10 do e incluye el final.
+                <0..<10> excluye el final. <0..10, 2> usa un incremento de 2.
 
 
 - Ejemplos de script -

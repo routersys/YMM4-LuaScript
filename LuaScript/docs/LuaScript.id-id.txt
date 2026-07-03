@@ -764,12 +764,31 @@
         ditransformasikan sebelum dijalankan, sehingga bekerja sama pada semua
         mesin. Bagian dalam string dan komentar tidak ditransformasikan.
 
-        o is not
-                a is not b diperlakukan sebagai ketidaksamaan dan berarti sama
-                dengan a ~= b.
+        o is / is not
+                a is b berarti a == b, dan a is not b berarti a ~= b.
                 Contoh: if frame is not 0 then
                           obj.x = 100
                         end
+
+        o != / ! / && / ||
+                != berarti ~=, ! berarti not, && berarti and, dan || berarti or.
+
+        o Penugasan majemuk (+= -= *= /= %= ^= ..=)
+                x += 1 diperluas menjadi x = x + (1). ..= menggabungkan string.
+
+        o ?? (koalesing nil)
+                a ?? b mengembalikan b hanya saat a bernilai nil. Tidak beralih ke false.
+
+        o ??= / ||= / &&=
+                x ??= b menetapkan hanya saat x bernilai nil.
+                x ||= b adalah x = x or (b), dan x &&= b adalah x = x and (b).
+
+        o ++
+                x++ diperluas menjadi x = x + 1. Gunakan sebagai pernyataan satu baris.
+
+        o for rentang (<awal..akhir>)
+                for i in <0..10> do sama dengan for i = 0, 10 do dan menyertakan akhir.
+                <0..<10> tidak menyertakan akhir. <0..10, 2> memakai langkah 2.
 
 
 - Contoh Skrip -
