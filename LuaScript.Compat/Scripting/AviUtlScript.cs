@@ -28,7 +28,7 @@ namespace LuaScript.Compat
                 AppendDeclarations(lines[i], prelude);
 
             if (!hasSection && prelude.Count == 0)
-                return (source, []);
+                return (LuaSyntaxExtensions.Rewrite(source), []);
 
             var builder = new StringBuilder(source.Length + 64);
             var lineMap = new int[prelude.Count + (sectionEnd - sectionStart)];
@@ -45,7 +45,7 @@ namespace LuaScript.Compat
                 lineMap[row++] = i;
             }
 
-            return (builder.ToString(), lineMap);
+            return (LuaSyntaxExtensions.Rewrite(builder.ToString()), lineMap);
         }
 
         private static void AppendDeclarations(string line, List<string> prelude)
