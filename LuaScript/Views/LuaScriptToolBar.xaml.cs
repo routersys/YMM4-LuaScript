@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -15,10 +16,16 @@ namespace LuaScript
         public event EventHandler? BeginEdit;
         public event EventHandler? EndEdit;
 
+        private ItemProperty[]? _itemProperties;
+
         public ItemProperty[]? ItemProperties
         {
-            get => _viewModel.ItemProperties;
-            set => _viewModel.ItemProperties = value;
+            get => _itemProperties;
+            set
+            {
+                _itemProperties = value;
+                _viewModel.SetProviders(ExtractProviders(value));
+            }
         }
 
         public LuaScriptToolBar()
@@ -26,6 +33,20 @@ namespace LuaScript
             InitializeComponent();
             _viewModel.BeginEdit += (_, e) => BeginEdit?.Invoke(this, e);
             _viewModel.EndEdit += (_, e) => EndEdit?.Invoke(this, e);
+        }
+
+        private static IReadOnlyList<IScriptProvider> ExtractProviders(ItemProperty[]? itemProperties)
+        {
+            if (itemProperties is null)
+                return [];
+
+            var providers = new List<IScriptProvider>();
+            foreach (var item in itemProperties)
+            {
+                if (item.PropertyOwner is IScriptProvider provider)
+                    providers.Add(provider);
+            }
+            return providers;
         }
 
         private void Import_Click(object sender, RoutedEventArgs e)
