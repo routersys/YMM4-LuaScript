@@ -54,8 +54,6 @@ namespace LuaScript
             private LuaScriptException? _jobException;
             private volatile bool _disposeRequested;
 
-            private readonly List<string> _removalBuffer = [];
-
             private readonly Dictionary<string, DynValue> _options = new(StringComparer.Ordinal);
             private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
 
@@ -66,26 +64,30 @@ namespace LuaScript
             private Script? _script;
             private DynValue? _compiledChunk;
             private string _lastCompiledCode = string.Empty;
-            private Table? _objTable;
-            private Table? _sceneTable;
-            private Table? _animTable;
-            private Table? _ymm4Table;
-            private HashSet<string>? _builtinGlobalSnapshot;
-            private HashSet<string>? _objTableSnapshot;
-            private HashSet<string>? _sceneTableSnapshot;
-            private HashSet<string>? _animTableSnapshot;
-            private HashSet<string>? _ymm4TableSnapshot;
             private CancellationToken _activeCancellation;
             private AviUtlScriptContext? _activeContext;
 
             private AviUtlGlobalRegistrar? _globalRegistrar;
             private SceneTableRegistrar? _sceneRegistrar;
 
+            private readonly LuaScope _objScope;
+            private readonly LuaScope[] _scopes;
+            private bool _scopesInitialized;
+
             internal ExecutionThread(Func<IMediaSourceLoader> mediaLoaderFactory)
             {
                 _mediaLoaderFactory = mediaLoaderFactory;
                 _activeCancellation = _cts.Token;
                 _debugger.UpdateToken(_cts.Token);
+                _objScope = new LuaScope("obj", RegisterLuaMembers, UpdateLuaMembers);
+                _scopes =
+                [
+                    new LuaScope(null, null, (table, ctx) => _globalRegistrar!.UpdateLuaMembers(table, ctx)),
+                    new LuaScope("scene", RegisterSceneCallbacks, (table, ctx) => _sceneRegistrar!.UpdateLuaMembers(table, ctx)),
+                    _objScope,
+                    new LuaScope("anim", AnimTableRegistrar.RegisterFunctions, null),
+                    new LuaScope("ymm4", null, Ymm4TableRegistrar.UpdateLuaMembers),
+                ];
                 _thread = new Thread(WorkerLoop)
                 {
                     IsBackground = true,
@@ -184,15 +186,7 @@ namespace LuaScript
                 _script = null;
                 _compiledChunk = null;
                 _lastCompiledCode = string.Empty;
-                _objTable = null;
-                _sceneTable = null;
-                _animTable = null;
-                _ymm4Table = null;
-                _builtinGlobalSnapshot = null;
-                _objTableSnapshot = null;
-                _sceneTableSnapshot = null;
-                _animTableSnapshot = null;
-                _ymm4TableSnapshot = null;
+                _scopesInitialized = false;
                 EnsureScript();
             }
 
@@ -217,7 +211,7 @@ namespace LuaScript
             private void SetupGlobals(AviUtlScriptContext ctx)
             {
                 var script = _script!;
-                bool isFirstSetup = _objTable is null;
+                bool isFirstSetup = !_scopesInitialized;
 
                 _options.Clear();
                 _pixelOptions.Clear();
@@ -225,143 +219,30 @@ namespace LuaScript
 
                 if (isFirstSetup)
                 {
-                    var sceneTable = new Table(script);
-                    RegisterSceneCallbacks(sceneTable);
-                    script.Globals["scene"] = sceneTable;
-
-                    var objTable = new Table(script);
-                    RegisterLuaMembers(objTable);
-                    script.Globals["obj"] = objTable;
-
-                    var animTable = new Table(script);
-                    AnimTableRegistrar.RegisterFunctions(animTable);
-                    script.Globals["anim"] = animTable;
-
-                    var ymm4Table = new Table(script);
-                    script.Globals["ymm4"] = ymm4Table;
-
-                    _sceneTable = sceneTable;
-                    _animTable = animTable;
-                    _ymm4Table = ymm4Table;
-                    _objTable = objTable;
+                    foreach (var scope in _scopes)
+                        scope.Create(script);
+                    _scopesInitialized = true;
                 }
                 else
                 {
-                    ResetUserGlobals(script);
-
-                    if (!ReferenceEquals(script.Globals.Get("scene").Table, _sceneTable))
-                    {
-                        var sceneTable = new Table(script);
-                        RegisterSceneCallbacks(sceneTable);
-                        script.Globals["scene"] = sceneTable;
-                        _sceneTable = sceneTable;
-                        _sceneTableSnapshot = null;
-                    }
-
-                    if (!ReferenceEquals(script.Globals.Get("obj").Table, _objTable))
-                    {
-                        var objTable = new Table(script);
-                        RegisterLuaMembers(objTable);
-                        script.Globals["obj"] = objTable;
-                        _objTable = objTable;
-                        _objTableSnapshot = null;
-                    }
-
-                    if (!ReferenceEquals(script.Globals.Get("anim").Table, _animTable))
-                    {
-                        var animTable = new Table(script);
-                        AnimTableRegistrar.RegisterFunctions(animTable);
-                        script.Globals["anim"] = animTable;
-                        _animTable = animTable;
-                        _animTableSnapshot = null;
-                    }
-
-                    if (!ReferenceEquals(script.Globals.Get("ymm4").Table, _ymm4Table))
-                    {
-                        var ymm4Table = new Table(script);
-                        script.Globals["ymm4"] = ymm4Table;
-                        _ymm4Table = ymm4Table;
-                        _ymm4TableSnapshot = null;
-                    }
-
-                    ResetUserTableKeys(_objTable!, _objTableSnapshot);
-                    ResetUserTableKeys(_sceneTable!, _sceneTableSnapshot);
-                    ResetUserTableKeys(_animTable!, _animTableSnapshot);
-                    ResetUserTableKeys(_ymm4Table!, _ymm4TableSnapshot);
+                    foreach (var scope in _scopes)
+                        scope.Reconcile(script);
+                    foreach (var scope in _scopes)
+                        scope.ResetUserKeys();
                 }
 
-                _globalRegistrar!.UpdateLuaMembers(script.Globals, ctx);
-                _sceneRegistrar!.UpdateLuaMembers(_sceneTable!, ctx);
-                Ymm4TableRegistrar.UpdateLuaMembers(_ymm4Table!, ctx);
-                UpdateLuaMembers(_objTable!, ctx);
+                foreach (var scope in _scopes)
+                    scope.Update(ctx);
 
                 if (isFirstSetup)
                 {
-                    _builtinGlobalSnapshot = CaptureGlobalKeys(script);
-                    _objTableSnapshot = CaptureTableKeys(_objTable!);
-                    _sceneTableSnapshot = CaptureTableKeys(_sceneTable!);
-                    _animTableSnapshot = CaptureTableKeys(_animTable!);
-                    _ymm4TableSnapshot = CaptureTableKeys(_ymm4Table!);
+                    foreach (var scope in _scopes)
+                        scope.CaptureSnapshot();
                 }
 
                 script.Call(
                     script.Globals.Get("math").Table.Get("randomseed"),
                     DynValue.NewNumber(ctx.Frame));
-            }
-
-            private static HashSet<string> CaptureGlobalKeys(Script script)
-            {
-                var keys = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var key in script.Globals.Keys)
-                {
-                    if (key.Type == DataType.String)
-                        keys.Add(key.String);
-                }
-                return keys;
-            }
-
-            private static HashSet<string> CaptureTableKeys(Table table)
-            {
-                var keys = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var key in table.Keys)
-                {
-                    if (key.Type == DataType.String)
-                        keys.Add(key.String);
-                }
-                return keys;
-            }
-
-            private void ResetUserTableKeys(Table table, HashSet<string>? snapshot)
-            {
-                if (snapshot is null) return;
-                var buffer = _removalBuffer;
-                buffer.Clear();
-                foreach (var key in table.Keys)
-                {
-                    if (key.Type == DataType.String &&
-                        !snapshot.Contains(key.String))
-                    {
-                        buffer.Add(key.String);
-                    }
-                }
-                foreach (var key in buffer)
-                    table[key] = DynValue.Nil;
-            }
-
-            private void ResetUserGlobals(Script script)
-            {
-                var buffer = _removalBuffer;
-                buffer.Clear();
-                foreach (var key in script.Globals.Keys)
-                {
-                    if (key.Type == DataType.String &&
-                        !_builtinGlobalSnapshot!.Contains(key.String))
-                    {
-                        buffer.Add(key.String);
-                    }
-                }
-                foreach (var key in buffer)
-                    script.Globals[key] = DynValue.Nil;
             }
 
             private double CurrentTimeRatio() =>
@@ -752,7 +633,7 @@ namespace LuaScript
                 _activeCancellation.ThrowIfCancellationRequested();
                 if (args.Count == 0 || args[0].Type != DataType.String)
                     return DynValue.NewNumber(0d);
-                var value = _objTable!.Get(args[0].String);
+                var value = _objScope.Table.Get(args[0].String);
                 return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
             }
 
@@ -924,7 +805,7 @@ namespace LuaScript
             {
                 int w = _activeContext!.ImageWidth;
                 int h = _activeContext.ImageHeight;
-                var obj = _objTable!;
+                var obj = _objScope.Table;
                 obj["w"] = w;
                 obj["h"] = h;
                 obj["hw"] = w / 2d;
@@ -960,27 +841,28 @@ namespace LuaScript
 
             private void ReadBackGlobals(AviUtlScriptContext ctx)
             {
-                if (_objTable is null) return;
+                if (!_scopesInitialized) return;
 
-                ctx.X = _objTable.Get("x").CastToNumber() ?? ctx.X;
-                ctx.Y = _objTable.Get("y").CastToNumber() ?? ctx.Y;
-                ctx.Z = _objTable.Get("z").CastToNumber() ?? ctx.Z;
-                ctx.Ox = _objTable.Get("ox").CastToNumber() ?? ctx.Ox;
-                ctx.Oy = _objTable.Get("oy").CastToNumber() ?? ctx.Oy;
-                ctx.Oz = _objTable.Get("oz").CastToNumber() ?? ctx.Oz;
-                ctx.Alpha = _objTable.Get("alpha").CastToNumber() ?? ctx.Alpha;
+                var obj = _objScope.Table;
+                ctx.X = obj.Get("x").CastToNumber() ?? ctx.X;
+                ctx.Y = obj.Get("y").CastToNumber() ?? ctx.Y;
+                ctx.Z = obj.Get("z").CastToNumber() ?? ctx.Z;
+                ctx.Ox = obj.Get("ox").CastToNumber() ?? ctx.Ox;
+                ctx.Oy = obj.Get("oy").CastToNumber() ?? ctx.Oy;
+                ctx.Oz = obj.Get("oz").CastToNumber() ?? ctx.Oz;
+                ctx.Alpha = obj.Get("alpha").CastToNumber() ?? ctx.Alpha;
 
                 ctx.ApplyWriteBack(
-                    _objTable.Get("sx").CastToNumber() ?? ctx.Sx,
-                    _objTable.Get("sy").CastToNumber() ?? ctx.Sy,
-                    _objTable.Get("zoom").CastToNumber() ?? ctx.Zoom,
-                    _objTable.Get("aspect").CastToNumber() ?? ctx.Aspect,
-                    _objTable.Get("rx").CastToNumber() ?? ctx.Rx,
-                    _objTable.Get("ry").CastToNumber() ?? ctx.Ry,
-                    _objTable.Get("rz").CastToNumber() ?? ctx.Rz,
-                    _objTable.Get("rxr").CastToNumber() ?? ctx.RxRad,
-                    _objTable.Get("ryr").CastToNumber() ?? ctx.RyRad,
-                    _objTable.Get("rzr").CastToNumber() ?? ctx.RzRad);
+                    obj.Get("sx").CastToNumber() ?? ctx.Sx,
+                    obj.Get("sy").CastToNumber() ?? ctx.Sy,
+                    obj.Get("zoom").CastToNumber() ?? ctx.Zoom,
+                    obj.Get("aspect").CastToNumber() ?? ctx.Aspect,
+                    obj.Get("rx").CastToNumber() ?? ctx.Rx,
+                    obj.Get("ry").CastToNumber() ?? ctx.Ry,
+                    obj.Get("rz").CastToNumber() ?? ctx.Rz,
+                    obj.Get("rxr").CastToNumber() ?? ctx.RxRad,
+                    obj.Get("ryr").CastToNumber() ?? ctx.RyRad,
+                    obj.Get("rzr").CastToNumber() ?? ctx.RzRad);
             }
 
             public void Dispose()
