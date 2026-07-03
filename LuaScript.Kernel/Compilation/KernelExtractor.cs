@@ -5,29 +5,6 @@ namespace LuaScript.Engine.Kernel
 {
     internal sealed class KernelExtractor
     {
-        private readonly record struct FuncSpec(KFunc Func, int MinArgs, int MaxArgs);
-
-        private static readonly Dictionary<string, FuncSpec> MathFunctions = new(StringComparer.Ordinal)
-        {
-            ["abs"] = new(KFunc.Abs, 1, 1),
-            ["floor"] = new(KFunc.Floor, 1, 1),
-            ["ceil"] = new(KFunc.Ceil, 1, 1),
-            ["sqrt"] = new(KFunc.Sqrt, 1, 1),
-            ["sin"] = new(KFunc.Sin, 1, 1),
-            ["cos"] = new(KFunc.Cos, 1, 1),
-            ["tan"] = new(KFunc.Tan, 1, 1),
-            ["asin"] = new(KFunc.Asin, 1, 1),
-            ["acos"] = new(KFunc.Acos, 1, 1),
-            ["atan"] = new(KFunc.Atan, 1, 1),
-            ["atan2"] = new(KFunc.Atan2, 2, 2),
-            ["exp"] = new(KFunc.Exp, 1, 1),
-            ["log"] = new(KFunc.Log, 1, 1),
-            ["pow"] = new(KFunc.Pow, 2, 2),
-            ["fmod"] = new(KFunc.Fmod, 2, 2),
-            ["min"] = new(KFunc.Min, 2, int.MaxValue),
-            ["max"] = new(KFunc.Max, 2, int.MaxValue),
-        };
-
         private readonly List<KExpr> _bindings = [];
         private readonly Dictionary<string, int> _scope = new(StringComparer.Ordinal);
         private readonly SortedSet<KernelUniform> _uniforms = [];
@@ -372,7 +349,7 @@ namespace LuaScript.Engine.Kernel
         private KExpr LowerCall(CallExpr call)
         {
             if (call.Target is not MemberExpr { Target: NameExpr { Name: "math" }, Name: var function } ||
-                !MathFunctions.TryGetValue(function, out var spec))
+                !KFunctions.TryResolve(function, out var spec))
                 throw new KernelUnsupportedException("Unsupported function call in pixel kernel.");
 
             int count = call.Arguments.Count;

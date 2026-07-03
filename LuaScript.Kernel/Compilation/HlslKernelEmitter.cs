@@ -9,12 +9,6 @@ namespace LuaScript.Engine.Kernel
 
         public const int ConstantFloatCount = ConstantVectorCount * 4;
 
-        private static readonly string[] Intrinsics =
-        [
-            "abs", "floor", "ceil", "sqrt", "sin", "cos", "tan", "asin", "acos",
-            "atan", "atan2", "exp", "log", "pow", "min", "max", "fmod",
-        ];
-
         public static string Emit(KernelProgram program)
         {
             var builder = new StringBuilder(1024);
@@ -153,7 +147,7 @@ namespace LuaScript.Engine.Kernel
 
         private static void EmitCall(StringBuilder builder, KCall call)
         {
-            builder.Append(Intrinsics[(int)call.Func]).Append('(');
+            builder.Append(KFunctions.Intrinsic(call.Func)).Append('(');
             for (int i = 0; i < call.Arguments.Count; i++)
             {
                 if (i > 0)
