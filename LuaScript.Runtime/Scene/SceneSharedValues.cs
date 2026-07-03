@@ -4,27 +4,6 @@ using System.Text;
 
 namespace LuaScript
 {
-    internal enum SceneValueKind
-    {
-        Nil = 0,
-        Number = 1,
-        String = 2,
-        Boolean = 3,
-    }
-
-    internal readonly record struct SceneValue(SceneValueKind Kind, double Number, string? Text)
-    {
-        public static readonly SceneValue Nil = new(SceneValueKind.Nil, 0d, null);
-
-        public static SceneValue FromNumber(double value) => new(SceneValueKind.Number, value, null);
-
-        public static SceneValue FromBoolean(bool value) => new(SceneValueKind.Boolean, value ? 1d : 0d, null);
-
-        public static SceneValue FromString(string value) => new(SceneValueKind.String, 0d, value);
-    }
-
-    internal readonly record struct SceneValueQuery(string Name, SceneValue Result);
-
     internal sealed class SceneSharedValues
     {
         public const int MaxNameBytes = 4095;
