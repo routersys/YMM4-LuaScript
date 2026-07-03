@@ -1,13 +1,5 @@
-using System;
-using System.Collections.Generic;
-
 namespace LuaScript.Diagnostics
 {
-    internal interface ILuaScriptDiagnosticsListener
-    {
-        void OnDiagnosticsChanged();
-    }
-
     internal sealed class LuaScriptDiagnostics
     {
         public static LuaScriptDiagnostics Instance { get; } = new();
