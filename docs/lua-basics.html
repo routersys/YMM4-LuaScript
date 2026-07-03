@@ -95,6 +95,16 @@ x, y = y, x</code></pre>
 local v = amp ~= 0 and amp or 50
 obj.x = obj.x + v</code></pre>
 
+<h3>is not による不等号</h3>
+
+<p>
+標準の Lua には無い <code>is not</code> の記法を追加しています。<code>a is not b</code> は不等号として扱い、<code>a ~= b</code> と同じ意味になります。スクリプトは実行前に変換するため、すべてのエンジンで同じように動きます。文字列とコメントの内側は変換しません。
+</p>
+
+<pre><code>if frame is not 0 then
+    obj.x = 100
+end</code></pre>
+
 <h2>条件分岐</h2>
 
 <pre><code>if obj.t < 0.5 then
