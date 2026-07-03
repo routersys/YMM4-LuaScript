@@ -10,6 +10,8 @@ HANDLE OpenEventA(unsigned long, int, const char*);
 unsigned long WaitForSingleObject(HANDLE, unsigned long);
 int SetEvent(HANDLE);
 unsigned long GetLastError();
+int QueryPerformanceCounter(int64_t*);
+int QueryPerformanceFrequency(int64_t*);
 ]]
 
 local k32 = ffi.load("kernel32")
@@ -23,6 +25,7 @@ local workEventName = arg[3]
 local doneEventName = arg[4]
 local shimPath = arg[5]
 local stringParamsCap = tonumber(arg[6])
+local scriptPath = arg[7] or ""
 
 local hMap = k32.OpenFileMappingA(FILE_MAP_ALL_ACCESS, 0, mapName)
 assert(hMap ~= nil, "OpenFileMapping failed")
@@ -32,6 +35,16 @@ assert(view ~= nil, "MapViewOfFile failed")
 local workEvent = k32.OpenEventA(EVENT_ALL_ACCESS, 0, workEventName)
 local doneEvent = k32.OpenEventA(EVENT_ALL_ACCESS, 0, doneEventName)
 assert(workEvent ~= nil and doneEvent ~= nil, "OpenEvent failed")
+
+local qpcTmp = ffi.new("int64_t[1]")
+k32.QueryPerformanceFrequency(qpcTmp)
+local qpcFreq = tonumber(qpcTmp[0])
+local function qpcNow()
+    k32.QueryPerformanceCounter(qpcTmp)
+    return qpcTmp[0]
+end
+local qpcStart = qpcNow()
+local qpcRunStart = qpcStart
 
 local base = ffi.cast("uint8_t*", view)
 local i32 = ffi.cast("int32_t*", base)
@@ -52,7 +65,7 @@ local OFF_LOAD_RESULT_W = 12
 local OFF_LOAD_RESULT_H = 13
 local OFF_STRING_PARAMS_LEN = 14
 local OFF_SCRIPT_VERSION = 15
-local SCRIPT_OFFSET = 64 + 64 * 8
+local SCRIPT_OFFSET = 64 + 67 * 8
 local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
 local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
 local CB_TAG_MAX = 8192
@@ -575,6 +588,18 @@ function obj.getvalue(target)
     return 0
 end
 
+function obj.getinfo(name)
+    if name == "script_path" then return scriptPath end
+    if name == "filter" then return true end
+    if name == "saving" then return ymm4.is_saving end
+    if name == "image_max" then return scene.width, scene.height end
+    if name == "bpm" then return f64[63], f64[64], f64[65] end
+    if name == "clock" then return tonumber(qpcNow() - qpcStart) / qpcFreq end
+    if name == "script_time" then return tonumber(qpcNow() - qpcRunStart) / qpcFreq * 1000 end
+    if name == "version" then return f64[66] end
+    return nil
+end
+
 function obj.setoption(name, value, a, b)
     if type(name) ~= "string" then return end
     if value == nil then value = true end
@@ -917,6 +942,7 @@ while true do
     k32.WaitForSingleObject(workEvent, INFINITE)
     if i32[OFF_COMMAND] == 1 then break end
 
+    qpcRunStart = qpcNow()
     dirty = false
     pixelsValid = false
     pdValid = false
