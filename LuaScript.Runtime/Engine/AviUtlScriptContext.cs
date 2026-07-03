@@ -251,6 +251,11 @@ namespace LuaScript
         public double TimelineTotalTime { get; set; }
         public bool IsSaving { get; set; }
         public double TimeRatio { get; set; }
+        public string ScriptPath { get; set; } = string.Empty;
+        public double HostVersion { get; set; }
+        public double Bpm { get; set; }
+        public int BpmBeat { get; set; }
+        public double BpmOffset { get; set; }
 
         private Func<byte[]>? _pixelLoader;
         private byte[]? _pixelBuffer;
