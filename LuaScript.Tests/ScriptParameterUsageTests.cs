@@ -64,5 +64,46 @@ namespace LuaScript.Tests
             for (int i = 0; i < 4; i++)
                 Assert.False(usage.Check(i));
         }
+
+        [Theory]
+        [InlineData("if obj.check0 != nil then obj.alpha = 0 end", 0)]
+        [InlineData("local v = obj.check1 ?? 1", 1)]
+        [InlineData("obj.check2 ??= true", 2)]
+        [InlineData("local v = not obj.check3 && true", 3)]
+        [InlineData("for i in <0..obj.check0> do end", 0)]
+        public void DetectsCheckThroughExtendedSyntax(string script, int index)
+        {
+            var usage = ScriptParameterUsage.Detect(script);
+            for (int i = 0; i < 4; i++)
+                Assert.Equal(i == index, usage.Check(i));
+        }
+
+        [Theory]
+        [InlineData("obj.x = obj.slider0 ?? 50", 0)]
+        [InlineData("obj.zoom += obj.slider2 != 0 and 1 or 0", 2)]
+        public void DetectsSliderThroughExtendedSyntax(string script, int index)
+        {
+            var usage = ScriptParameterUsage.Detect(script);
+            for (int i = 0; i < 4; i++)
+                Assert.Equal(i == index, usage.Slider(i));
+        }
+
+        [Fact]
+        public void DetectsColorThroughExtendedSyntax()
+        {
+            var usage = ScriptParameterUsage.Detect("obj.rz = color != 0 and color || 1");
+            Assert.True(usage.Color);
+        }
+
+        [Fact]
+        public void DetectsMultipleReferencesAcrossExtendedSyntax()
+        {
+            var usage = ScriptParameterUsage.Detect("local a = obj.check0 && obj.check3 != 0\nobj.x = obj.slider1 ?? 0");
+            Assert.True(usage.Check0);
+            Assert.False(usage.Check1);
+            Assert.False(usage.Check2);
+            Assert.True(usage.Check3);
+            Assert.True(usage.Slider(1));
+        }
     }
 }
