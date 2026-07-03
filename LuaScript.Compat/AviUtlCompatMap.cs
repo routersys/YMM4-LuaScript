@@ -42,7 +42,7 @@ namespace LuaScript.Compat
             if (string.IsNullOrEmpty(script))
                 return AviUtlEngine.AviUtl;
 
-            foreach (var raw in script.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n'))
+            foreach (var raw in ScriptParserHelper.SplitLines(script))
             {
                 var line = raw.Trim();
                 if (!line.StartsWith("--!", System.StringComparison.Ordinal))

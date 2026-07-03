@@ -43,26 +43,8 @@ namespace LuaScript.Compat
             if (string.IsNullOrEmpty(source))
                 return layout;
 
-            var lines = source.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
-
-            int sectionStart = 0;
-            int sectionEnd = lines.Length;
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (!ScriptParserHelper.IsSectionHeader(lines[i]))
-                    continue;
-                sectionStart = i + 1;
-                sectionEnd = lines.Length;
-                for (int j = sectionStart; j < lines.Length; j++)
-                {
-                    if (ScriptParserHelper.IsSectionHeader(lines[j]))
-                    {
-                        sectionEnd = j;
-                        break;
-                    }
-                }
-                break;
-            }
+            var lines = ScriptParserHelper.SplitLines(source);
+            ScriptParserHelper.TryFindSection(lines, out int sectionStart, out int sectionEnd);
 
             for (int i = sectionStart; i < sectionEnd; i++)
                 layout.ParseLine(lines[i]);
@@ -72,21 +54,8 @@ namespace LuaScript.Compat
 
         private void ParseLine(string line)
         {
-            int i = ScriptParserHelper.SkipSpaces(line, 0);
-            if (i + 1 >= line.Length || line[i] != '-' || line[i + 1] != '-')
+            if (!ScriptParserHelper.TryParseDirective(line, out string name, out string content))
                 return;
-            i += 2;
-            if (i < line.Length && line[i] == '!')
-                return;
-
-            int nameStart = i;
-            while (i < line.Length && ScriptParserHelper.IsNameChar(line[i]))
-                i++;
-            if (i >= line.Length || line[i] != ':')
-                return;
-
-            string name = line.Substring(nameStart, i - nameStart);
-            string content = line.Substring(i + 1);
 
             if (name.StartsWith("track", StringComparison.OrdinalIgnoreCase) &&
                 TryGetIndex(name, 5, MaxTracks, out int trackIndex))

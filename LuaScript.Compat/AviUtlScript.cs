@@ -20,30 +20,8 @@ namespace LuaScript.Compat
             if (string.IsNullOrEmpty(source))
                 return (source, []);
 
-            var lines = source.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
-
-            int sectionStart = 0;
-            int sectionEnd = lines.Length;
-            bool hasSection = false;
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (!ScriptParserHelper.IsSectionHeader(lines[i]))
-                    continue;
-
-                hasSection = true;
-                sectionStart = i + 1;
-                sectionEnd = lines.Length;
-                for (int j = sectionStart; j < lines.Length; j++)
-                {
-                    if (ScriptParserHelper.IsSectionHeader(lines[j]))
-                    {
-                        sectionEnd = j;
-                        break;
-                    }
-                }
-                break;
-            }
+            var lines = ScriptParserHelper.SplitLines(source);
+            bool hasSection = ScriptParserHelper.TryFindSection(lines, out int sectionStart, out int sectionEnd);
 
             var prelude = new List<string>();
             for (int i = sectionStart; i < sectionEnd; i++)
@@ -72,21 +50,8 @@ namespace LuaScript.Compat
 
         private static void AppendDeclarations(string line, List<string> prelude)
         {
-            int i = ScriptParserHelper.SkipSpaces(line, 0);
-            if (i + 1 >= line.Length || line[i] != '-' || line[i + 1] != '-')
+            if (!ScriptParserHelper.TryParseDirective(line, out string name, out string content))
                 return;
-            i += 2;
-            if (i < line.Length && line[i] == '!')
-                return;
-
-            int nameStart = i;
-            while (i < line.Length && ScriptParserHelper.IsNameChar(line[i]))
-                i++;
-            if (i >= line.Length || line[i] != ':')
-                return;
-
-            string name = line.Substring(nameStart, i - nameStart);
-            string content = line.Substring(i + 1);
 
             switch (Classify(name))
             {
