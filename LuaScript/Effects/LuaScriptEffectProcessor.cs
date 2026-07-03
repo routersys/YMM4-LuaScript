@@ -57,14 +57,26 @@ namespace LuaScript
             int GroupCount,
             int TimelineTotalFrame,
             double TimelineTotalTime,
+            double Bpm,
+            int BpmBeat,
+            double BpmOffset,
             int AnchorVersion,
             DrawDescription InputDesc
         );
 
         private const int NativeTimeoutMilliseconds = 5000;
 
-        private static string NativeDirectory =>
-            Path.Combine(Path.GetDirectoryName(typeof(LuaScriptEffectProcessor).Assembly.Location) ?? AppContext.BaseDirectory, "native");
+        private static string PluginDirectory =>
+            Path.GetDirectoryName(typeof(LuaScriptEffectProcessor).Assembly.Location) ?? AppContext.BaseDirectory;
+
+        private static string NativeDirectory => Path.Combine(PluginDirectory, "native");
+
+        private static readonly string s_scriptPath = PluginDirectory + Path.DirectorySeparatorChar;
+
+        private static readonly double s_hostVersion = EncodeVersion(AppVersion.Current);
+
+        private static double EncodeVersion(Version version) =>
+            version.Major * 10000 + version.Minor * 100 + Math.Max(0, version.Build);
 
         private readonly LuaScriptEngine _engine = new(static () => new MediaSourceLoader());
         private readonly SemaphoreSlim _pixelLoaderSemaphore = new(1, 1);
@@ -276,6 +288,8 @@ namespace LuaScript
 
             var inDesc = desc.DrawDescription;
 
+            var (bpm, bpmBeat, bpmOffset) = ResolveBpm(desc);
+
             var key = new RenderKey(
                 frame, time, length, fps,
                 t0, t1, t2, t3,
@@ -290,6 +304,7 @@ namespace LuaScript
                 desc.GroupIndex, desc.GroupCount,
                 desc.TimelineDuration.Frame,
                 desc.TimelineDuration.Time.TotalSeconds,
+                bpm, bpmBeat, bpmOffset,
                 item.AnchorVersion,
                 inDesc);
 
@@ -438,6 +453,25 @@ namespace LuaScript
             _effectChain ??= new VideoEffectChain(_ownCtx!);
             var target = AviUtlCompatMap.ResolveTarget(item.Script);
             return _effectChain.Apply(source, requests, desc, target, ref drawDescription);
+        }
+
+        private static (double Bpm, int Beat, double Offset) ResolveBpm(EffectDescription desc)
+        {
+            var scenes = desc.Scenes;
+            if (scenes is not null)
+            {
+                foreach (var info in scenes)
+                {
+                    if (info is Scene scene && scene.ID == desc.SceneId)
+                    {
+                        var line = scene.Timeline.VerticalLine;
+                        double tempo = line.Line is VerticalBPMLine bpm ? bpm.BPM : 0d;
+                        double offset = desc.FPS > 0 ? line.StartFrame / (double)desc.FPS : 0d;
+                        return (tempo, line.Group, offset);
+                    }
+                }
+            }
+            return (0d, 0, 0d);
         }
 
         private static SceneObjectResolver BuildSceneObjectResolver(EffectDescription desc)
@@ -610,6 +644,11 @@ namespace LuaScript
             ctx.IsPaused = key.Usage == TimelineSourceUsage.Paused;
             ctx.SceneId = ResolveSceneId(key.SceneId);
             ctx.TimeRatio = key.Length > 0 ? key.Frame / (double)key.Length : 0d;
+            ctx.ScriptPath = s_scriptPath;
+            ctx.HostVersion = s_hostVersion;
+            ctx.Bpm = key.Bpm;
+            ctx.BpmBeat = key.BpmBeat;
+            ctx.BpmOffset = key.BpmOffset;
             PopulateStringParameters(ctx);
             ctx.SceneScope = _hostDevices;
             ctx.BeginSceneValues();
@@ -879,7 +918,7 @@ namespace LuaScript
 
         private bool ExecuteNative(string script, AviUtlScriptContext ctx, RawRectF bounds, int imgW, int imgH)
         {
-            _nativeWorker ??= new LuaJitWorker(NativeDirectory);
+            _nativeWorker ??= new LuaJitWorker(NativeDirectory, s_scriptPath);
             _nativeFields ??= new double[NativeProtocol.FieldCount];
             _nativeUpload ??= UploadNativeInputPixels;
             _nativeResolveObject ??= (tag, frame) => _context.ResolveObject(tag, frame, out var info) ? info : null;
