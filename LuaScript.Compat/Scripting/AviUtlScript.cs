@@ -15,10 +15,10 @@ namespace LuaScript.Compat
 
         public static string Transform(string source) => TransformWithMap(source).Code;
 
-        public static (string Code, int[] LineMap) TransformWithMap(string source)
+        public static (string Code, int[] LineMap, int[] ChangedLines) TransformWithMap(string source)
         {
             if (string.IsNullOrEmpty(source))
-                return (source, []);
+                return (source, [], []);
 
             var lines = ScriptParserHelper.SplitLines(source);
             bool hasSection = ScriptParserHelper.TryFindSection(lines, out int sectionStart, out int sectionEnd);
@@ -28,7 +28,10 @@ namespace LuaScript.Compat
                 AppendDeclarations(lines[i], prelude);
 
             if (!hasSection && prelude.Count == 0)
-                return (LuaSyntaxExtensions.Rewrite(source), []);
+            {
+                var (code, changed) = LuaSyntaxExtensions.RewriteWithMap(source);
+                return (code, [], changed);
+            }
 
             var builder = new StringBuilder(source.Length + 64);
             var lineMap = new int[prelude.Count + (sectionEnd - sectionStart)];
@@ -45,7 +48,8 @@ namespace LuaScript.Compat
                 lineMap[row++] = i;
             }
 
-            return (LuaSyntaxExtensions.Rewrite(builder.ToString()), lineMap);
+            var (rewritten, changedLines) = LuaSyntaxExtensions.RewriteWithMap(builder.ToString());
+            return (rewritten, lineMap, changedLines);
         }
 
         private static void AppendDeclarations(string line, List<string> prelude)
