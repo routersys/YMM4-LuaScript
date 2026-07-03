@@ -7,6 +7,9 @@ namespace LuaScript.Compat.Syntax
     {
         private readonly List<LuaSyntaxToken> _input;
         private readonly List<LuaSyntaxToken> _output;
+        private List<int>? _changedLines;
+        private int _line = 1;
+        private int _lastChangedLine;
         private int _temporaries;
 
         public LuaRewriteContext(List<LuaSyntaxToken> input)
@@ -23,24 +26,31 @@ namespace LuaScript.Compat.Syntax
 
         public bool Changed { get; private set; }
 
+        public int[] ChangedLines => _changedLines is null ? [] : _changedLines.ToArray();
+
         public bool AtEnd => Index >= _input.Count;
 
         public LuaSyntaxToken Current => _input[Index];
 
         public void Advance() => Index++;
 
-        public void Emit(LuaSyntaxToken token) => _output.Add(token);
+        public void Emit(LuaSyntaxToken token)
+        {
+            _output.Add(token);
+            if (token.Kind == LuaSyntaxTokenKind.Newline)
+                _line++;
+        }
 
         public void EmitRaw(string text)
         {
             _output.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.Name, text));
-            Changed = true;
+            MarkChanged();
         }
 
         public void EmitOperator(string text)
         {
             _output.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.Operator, text));
-            Changed = true;
+            MarkChanged();
         }
 
         public string NextTemporary() => "__lc" + _temporaries++;
@@ -90,7 +100,16 @@ namespace LuaScript.Compat.Syntax
             _output.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.Name, word));
             if (Index < _input.Count && !_input[Index].IsTrivia)
                 _output.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.Whitespace, " "));
+            MarkChanged();
+        }
+
+        private void MarkChanged()
+        {
             Changed = true;
+            if (_line == _lastChangedLine)
+                return;
+            (_changedLines ??= new List<int>()).Add(_line);
+            _lastChangedLine = _line;
         }
 
         public bool TryReadTrailingLvalue(out int start, out string text)
