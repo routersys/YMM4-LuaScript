@@ -1,20 +1,5 @@
 namespace LuaScript.Api
 {
-    internal enum LuaApiMemberKind
-    {
-        Function,
-        Variable,
-    }
-
-    internal sealed record LuaApiMember(
-        string Table,
-        string Name,
-        LuaApiMemberKind Kind,
-        IReadOnlyList<string> Parameters)
-    {
-        public string QualifiedName => Table.Length == 0 ? Name : $"{Table}.{Name}";
-    }
-
     internal static class LuaApiCatalog
     {
         private static readonly object s_gate = new();
