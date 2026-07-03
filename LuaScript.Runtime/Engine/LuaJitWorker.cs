@@ -13,6 +13,7 @@ namespace LuaScript.Engine
         private readonly string _workerScript;
         private readonly string _shimScript;
         private readonly string _nativeDir;
+        private readonly string _scriptPath;
 
         private MemoryMappedFile? _mmf;
         private MemoryMappedViewAccessor? _view;
@@ -37,9 +38,10 @@ namespace LuaScript.Engine
         private byte[] _stringValueBytes = new byte[256];
         private byte[] _sceneValueBytes = new byte[256];
 
-        public LuaJitWorker(string nativeDir)
+        public LuaJitWorker(string nativeDir, string scriptPath)
         {
             _nativeDir = nativeDir;
+            _scriptPath = scriptPath;
             _luajitPath = Path.Combine(nativeDir, "luajit.exe");
             _workerScript = Path.Combine(nativeDir, "worker.lua");
             _shimScript = Path.Combine(nativeDir, "shim.lua");
@@ -683,6 +685,7 @@ namespace LuaScript.Engine
             psi.ArgumentList.Add(doneName);
             psi.ArgumentList.Add(_shimScript);
             psi.ArgumentList.Add(stringCapacity.ToString());
+            psi.ArgumentList.Add(_scriptPath);
 
             _process = Process.Start(psi);
             if (_process is not null)
