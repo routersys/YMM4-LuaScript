@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Windows;
@@ -11,30 +10,27 @@ namespace LuaScript
 {
     public partial class LuaScriptToolBar : UserControl, IPropertyEditorControl
     {
+        private readonly LuaScriptToolBarViewModel _viewModel = new();
+
         public event EventHandler? BeginEdit;
         public event EventHandler? EndEdit;
 
-        public ItemProperty[]? ItemProperties { get; set; }
+        public ItemProperty[]? ItemProperties
+        {
+            get => _viewModel.ItemProperties;
+            set => _viewModel.ItemProperties = value;
+        }
 
         public LuaScriptToolBar()
         {
             InitializeComponent();
-        }
-
-        private IEnumerable<IScriptProvider> GetScriptProviders()
-        {
-            if (ItemProperties is null) yield break;
-            foreach (var item in ItemProperties)
-            {
-                if (item.PropertyOwner is IScriptProvider provider)
-                    yield return provider;
-            }
+            _viewModel.BeginEdit += (_, e) => BeginEdit?.Invoke(this, e);
+            _viewModel.EndEdit += (_, e) => EndEdit?.Invoke(this, e);
         }
 
         private void Import_Click(object sender, RoutedEventArgs e)
         {
-            var providers = new List<IScriptProvider>(GetScriptProviders());
-            if (providers.Count == 0) return;
+            if (!_viewModel.HasProviders) return;
 
             var dlg = new OpenFileDialog
             {
@@ -54,16 +50,13 @@ namespace LuaScript
                 return;
             }
 
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-            foreach (var provider in providers)
-                provider.Script = script;
-            EndEdit?.Invoke(this, EventArgs.Empty);
+            _viewModel.ApplyScript(script);
         }
 
         private void Export_Click(object sender, RoutedEventArgs e)
         {
-            var providers = new List<IScriptProvider>(GetScriptProviders());
-            if (providers.Count == 0) return;
+            var script = _viewModel.FirstScript;
+            if (script is null) return;
 
             var dlg = new SaveFileDialog
             {
@@ -75,7 +68,7 @@ namespace LuaScript
 
             try
             {
-                File.WriteAllText(dlg.FileName, providers[0].Script, new UTF8Encoding(false));
+                File.WriteAllText(dlg.FileName, script, new UTF8Encoding(false));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -85,16 +78,12 @@ namespace LuaScript
 
         private void Clear_Click(object sender, RoutedEventArgs e)
         {
-            var providers = new List<IScriptProvider>(GetScriptProviders());
-            if (providers.Count == 0) return;
+            if (!_viewModel.HasProviders) return;
 
             if (MessageBox.Show(Texts.ToolBarClearConfirm, Texts.ToolBarClearTitle, MessageBoxButton.OKCancel) != MessageBoxResult.OK)
                 return;
 
-            BeginEdit?.Invoke(this, EventArgs.Empty);
-            foreach (var provider in providers)
-                provider.Script = provider.DefaultScript;
-            EndEdit?.Invoke(this, EventArgs.Empty);
+            _viewModel.ResetToDefault();
         }
     }
 }
