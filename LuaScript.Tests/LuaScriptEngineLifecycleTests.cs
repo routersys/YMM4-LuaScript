@@ -78,6 +78,59 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void GetInfoExposesEnvironmentInfo()
+        {
+            using var engine = CreateEngine();
+            var ctx = NewContext();
+            ctx.ScriptPath = @"C:\plugins\LuaScript\";
+            ctx.HostVersion = 44402d;
+            ctx.IsSaving = true;
+            ctx.Bpm = 128d;
+            ctx.BpmBeat = 4;
+            ctx.BpmOffset = 1.5d;
+
+            engine.Execute(
+                "local mw, mh = obj.getinfo('image_max')\n" +
+                "obj.x = mw\n" +
+                "obj.y = mh\n" +
+                "obj.z = obj.getinfo('saving') and 1 or 0\n" +
+                "local tempo, beat, off = obj.getinfo('bpm')\n" +
+                "obj.ox = tempo\n" +
+                "obj.oy = beat\n" +
+                "obj.oz = off\n" +
+                "obj.alpha = obj.getinfo('version')", ctx);
+
+            Assert.Equal(200d, ctx.X);
+            Assert.Equal(160d, ctx.Y);
+            Assert.Equal(1d, ctx.Z);
+            Assert.Equal(128d, ctx.Ox);
+            Assert.Equal(4d, ctx.Oy);
+            Assert.Equal(1.5d, ctx.Oz);
+            Assert.Equal(44402d, ctx.Alpha);
+        }
+
+        [Fact]
+        public void GetInfoReportsPathFilterAndTimers()
+        {
+            using var engine = CreateEngine();
+            var ctx = NewContext();
+            ctx.ScriptPath = @"C:\plugins\LuaScript\";
+
+            engine.Execute(
+                "obj.x = string.len(obj.getinfo('script_path'))\n" +
+                "obj.y = obj.getinfo('filter') and 1 or 0\n" +
+                "obj.z = obj.getinfo('clock') >= 0 and 1 or 0\n" +
+                "obj.ox = obj.getinfo('script_time') >= 0 and 1 or 0\n" +
+                "obj.oy = obj.getinfo('unknown') == nil and 1 or 0", ctx);
+
+            Assert.Equal(ctx.ScriptPath.Length, ctx.X);
+            Assert.Equal(1d, ctx.Y);
+            Assert.Equal(1d, ctx.Z);
+            Assert.Equal(1d, ctx.Ox);
+            Assert.Equal(1d, ctx.Oy);
+        }
+
+        [Fact]
         public void ObjectWritesFlowBackToContext()
         {
             using var engine = CreateEngine();

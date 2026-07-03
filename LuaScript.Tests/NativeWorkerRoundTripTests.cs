@@ -7,6 +7,7 @@ namespace LuaScript.Tests
     public class NativeWorkerRoundTripTests : IDisposable
     {
         private static string NativeDir => Path.Combine(AppContext.BaseDirectory, "native");
+        private static readonly string ScriptPath = AppContext.BaseDirectory + Path.DirectorySeparatorChar;
 
         private static readonly Func<string, int, SceneObjectInfo?> NoResolver = (_, _) => null;
         private static readonly Func<string, int, double, double, double, (byte[] buffer, int w, int h)> NoLoadFigure = (_, _, _, _, _) => ([], 1, 1);
@@ -18,7 +19,7 @@ namespace LuaScript.Tests
         private static readonly Action<string, int, bool, int, double[]> NoSetAnchor = (_, _, _, _, _) => { };
         private static readonly System.Collections.Generic.IReadOnlyDictionary<string, string> NoStringParams = new System.Collections.Generic.Dictionary<string, string>();
 
-        private readonly LuaJitWorker _worker = new(NativeDir);
+        private readonly LuaJitWorker _worker = new(NativeDir, ScriptPath);
 
         private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
@@ -148,6 +149,52 @@ namespace LuaScript.Tests
             Assert.True(ok, error);
             Assert.Equal(5d, fields[NativeProtocol.X]);
             Assert.Equal(System.Text.Encoding.UTF8.GetByteCount("C:/サンプル/画像.png"), fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void GetInfo_ExposesEnvironmentInfo()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var fields = Fields(2, 2, 0d);
+            fields[NativeProtocol.SceneWidth] = 1920d;
+            fields[NativeProtocol.SceneHeight] = 1080d;
+            fields[NativeProtocol.IsSaving] = 1d;
+            fields[NativeProtocol.HostVersion] = 44402d;
+            fields[NativeProtocol.Bpm] = 128d;
+            fields[NativeProtocol.BpmBeat] = 4d;
+            fields[NativeProtocol.BpmOffset] = 1.5d;
+            var pixels = new byte[16];
+
+            const string script =
+                "local mw, mh = obj.getinfo('image_max')\n" +
+                "obj.x = mw\n" +
+                "obj.y = mh\n" +
+                "obj.z = obj.getinfo('saving') and 1 or 0\n" +
+                "obj.ox = obj.getinfo('version')\n" +
+                "local tempo, beat, off = obj.getinfo('bpm')\n" +
+                "obj.oy = tempo\n" +
+                "obj.oz = beat\n" +
+                "obj.sx = off\n" +
+                "obj.sy = string.len(obj.getinfo('script_path'))\n" +
+                "obj.rx = obj.getinfo('filter') and 1 or 0\n" +
+                "obj.ry = (obj.getinfo('clock') >= 0 and obj.getinfo('script_time') >= 0) and 1 or 0";
+
+            bool ok = RunWorker(
+                script,
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1920d, fields[NativeProtocol.X]);
+            Assert.Equal(1080d, fields[NativeProtocol.Y]);
+            Assert.Equal(1d, fields[NativeProtocol.Z]);
+            Assert.Equal(44402d, fields[NativeProtocol.Ox]);
+            Assert.Equal(128d, fields[NativeProtocol.Oy]);
+            Assert.Equal(4d, fields[NativeProtocol.Oz]);
+            Assert.Equal(1.5d, fields[NativeProtocol.Sx]);
+            Assert.Equal(System.Text.Encoding.UTF8.GetByteCount(ScriptPath), fields[NativeProtocol.Sy]);
+            Assert.Equal(1d, fields[NativeProtocol.Rx]);
+            Assert.Equal(1d, fields[NativeProtocol.Ry]);
         }
 
         [Fact]
