@@ -2,11 +2,6 @@ using System.Collections.Generic;
 
 namespace LuaScript.Compat
 {
-    internal readonly record struct AviUtlParameterMapping(string Source, string Property, double Scale, double Offset)
-    {
-        public double Transform(double value) => value * Scale + Offset;
-    }
-
     internal sealed class AviUtlEffectMapping
     {
         private readonly Dictionary<string, AviUtlParameterMapping> _parameters;

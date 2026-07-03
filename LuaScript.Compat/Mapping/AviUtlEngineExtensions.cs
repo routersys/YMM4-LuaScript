@@ -1,12 +1,5 @@
 namespace LuaScript.Compat
 {
-    internal enum AviUtlEngine
-    {
-        AviUtl,
-        AviUtl2,
-        Both,
-    }
-
     internal static class AviUtlEngineExtensions
     {
         public static bool Includes(this AviUtlEngine scope, AviUtlEngine target) =>
