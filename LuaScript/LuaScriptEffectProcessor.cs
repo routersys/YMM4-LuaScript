@@ -66,7 +66,7 @@ namespace LuaScript
         private static string NativeDirectory =>
             Path.Combine(Path.GetDirectoryName(typeof(LuaScriptEffectProcessor).Assembly.Location) ?? AppContext.BaseDirectory, "native");
 
-        private readonly LuaScriptEngine _engine = new();
+        private readonly LuaScriptEngine _engine = new(static () => new MediaSourceLoader());
         private readonly SemaphoreSlim _pixelLoaderSemaphore = new(1, 1);
         private AviUtlScriptContext _context = new();
 

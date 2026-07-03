@@ -2,7 +2,7 @@ using YukkuriMovieMaker.Project.Items;
 
 namespace LuaScript
 {
-    internal sealed class SceneObjectResolver
+    internal sealed class SceneObjectResolver : ISceneObjectResolver
     {
         internal readonly record struct Entry(string Tag, int Frame, int Length, int Layer, VisualItem Item);
 
@@ -15,7 +15,7 @@ namespace LuaScript
             _fps = fps;
         }
 
-        internal bool TryResolve(string tag, int timelineFrame, out SceneObjectInfo info)
+        public bool TryResolve(string tag, int timelineFrame, out SceneObjectInfo info)
         {
             int fallback = -1;
             for (int i = 0; i < _entries.Length; i++)
