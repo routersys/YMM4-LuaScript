@@ -11,7 +11,8 @@
       group: "Lua 言語",
       items: [
         { title: "Lua の基礎", href: "lua-basics.html" },
-        { title: "標準ライブラリ", href: "stdlib.html" }
+        { title: "標準ライブラリ", href: "stdlib.html" },
+        { title: "構文拡張", href: "syntax.html" }
       ]
     },
     {

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>構文拡張 | Lua スクリプト for YMM4</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<button id="navtoggle" aria-label="メニュー">☰</button>
+<nav id="sidebar"></nav>
+<main>
+
+<h1>構文拡張</h1>
+
+<p>
+このプラグインは、標準の Lua には無い簡易な記法をいくつか追加しています。キーボードで打ちやすく、
+入力量と読み替えの手間を減らすための糖衣構文です。スクリプトは実行前に等価な標準 Lua へ変換されるため、
+すべての実行エンジン（LuaJIT・MoonSharp・CPU カーネル）で同じように動きます。
+</p>
+
+<div class="note">
+変換は字句単位で行い、<strong>文字列とコメントの内側は変換しません</strong>。
+また Lua に存在しない記号（<code>?</code> <code>!</code> <code>&amp;</code> <code>|</code> や <code>in &lt;</code> の並び）だけを入口にしているため、
+通常の Lua スクリプトはそのまま動作します。
+</div>
+
+<h2>比較演算子</h2>
+
+<p><code>is</code> と <code>is not</code> は、値どうしを比べる位置に書いたときだけ演算子として扱います。変数名としての <code>is</code> は変換しません。</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>a is b</code></td><td><code>a == b</code></td></tr>
+<tr><td><code>a is not b</code></td><td><code>a ~= b</code></td></tr>
+<tr><td><code>a != b</code></td><td><code>a ~= b</code></td></tr>
+</table>
+
+<pre><code>if frame is not 0 then
+    obj.x = 100
+end</code></pre>
+
+<h2>論理演算子</h2>
+
+<p>他言語でなじみのある記号を、Lua の <code>and</code> / <code>or</code> / <code>not</code> の別名として使えます。</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>!a</code></td><td><code>not a</code></td></tr>
+<tr><td><code>a &amp;&amp; b</code></td><td><code>a and b</code></td></tr>
+<tr><td><code>a || b</code></td><td><code>a or b</code></td></tr>
+</table>
+
+<pre><code>if !hidden &amp;&amp; frame != 0 then
+    obj.alpha = 255
+end</code></pre>
+
+<h2>複合代入</h2>
+
+<p>左辺の値を使って計算し、同じ場所へ書き戻す記法です。右辺は括弧で包んで展開するため、演算子の優先順位はそのまま保たれます。</p>
+
+<table>
+<tr><th>書き方</th><th>展開後</th></tr>
+<tr><td><code>x += 1</code></td><td><code>x = x + (1)</code></td></tr>
+<tr><td><code>x -= 1</code></td><td><code>x = x - (1)</code></td></tr>
+<tr><td><code>x *= 2</code></td><td><code>x = x * (2)</code></td></tr>
+<tr><td><code>x /= 2</code></td><td><code>x = x / (2)</code></td></tr>
+<tr><td><code>x %= 2</code></td><td><code>x = x % (2)</code></td></tr>
+<tr><td><code>x ^= 2</code></td><td><code>x = x ^ (2)</code></td></tr>
+<tr><td><code>s ..= "b"</code></td><td><code>s = s .. ("b")</code>（文字列の連結）</td></tr>
+</table>
+
+<pre><code>local total = 0
+total += obj.track0
+total *= 2</code></pre>
+
+<h2>インクリメント</h2>
+
+<p><code>++</code> は行単位の文として使い、1 を加えて書き戻します。</p>
+
+<pre><code>count++</code></pre>
+
+<p>上の <code>count++</code> は <code>count = count + 1</code> に展開します。</p>
+
+<h2>nil 合体演算子</h2>
+
+<p>
+<code>a ?? b</code> は、<code>a</code> が <code>nil</code> のときだけ <code>b</code> を返します。
+<code>a and b or c</code> と違い、<code>a</code> が <code>false</code> のときは <code>false</code> をそのまま返します。既定値を安全に書けます。
+</p>
+
+<pre><code>obj.x = obj.track0 ?? 100</code></pre>
+
+<div class="note">
+<code>a ?? b</code> は左辺を 1 度だけ評価する無名関数に展開します。<code>b</code> は左辺が <code>nil</code> のときだけ評価されます。
+</div>
+
+<h2>代入をともなう演算子</h2>
+
+<p>変数が未設定・偽のときにまとめて代入する記法です。</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>x ??= b</code></td><td><code>x</code> が <code>nil</code> のときだけ <code>b</code> を代入</td></tr>
+<tr><td><code>x ||= b</code></td><td><code>x = x or (b)</code></td></tr>
+<tr><td><code>x &amp;&amp;= b</code></td><td><code>x = x and (b)</code></td></tr>
+</table>
+
+<pre><code>speed ??= 90
+obj.rz = time * speed</code></pre>
+
+<h2>範囲 for</h2>
+
+<p>
+数値 for を、範囲を視覚的に表す <code>&lt;開始..終了&gt;</code> で書けます。<code>..</code> は終端を含み、
+<code>..&lt;</code> は終端を含みません。<code>,</code> のあとに増分を指定できます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>for i in &lt;0..10&gt; do</code></td><td><code>for i = 0, 10 do</code>（10 を含む）</td></tr>
+<tr><td><code>for i in &lt;0..&lt;10&gt; do</code></td><td><code>for i = 0, (10) - 1 do</code>（10 を含まない）</td></tr>
+<tr><td><code>for i in &lt;0..10, 2&gt; do</code></td><td><code>for i = 0, 10, 2 do</code>（増分 2）</td></tr>
+</table>
+
+<pre><code>local sum = 0
+for i in &lt;1..10&gt; do
+    sum = sum + i
+end</code></pre>
+
+<div class="note">
+<code>in &lt;</code> の並びは通常の Lua には現れないため、<code>ipairs</code> や <code>pairs</code> を使う汎用 for には影響しません。
+</div>
+
+<div class="pager">
+<a href="stdlib.html">← 標準ライブラリ</a>
+<a href="globals.html">グローバル変数 →</a>
+</div>
+
+</main>
+<script src="assets/nav.js"></script>
+</body>
+</html>
