@@ -2,16 +2,6 @@ using System;
 
 namespace LuaScript.Engine.Kernel
 {
-    internal enum LuaTokenKind
-    {
-        Name,
-        Number,
-        String,
-        Keyword,
-        Symbol,
-        Eof,
-    }
-
     internal readonly struct LuaToken(LuaTokenKind kind, string text, double number)
     {
         public LuaTokenKind Kind { get; } = kind;
