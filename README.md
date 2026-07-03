@@ -81,6 +81,8 @@ YukkuriMovieMaker4（YMM4）上で動作する、**Luaスクリプトでオブ�
 - `table`、`string`、`math`、`bit32`
 - 基本関数: `type`、`tostring`、`tonumber`、`select`、`error`、`assert`、`print`、`ipairs`、`pairs`、`next`、`unpack`、`setmetatable`、`getmetatable`、`rawget`、`rawset`、`rawequal`、`rawlen`、`pcall`、`xpcall`
 `io`、`os`、`debug`、`ffi`、`require` 等は利用できません。ファイルへのアクセス（`require` を含む）はスクリプトローダー側で明示的に禁止されており、呼び出すと例外になります。
+
+標準の Lua に無い記法として `is not` を追加しています。`a is not b` は不等号として扱い、`a ~= b` と同じ意味になります。スクリプトは実行前に変換されるため、すべてのエンジンで同じように動作します。文字列とコメントの内側は変換しません。
  
 ### 2. obj テーブルによる描画制御
  
