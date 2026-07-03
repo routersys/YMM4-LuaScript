@@ -752,6 +752,19 @@
             pcall, xpcall
 
 
+- Syntax Extensions -
+
+        A few notations that plain Lua does not have are added. The script is
+        transformed before execution, so they work the same on every engine.
+        The insides of strings and comments are not transformed.
+
+        o is not
+                a is not b is treated as an inequality and means the same as a ~= b.
+                Example: if frame is not 0 then
+                           obj.x = 100
+                         end
+
+
 - Script Examples -
 
         o Fade in (default script)

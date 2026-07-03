@@ -762,6 +762,20 @@
             pcall, xpcall
 
 
+- Extensiones de sintaxis -
+
+        Se añaden algunas notaciones que Lua estándar no tiene. El script se
+        transforma antes de ejecutarse, por lo que funcionan igual en todos los
+        motores. El interior de las cadenas y los comentarios no se transforma.
+
+        o is not
+                a is not b se trata como una desigualdad y significa lo mismo que
+                a ~= b.
+                Ejemplo: if frame is not 0 then
+                           obj.x = 100
+                         end
+
+
 - Ejemplos de script -
 
         o Fundido de entrada (script predeterminado)

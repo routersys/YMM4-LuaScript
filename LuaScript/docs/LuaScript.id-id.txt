@@ -758,6 +758,20 @@
             pcall, xpcall
 
 
+- Ekstensi Sintaks -
+
+        Beberapa notasi yang tidak ada pada Lua standar ditambahkan. Skrip
+        ditransformasikan sebelum dijalankan, sehingga bekerja sama pada semua
+        mesin. Bagian dalam string dan komentar tidak ditransformasikan.
+
+        o is not
+                a is not b diperlakukan sebagai ketidaksamaan dan berarti sama
+                dengan a ~= b.
+                Contoh: if frame is not 0 then
+                          obj.x = 100
+                        end
+
+
 - Contoh Skrip -
 
         o Fade in (skrip default)
