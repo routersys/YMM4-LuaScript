@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using LuaScript.Engine.Kernel;
+using LuaScript.Compat.Syntax;
 
 namespace LuaScript.Compat
 {
@@ -35,15 +35,7 @@ namespace LuaScript.Compat
             if (string.IsNullOrEmpty(script))
                 return None;
 
-            List<LuaToken> tokens;
-            try
-            {
-                tokens = LuaLexer.Tokenize(script);
-            }
-            catch (KernelUnsupportedException)
-            {
-                return None;
-            }
+            var tokens = LuaSyntaxLexer.Tokenize(script);
 
             HashSet<string>? members = null;
             bool color = false;
@@ -51,26 +43,52 @@ namespace LuaScript.Compat
             for (int i = 0; i < tokens.Count; i++)
             {
                 var token = tokens[i];
-                if (token.Kind != LuaTokenKind.Name)
+                if (token.Kind != LuaSyntaxTokenKind.Name)
                     continue;
 
                 if (token.Text == "color")
                 {
-                    if (i == 0 || !tokens[i - 1].IsSymbol("."))
+                    int previous = PreviousSignificant(tokens, i);
+                    if (previous < 0 || !tokens[previous].IsOperator("."))
                         color = true;
                     continue;
                 }
 
-                if (token.Text == "obj" &&
-                    i + 2 < tokens.Count &&
-                    tokens[i + 1].IsSymbol(".") &&
-                    tokens[i + 2].Kind == LuaTokenKind.Name)
+                if (token.Text == "obj")
                 {
-                    (members ??= new HashSet<string>(StringComparer.Ordinal)).Add(tokens[i + 2].Text);
+                    int dot = NextSignificant(tokens, i + 1);
+                    if (dot < 0 || !tokens[dot].IsOperator("."))
+                        continue;
+
+                    int member = NextSignificant(tokens, dot + 1);
+                    if (member < 0 || tokens[member].Kind != LuaSyntaxTokenKind.Name)
+                        continue;
+
+                    (members ??= new HashSet<string>(StringComparer.Ordinal)).Add(tokens[member].Text);
                 }
             }
 
             return new ScriptParameterUsage(members, color);
+        }
+
+        private static int PreviousSignificant(List<LuaSyntaxToken> tokens, int from)
+        {
+            for (int i = from - 1; i >= 0; i--)
+            {
+                if (!tokens[i].IsTrivia)
+                    return i;
+            }
+            return -1;
+        }
+
+        private static int NextSignificant(List<LuaSyntaxToken> tokens, int from)
+        {
+            for (int i = from; i < tokens.Count; i++)
+            {
+                if (!tokens[i].IsTrivia)
+                    return i;
+            }
+            return -1;
         }
     }
 }
