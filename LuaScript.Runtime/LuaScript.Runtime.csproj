@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Version>1.13.3</Version>
+		<Platforms>AnyCPU;x64</Platforms>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="LuaScript" />
+		<InternalsVisibleTo Include="LuaScript.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\LuaScript.Kernel\LuaScript.Kernel.csproj" />
+		<ProjectReference Include="..\LuaScript.Compat\LuaScript.Compat.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="MoonSharp" Version="2.0.0" />
+	</ItemGroup>
+
+</Project>

@@ -57,9 +57,8 @@ namespace LuaScript
             private readonly Dictionary<string, DynValue> _options = new(StringComparer.Ordinal);
             private readonly Dictionary<string, DynValue> _pixelOptions = new(StringComparer.Ordinal);
 
-            private TextRenderer? _textRenderer;
-            private ImageDecoder? _imageDecoder;
-            private MovieDecoder? _movieDecoder;
+            private readonly Func<IMediaSourceLoader> _mediaLoaderFactory;
+            private IMediaSourceLoader? _mediaLoader;
             private readonly AviUtlFontState _fontState = new();
 
             private Script? _script;
@@ -77,8 +76,9 @@ namespace LuaScript
             private CancellationToken _activeCancellation;
             private AviUtlScriptContext? _activeContext;
 
-            internal ExecutionThread()
+            internal ExecutionThread(Func<IMediaSourceLoader> mediaLoaderFactory)
             {
+                _mediaLoaderFactory = mediaLoaderFactory;
                 _activeCancellation = _cts.Token;
                 _debugger.UpdateToken(_cts.Token);
                 _thread = new Thread(WorkerLoop)
@@ -762,8 +762,8 @@ namespace LuaScript
 
             private void LoadText(string text)
             {
-                _textRenderer ??= new TextRenderer();
-                var buffer = _textRenderer.Render(
+                _mediaLoader ??= _mediaLoaderFactory();
+                var buffer = _mediaLoader.RenderText(
                     text, _fontState.Family, _fontState.Size, _fontState.Bold, _fontState.Italic, _fontState.Color,
                     out int w, out int h);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
@@ -772,16 +772,16 @@ namespace LuaScript
 
             private void LoadImage(string path)
             {
-                _imageDecoder ??= new ImageDecoder();
-                var buffer = _imageDecoder.Decode(path, out int w, out int h);
+                _mediaLoader ??= _mediaLoaderFactory();
+                var buffer = _mediaLoader.DecodeImage(path, out int w, out int h);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
                 RefreshObjDimensions();
             }
 
             private void LoadMovie(string path, double time)
             {
-                _movieDecoder ??= new MovieDecoder();
-                var buffer = _movieDecoder.Decode(path, time, out int w, out int h);
+                _mediaLoader ??= _mediaLoaderFactory();
+                var buffer = _mediaLoader.DecodeMovie(path, time, out int w, out int h);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
                 RefreshObjDimensions();
             }
@@ -854,9 +854,7 @@ namespace LuaScript
                 _disposeRequested = true;
                 _workSignal.Release();
                 _thread.Join();
-                _textRenderer?.Dispose();
-                _imageDecoder?.Dispose();
-                _movieDecoder?.Dispose();
+                _mediaLoader?.Dispose();
                 _cts.Cancel();
                 _cts.Dispose();
                 _workSignal.Dispose();
@@ -870,9 +868,7 @@ namespace LuaScript
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
                     _thread.Join();
-                    _textRenderer?.Dispose();
-                    _imageDecoder?.Dispose();
-                    _movieDecoder?.Dispose();
+                    _mediaLoader?.Dispose();
                     _cts.Dispose();
                     _workSignal.Dispose();
                     _doneSignal.Dispose();
@@ -896,8 +892,15 @@ namespace LuaScript
             UserData.RegisterType<PixelDataProxy>();
         }
 
-        private ExecutionThread _executionThread = new();
+        private readonly Func<IMediaSourceLoader> _mediaLoaderFactory;
+        private ExecutionThread _executionThread;
         private bool _disposed;
+
+        internal LuaScriptEngine(Func<IMediaSourceLoader> mediaLoaderFactory)
+        {
+            _mediaLoaderFactory = mediaLoaderFactory;
+            _executionThread = new ExecutionThread(mediaLoaderFactory);
+        }
 
         public void Execute(string code, AviUtlScriptContext ctx)
         {
@@ -908,7 +911,7 @@ namespace LuaScript
             if (result.TimedOut)
             {
                 var stale = _executionThread;
-                _executionThread = new ExecutionThread();
+                _executionThread = new ExecutionThread(_mediaLoaderFactory);
                 stale.AbandonAsync();
                 throw new LuaScriptTimeoutException(
                     $"Script execution timed out after {ExecutionTimeoutMilliseconds} ms.");

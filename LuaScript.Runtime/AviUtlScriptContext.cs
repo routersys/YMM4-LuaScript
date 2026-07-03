@@ -69,7 +69,7 @@ namespace LuaScript
         public int Index { get; set; }
         public int Num { get; set; }
 
-        public Func<SceneObjectResolver>? ResolverProvider { get; set; }
+        public Func<ISceneObjectResolver>? ResolverProvider { get; set; }
 
         private readonly Dictionary<string, string> _stringParameters = new(StringComparer.Ordinal);
 
