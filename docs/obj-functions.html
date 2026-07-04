@@ -218,6 +218,11 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, u0,v0, ... ,u3,v3] [, alpha])</code></td><td>4 頂点のテクスチャ付きポリゴンを描画する。UV を省略すると画像全体を使う</td></tr>
 <tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファ間でコピーする。ID は <code>obj</code>（作業画像）・<code>tmp</code>・<code>cache:名前</code>・<code>frm</code>（コピー元のみ・仮想フレームバッファ）。書き込み先が <code>obj</code> のときのみ作業画像を置き換える</td></tr>
 <tr><td><code>obj.pixelshader(name, target, resources [, constants, blend, sampler])</code></td><td>スクリプト内に定義した HLSL のピクセルシェーダーを GPU で実行する。詳細は下記の「ピクセルシェーダー」を参照</td></tr>
+<tr><td><code>obj.fill(r, g, b [, a, x, y, w, h])</code></td><td>作業画像を指定色で塗りつぶす。色は 0〜255 のストレート RGBA。矩形を省略すると画像全体。<strong>YMM4 独自拡張</strong></td></tr>
+<tr><td><code>obj.getpixelregion(x, y, w, h)</code></td><td>矩形領域の画素をストレート RGBA の配列（1 始まり・<code>r,g,b,a</code> の順）で取得する。<strong>YMM4 独自拡張</strong></td></tr>
+<tr><td><code>obj.putpixelregion(x, y, w, h, data)</code></td><td><code>obj.getpixelregion</code> と同じ並びの配列を矩形領域へ書き戻す。<strong>YMM4 独自拡張</strong></td></tr>
+<tr><td><code>obj.convolve(kernel, size [, divisor, offset])</code></td><td>作業画像へ <code>size×size</code> の畳み込みを適用する（ぼかし・シャープ・輪郭抽出等）。<strong>YMM4 独自拡張</strong></td></tr>
+<tr><td><code>obj.resize(w, h [, filter])</code></td><td>作業画像を指定サイズへ拡大縮小し、<code>obj.w</code>／<code>obj.h</code> 等も更新する。<code>filter</code> は <code>"nearest"</code> か省略で線形補間。<strong>YMM4 独自拡張</strong></td></tr>
 <tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される。<code>blend</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の合成モードを番号で指定する。番号は下記の「合成モード」を参照。<code>draw_state</code> は真偽値で、<code>true</code> なら作業画像を出力し、<code>false</code> なら入力をそのまま通す。<code>drawtarget</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の描画先を <code>"framebuffer"</code> と <code>"tempbuffer"</code> で切り替える。詳細は下記の「描画先」を参照</td></tr>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
@@ -338,6 +343,43 @@ float4 名前(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target</code>
 YMM4 は背景を参照できないため、<code>"framebuffer"</code> の初期内容は透明なシーンサイズ領域へオブジェクトを合成した仮想の画像です。
 HLSL のコンパイルエラーはエディターの診断へ表示されます。
 GPU を利用できない環境では呼び出しはスキップされ、画像は変化しません。
+</p>
+
+<h3>画像加工（YMM4 独自拡張）</h3>
+
+<p>
+<code>obj.fill</code>・<code>obj.getpixelregion</code>・<code>obj.putpixelregion</code>・<code>obj.convolve</code>・<code>obj.resize</code> は、作業画像を直接加工する YMM4 独自の関数です。
+色は <code>obj.getpixel</code>／<code>obj.setpixel</code> と同じ 0〜255 のストレート RGBA で扱い、いずれも従来エンジンと高速ランタイムの両方で動作します。
+</p>
+
+<p>
+<code>obj.getpixelregion(x, y, w, h)</code> は矩形領域の画素を長さ <code>w*h*4</code> の配列で返します。並びは画素ごとに <code>r, g, b, a</code> で、索引は <code>(行*w+列)*4+1</code> から始まります。範囲外の画素は <code>0,0,0,0</code> です。
+<code>obj.putpixelregion</code> は同じ並びの配列を書き戻し、画像の範囲外へはみ出した画素は書き込みません。
+</p>
+
+<pre><code>-- 左右反転
+local w, h = obj.w, obj.h
+local src = obj.getpixelregion(0, 0, w, h)
+local dst = {}
+for y = 0, h - 1 do
+  for x = 0, w - 1 do
+    local s = (y * w + (w - 1 - x)) * 4
+    local d = (y * w + x) * 4
+    for c = 1, 4 do dst[d + c] = src[s + c] end
+  end
+end
+obj.putpixelregion(0, 0, w, h, dst)</code></pre>
+
+<p>
+<code>obj.convolve(kernel, size [, divisor, offset])</code> は <code>size×size</code> の畳み込みを適用します。<code>kernel</code> は行優先で 1 始まりの係数配列、<code>size</code> は奇数です。<code>divisor</code> を省略するとカーネルの合計（合計が 0 のときは 1）で割ります。<code>offset</code> は除算後に各成分へ加算します。端の画素は最も近い画素で補い、<code>r, g, b, a</code> すべてに適用されます。
+</p>
+
+<pre><code>obj.convolve({ 1,1,1, 1,1,1, 1,1,1 }, 3)          -- 平均ぼかし
+obj.convolve({ 0,-1,0, -1,5,-1, 0,-1,0 }, 3)      -- シャープ
+obj.convolve({ -1,-1,-1, -1,8,-1, -1,-1,-1 }, 3, 1, 0)  -- 輪郭抽出</code></pre>
+
+<p>
+<code>obj.resize(w, h [, filter])</code> は作業画像を指定サイズへ拡大縮小し、<code>obj.w</code>・<code>obj.h</code>・<code>obj.cx</code> などの寸法も更新します。<code>filter</code> は <code>"nearest"</code>（最近傍）か、省略で線形補間です。高速ランタイムでは結果が最大画像サイズを超える場合は変更しません。
 </p>
 
 <h3>アンカーポイント</h3>

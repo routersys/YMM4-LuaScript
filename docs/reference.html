@@ -91,6 +91,10 @@
 <tr><td><code>obj.drawpoly(...)</code></td><td>4 頂点ポリゴンの描画</td></tr>
 <tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファのコピー</td></tr>
 <tr><td><code>obj.pixelshader(name, target, resources [, constants, blend, sampler])</code></td><td>HLSL のピクセルシェーダーを GPU で実行</td></tr>
+<tr><td><code>obj.fill(r, g, b [, a, x, y, w, h])</code></td><td>作業画像を指定色で塗りつぶす（YMM4 独自拡張）</td></tr>
+<tr><td><code>obj.getpixelregion(x, y, w, h)</code> / <code>obj.putpixelregion(x, y, w, h, data)</code></td><td>矩形領域の画素をストレート RGBA 配列で取得 / 書き戻す（YMM4 独自拡張）</td></tr>
+<tr><td><code>obj.convolve(kernel, size [, divisor, offset])</code></td><td>作業画像へ畳み込み（ぼかし・シャープ・輪郭抽出）を適用（YMM4 独自拡張）</td></tr>
+<tr><td><code>obj.resize(w, h [, filter])</code></td><td>作業画像を拡大縮小し寸法を更新（YMM4 独自拡張）</td></tr>
 <tr><td><code>obj.setoption(name [, value])</code> / <code>obj.getoption(name)</code></td><td>オプションの設定 / 取得</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td>obj の数値メンバーを名前で取得</td></tr>
 <tr><td><code>obj.getaudio(buf, file [, type, size])</code></td><td>音声データ（PCM・スペクトラム・フーリエ変換）の取得</td></tr>
