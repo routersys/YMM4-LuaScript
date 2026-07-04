@@ -79,11 +79,19 @@ CPU / GPU カーネルは、次の決まった形のスクリプトだけを変�
 <ul>
 <li>先頭に <code>local</code> 宣言を置いてもよい。</li>
 <li>本体は二重の数値 for ループ 1 組だけ。外側と内側で <code>obj.h</code> と <code>obj.w</code> をそれぞれ
-  <code>0</code> から <code>-1</code> まで回す。</li>
+  <code>0</code> から <code>-1</code> まで回す。上限には <code>local w = obj.w</code> のような別名も使える。</li>
 <li>内側ループの最初が <code>local r, g, b[, a] = obj.getpixel(x, y)</code>、最後が
   <code>obj.setpixel(x, y, ...)</code>。</li>
-<li>その間は <code>local</code> 宣言と代入のみ。</li>
+<li>その間は <code>local</code> 宣言と代入、および <code>if</code> / <code>elseif</code> / <code>else</code> による
+  <code>local</code> 変数への条件代入のみ。</li>
 </ul>
+
+<p>
+<code>obj.getpixeldata()</code> で得たハンドルの <code>get</code> / <code>set</code> を
+<code>local i = (y * data.width + x) * 4</code> の基底インデックスで使う形も同様にカーネル化されます。
+ループの後の <code>obj.putpixeldata(data)</code> は置いても置かなくてもかまいません。
+<code>if</code> 文の中で <code>obj.setpixel</code> や <code>set</code> を呼ぶ形はカーネル化されません。
+</p>
 
 <p>カーネル内で使える要素は限られます。</p>
 

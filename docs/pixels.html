@@ -126,8 +126,9 @@ A チャンネル（インデックス <code>base + 4</code>）を変更する�
 <p>
 ピクセル処理は重くなりがちです。このプラグインは <code>getpixel</code> / <code>setpixel</code> を含むスクリプトを、
 利用できる環境では自動的に高速なネイティブレーンへ振り分けます。さらに、二重ループで
-<code>getpixel</code> → 計算 → <code>setpixel</code> という決まった形のスクリプトは、CPU カーネルや GPU カーネルへ
-変換してさらに高速に実行します。GPU カーネルは初回に CPU カーネルとの一致を検証したうえで自動選択します。
+<code>getpixel</code> → 計算 → <code>setpixel</code> という決まった形のスクリプトや、
+<code>getpixeldata</code> のハンドルを基底インデックスで読み書きする決まった形のスクリプトは、
+CPU カーネルや GPU カーネルへ変換してさらに高速に実行します。GPU カーネルは初回に CPU カーネルとの一致を検証したうえで自動選択します。
 詳しくは <a href="engines.html">エンジンと高速化</a> を参照してください。
 </p>
 
