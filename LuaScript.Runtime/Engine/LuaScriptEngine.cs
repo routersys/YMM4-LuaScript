@@ -828,9 +828,7 @@ namespace LuaScript
                     return DynValue.NewNumber(0d);
 
                 var anchorName = args[0].String;
-                int count = AnchorSupport.ClampCount((int)(args[1].CastToNumber() ?? 0d));
-                if (string.Equals(anchorName, AnchorSupport.TrackGroup, StringComparison.Ordinal))
-                    return DynValue.NewNumber(0d);
+                int count = AnchorSupport.NormalizeCount(anchorName, (int)(args[1].CastToNumber() ?? 0d));
 
                 var connection = AnchorConnection.None;
                 bool is3D = false;
