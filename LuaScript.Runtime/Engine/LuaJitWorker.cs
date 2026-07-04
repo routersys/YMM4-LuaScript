@@ -37,6 +37,7 @@ namespace LuaScript.Engine
         private readonly Dictionary<string, byte[]> _stringNameBytes = new(StringComparer.Ordinal);
         private byte[] _stringValueBytes = new byte[256];
         private byte[] _sceneValueBytes = new byte[256];
+        private byte[] _objectMetaBytes = new byte[256];
 
         private static readonly byte[] s_shaderTransparentPixel = new byte[4];
         private readonly PixelShaderInput[] _shaderInputs = new PixelShaderInput[NativeProtocol.ShaderResourcesMax];
@@ -657,12 +658,36 @@ namespace LuaScript.Engine
                 view.Write(result + NativeProtocol.CbRz * 8, value.Rz);
                 view.Write(result + NativeProtocol.CbAlpha * 8, value.Alpha);
                 view.Write(result + NativeProtocol.CbLayer * 8, (double)value.Layer);
+                view.Write(result + NativeProtocol.CbVolume * 8, value.Volume);
+                view.Write(result + NativeProtocol.CbLength * 8, (double)value.Length);
+                WriteObjectMeta(view, value.Character, value.Text, value.Kind);
                 view.Write(NativeProtocol.OffCallbackFound, 1);
             }
             else
             {
                 view.Write(NativeProtocol.OffCallbackFound, 0);
             }
+        }
+
+        private void WriteObjectMeta(MemoryMappedViewAccessor view, string character, string text, string kind)
+        {
+            character ??= string.Empty;
+            text ??= string.Empty;
+            kind ??= string.Empty;
+            int maxBytes = Encoding.UTF8.GetMaxByteCount(character.Length + text.Length + kind.Length) + 2;
+            if (_objectMetaBytes.Length < maxBytes)
+                _objectMetaBytes = new byte[Math.Max(maxBytes, _objectMetaBytes.Length * 2)];
+
+            int length = Encoding.UTF8.GetBytes(character, 0, character.Length, _objectMetaBytes, 0);
+            _objectMetaBytes[length++] = 0;
+            length += Encoding.UTF8.GetBytes(text, 0, text.Length, _objectMetaBytes, length);
+            _objectMetaBytes[length++] = 0;
+            length += Encoding.UTF8.GetBytes(kind, 0, kind.Length, _objectMetaBytes, length);
+            if (length > NativeProtocol.CallbackTagMax)
+                length = NativeProtocol.CallbackTagMax;
+
+            view.WriteArray(NativeProtocol.CallbackTagOffset, _objectMetaBytes, 0, length);
+            view.Write(NativeProtocol.OffCallbackTagLen, length);
         }
 
         private void ResolveLoadFigureCallback(
