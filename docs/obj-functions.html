@@ -167,6 +167,7 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.draw([ox, oy, oz, zoom, alpha, aspect])</code></td><td>現在のバッファをオフセット・拡大率・不透明度を指定して描画する</td></tr>
 <tr><td><code>obj.drawpoly(x0,y0,z0, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, u0,v0, ... ,u3,v3] [, alpha])</code></td><td>4 頂点のテクスチャ付きポリゴンを描画する。UV を省略すると画像全体を使う</td></tr>
 <tr><td><code>obj.copybuffer(dst, src)</code></td><td>バッファ間でコピーする。ID は <code>obj</code>（作業画像）・<code>tmp</code>・<code>cache:名前</code>。書き込み先が <code>obj</code> のときのみ作業画像を置き換える</td></tr>
+<tr><td><code>obj.pixelshader(name, target, resources [, constants, blend, sampler])</code></td><td>スクリプト内に定義した HLSL のピクセルシェーダーを GPU で実行する。詳細は下記の「ピクセルシェーダー」を参照</td></tr>
 <tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される。<code>blend</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の合成モードを番号で指定する。番号は下記の「合成モード」を参照。<code>draw_state</code> は真偽値で、<code>true</code> なら作業画像を出力し、<code>false</code> なら入力をそのまま通す。<code>drawtarget</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の描画先を <code>"framebuffer"</code> と <code>"tempbuffer"</code> で切り替える。詳細は下記の「描画先」を参照</td></tr>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
@@ -244,6 +245,49 @@ MoonSharp では <code>tempbuffer</code> への合成を GPU で実行し、GPU 
 obj.draw()
 obj.setoption("drawtarget", "framebuffer")
 obj.copybuffer("obj", "tmp")</code></pre>
+
+<h3>ピクセルシェーダー</h3>
+
+<p>
+<code>obj.pixelshader</code> は、スクリプト内に AviUtl ExEdit2 と同じ記法で定義した HLSL のピクセルシェーダーを GPU で実行します。
+シェーダーは <code>--[[pixelshader@登録名:</code> で始まる複数行コメントに記述し、登録名がエントリーポイントになります。
+</p>
+
+<pre><code>--[[pixelshader@ps:
+Texture2D src : register(t0);
+cbuffer constant0 : register(b0) { float strength; }
+float4 ps(float4 pos : SV_Position) : SV_Target
+{
+    float4 c = src[uint2(floor(pos.xy))];
+    return float4(c.rgb * strength, c.a);
+}
+]]
+obj.pixelshader("ps", "object", "object", { obj.track0 / 100 })</code></pre>
+
+<table>
+<tr><th>引数</th><th>説明</th></tr>
+<tr><td><code>name</code></td><td>定義したシェーダーの登録名。エントリーポイントの関数名と一致させる</td></tr>
+<tr><td><code>target</code></td><td>出力先のバッファ名。<code>"object"</code>・<code>"tempbuffer"</code>・<code>"cache:名前"</code> に対応する</td></tr>
+<tr><td><code>resources</code></td><td>参照するバッファ名の配列で、シェーダーリソース <code>t0</code>～<code>t7</code> に設定される。1 つの場合は文字列で直接指定できる。<code>"random"</code> は 0.0～1.0 の乱数値の 256x256 領域（<code>R32_FLOAT</code>）になる</td></tr>
+<tr><td><code>constants</code></td><td>数値の配列で、定数バッファ（<code>b0</code>）へ <code>float</code> の配列として設定される</td></tr>
+<tr><td><code>blend</code></td><td>出力先への合成方法。<code>"copy"</code>（そのまま・既定）・<code>"mask"</code>（α値のみ乗算）・<code>"draw"</code>（アルファブレンド）・<code>"add"</code>（加算）に対応する</td></tr>
+<tr><td><code>sampler</code></td><td><code>SamplerState</code>（<code>s0</code>）の種別。<code>"clip"</code>・<code>"clamp"</code>・<code>"loop"</code>・<code>"mirror"</code>・<code>"dot"</code> に対応し、省略時は未設定になる</td></tr>
+</table>
+
+<p>
+ピクセルシェーダーの入力は次のどちらかのシグネチャを使用できます。
+<code>uv</code> は描画範囲が 0.0～1.0 になるように設定されます。
+</p>
+
+<pre><code>float4 名前(float4 pos : SV_Position) : SV_Target
+float4 名前(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target</code></pre>
+
+<p>
+<code>obj.pixelshader</code> を使用したスクリプトは MoonSharp エンジンで実行されます（ディレクティブ無しで自動選択）。
+<code>"framebuffer"</code> は YMM4 の構造上使用できません。
+HLSL のコンパイルエラーはエディターの診断へ表示されます。
+GPU を利用できない環境では呼び出しはスキップされ、画像は変化しません。
+</p>
 
 <h3>アンカーポイント</h3>
 
