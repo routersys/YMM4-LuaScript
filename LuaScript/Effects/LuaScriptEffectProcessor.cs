@@ -470,8 +470,8 @@ namespace LuaScript
 
             _isFirst = false;
             _cachedKey = key;
-            _cachedQueries = ctx.ObjectQueries.Count == 0 ? [] : [.. ctx.ObjectQueries];
-            _cachedSceneValueQueries = ctx.SceneValueQueries.Count == 0 ? [] : [.. ctx.SceneValueQueries];
+            _cachedQueries = SnapshotQueries(ctx.ObjectQueries, _cachedQueries);
+            _cachedSceneValueQueries = SnapshotQueries(ctx.SceneValueQueries, _cachedSceneValueQueries);
             _cachedOutputDesc = outDesc;
             _cachedEffectOutput = effectOutput;
 
@@ -559,6 +559,17 @@ namespace LuaScript
                     return false;
             }
             return true;
+        }
+
+        private static T[] SnapshotQueries<T>(IReadOnlyList<T> source, T[] existing)
+        {
+            int count = source.Count;
+            if (count == 0)
+                return [];
+            var target = existing.Length == count ? existing : new T[count];
+            for (int i = 0; i < count; i++)
+                target[i] = source[i];
+            return target;
         }
 
         private static bool QueriesMatch(SceneObjectQuery[] queries, SceneObjectResolver resolver)
