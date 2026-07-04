@@ -826,6 +826,30 @@
                 for i in <0..10> do is the same as for i = 0, 10 do and includes the end.
                 <0..<10> excludes the end. <0..10, 2> uses a step of 2.
 
+        o Ternary (? :)
+                cond ? a : b returns a when cond is truthy and b otherwise.
+                It returns the false or nil branch as is.
+
+        o Safe navigation (?. ?[ ])
+                t?.x returns nil when t is nil, otherwise t.x.
+                t?[k] is index access. t is evaluated once.
+
+        o Lambda (=>)
+                (a, b) => expr expands to (function(a, b) return expr end).
+                Use x => expr for a single parameter, or () => expr for none.
+
+        o Pipe (|>)
+                x |> f expands to f((x)), passing the left side as the first argument.
+                x |> f(a, b) becomes f((x), a, b). |> can be chained.
+
+        o Interpolated string (`...`)
+                `x={a}` expands to ("x=" .. tostring(a)).
+                Write an expression inside { }, where extension syntax is also available.
+
+        o Range membership (in <..>)
+                x in <1..5> tests 1 <= x and x <= 5.
+                <1..<5> excludes the upper bound. The left side is evaluated once.
+
 
 - Script Examples -
 

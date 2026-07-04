@@ -835,6 +835,30 @@
                 for i in <0..10> do sama dengan for i = 0, 10 do dan menyertakan akhir.
                 <0..<10> tidak menyertakan akhir. <0..10, 2> memakai langkah 2.
 
+        o Ternari (? :)
+                cond ? a : b mengembalikan a saat cond bernilai benar, dan b jika tidak.
+                Cabang false atau nil dikembalikan apa adanya.
+
+        o Navigasi aman (?. ?[ ])
+                t?.x mengembalikan nil saat t bernilai nil, jika tidak t.x.
+                t?[k] adalah akses indeks. t dievaluasi sekali.
+
+        o Lambda (=>)
+                (a, b) => expr diperluas menjadi (function(a, b) return expr end).
+                Gunakan x => expr untuk satu parameter, atau () => expr untuk tanpa parameter.
+
+        o Pipa (|>)
+                x |> f diperluas menjadi f((x)), meneruskan sisi kiri sebagai argumen pertama.
+                x |> f(a, b) menjadi f((x), a, b). |> dapat dirantai.
+
+        o String interpolasi (`...`)
+                `x={a}` diperluas menjadi ("x=" .. tostring(a)).
+                Tulis ekspresi di dalam { }, yang juga mendukung sintaks ekstensi.
+
+        o Keanggotaan rentang (in <..>)
+                x in <1..5> menguji 1 <= x and x <= 5.
+                <1..<5> tidak menyertakan batas atas. Sisi kiri dievaluasi sekali.
+
 
 - Contoh Skrip -
 
