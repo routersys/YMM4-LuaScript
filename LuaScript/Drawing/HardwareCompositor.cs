@@ -1,11 +1,15 @@
 using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LuaScript.Compat;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
+using Vortice.Direct2D1.Effects;
 using Vortice.DXGI;
 using Vortice.Mathematics;
 using YukkuriMovieMaker.Commons;
+using YukkuriMovieMaker.Player;
+using Blend = YukkuriMovieMaker.Project.Blend;
 
 namespace LuaScript
 {
@@ -17,6 +21,8 @@ namespace LuaScript
         private ID2D1Bitmap1? _source;
         private ID2D1Bitmap1? _target;
         private ID2D1Bitmap1? _staging;
+        private Opacity? _opacityEffect;
+        private ID2D1Image? _opacityOutput;
         private int _sourceWidth;
         private int _sourceHeight;
         private int _targetWidth;
@@ -53,6 +59,7 @@ namespace LuaScript
             var interpolation = command.Antialias != 0d
                 ? BitmapInterpolationMode.Linear
                 : BitmapInterpolationMode.NearestNeighbor;
+            var blend = BlendModeMap.Resolve(command.Blend);
 
             var dc = _ctx.DeviceContext;
             var rt = (ID2D1RenderTarget)dc;
@@ -62,7 +69,7 @@ namespace LuaScript
             {
                 dc.BeginDraw();
                 rt.Transform = transform;
-                rt.DrawBitmap(_source!, opacity, interpolation);
+                DrawSource(rt, opacity, interpolation, blend);
                 rt.Transform = Matrix3x2.Identity;
                 dc.EndDraw();
             }
@@ -92,6 +99,25 @@ namespace LuaScript
             return true;
         }
 
+        private void DrawSource(ID2D1RenderTarget rt, float opacity, BitmapInterpolationMode interpolation, Blend blend)
+        {
+            if (blend == Blend.Normal)
+            {
+                rt.DrawBitmap(_source!, opacity, interpolation);
+                return;
+            }
+
+            var interp = ToImageInterpolation(interpolation);
+            _opacityEffect!.Value = opacity;
+            if (blend.IsCompositionEffect())
+                _ctx.DeviceContext.DrawImage(_opacityOutput!, interpolationMode: interp, compositeMode: blend.ToD2DCompositionMode());
+            else
+                _ctx.DeviceContext.BlendImage(_opacityOutput!, blend.ToD2DBlendMode(), null, null, interp);
+        }
+
+        private static InterpolationMode ToImageInterpolation(BitmapInterpolationMode mode) =>
+            mode == BitmapInterpolationMode.Linear ? InterpolationMode.Linear : InterpolationMode.NearestNeighbor;
+
         private void EnsureSource(int width, int height)
         {
             if (_source is not null && _sourceWidth == width && _sourceHeight == height)
@@ -101,6 +127,13 @@ namespace LuaScript
             _source = _ctx.DeviceContext.CreateEmptyBitmap(width, height, BitmapOptions.Target);
             _sourceWidth = width;
             _sourceHeight = height;
+
+            if (_opacityEffect is null)
+            {
+                _opacityEffect = new Opacity(_ctx.DeviceContext);
+                _opacityOutput = _opacityEffect.Output;
+            }
+            _opacityEffect.SetInput(0, _source, true);
         }
 
         private void EnsureTarget(int width, int height)
@@ -128,9 +161,13 @@ namespace LuaScript
 
         public void Dispose()
         {
+            _opacityOutput?.Dispose();
+            _opacityEffect?.Dispose();
             _source?.Dispose();
             _target?.Dispose();
             _staging?.Dispose();
+            _opacityOutput = null;
+            _opacityEffect = null;
             _source = null;
             _target = null;
             _staging = null;
