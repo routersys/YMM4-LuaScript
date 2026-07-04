@@ -9,6 +9,13 @@ namespace LuaScript.Anchor
 
         public static int ClampCount(int count) => Math.Clamp(count, 0, MaxAnchors);
 
+        public static int NormalizeCount(string group, int count)
+        {
+            if (count <= 0 && string.Equals(group, TrackGroup, StringComparison.Ordinal))
+                return 1;
+            return ClampCount(count);
+        }
+
         public static void ApplyOption(string option, ref AnchorConnection connection, ref bool is3D)
         {
             switch (option)
@@ -50,6 +57,35 @@ namespace LuaScript.Anchor
             x = dx;
             y = dy;
             z = 0d;
+        }
+
+        public static ImmutableList<LuaAnchorPoint> SetPosition(
+            ImmutableList<LuaAnchorPoint> source, string group, int index, double x, double y, double z)
+        {
+            for (int i = 0; i < source.Count; i++)
+            {
+                var a = source[i];
+                if (a.Index == index && string.Equals(a.Group, group, StringComparison.Ordinal))
+                {
+                    return source.SetItem(i, new LuaAnchorPoint
+                    {
+                        Group = group,
+                        Index = index,
+                        X = x,
+                        Y = y,
+                        Z = z,
+                    });
+                }
+            }
+
+            return source.Add(new LuaAnchorPoint
+            {
+                Group = group,
+                Index = index,
+                X = x,
+                Y = y,
+                Z = z,
+            });
         }
 
         public static ImmutableList<LuaAnchorPoint> ApplyDrag(
