@@ -70,7 +70,7 @@ local ERROR_OFFSET = SCRIPT_OFFSET + 128 * 1024
 local CB_TAG_OFFSET = ERROR_OFFSET + 4 * 1024
 local CB_TAG_MAX = 8192
 local CB_RESULT_OFFSET = CB_TAG_OFFSET + CB_TAG_MAX
-local STRING_PARAMS_OFFSET = CB_RESULT_OFFSET + 8 * 8
+local STRING_PARAMS_OFFSET = CB_RESULT_OFFSET + 10 * 8
 local DRAW_RING_CAPACITY = 4096
 local DRAW_ENTRY_DOUBLES = 24
 local DRAW_RING_DOUBLES = 1 + DRAW_RING_CAPACITY * DRAW_ENTRY_DOUBLES
@@ -910,6 +910,7 @@ end
 
 local cacheTag, cacheFrame, cacheFound
 local cacheExist, cacheX, cacheY, cacheZ, cacheZoom, cacheRz, cacheAlpha, cacheLayer
+local cacheVolume, cacheLength, cacheCharacter, cacheText, cacheKind
 
 local function buildObject()
     return {
@@ -919,6 +920,8 @@ local function buildObject()
         rx = 0, ry = 0, rz = cacheRz,
         rxr = 0, ryr = 0, rzr = cacheRz * math.pi / 180,
         alpha = cacheAlpha, layer = cacheLayer,
+        volume = cacheVolume, length = cacheLength,
+        character = cacheCharacter, text = cacheText, kind = cacheKind,
     }
 end
 
@@ -1116,6 +1119,17 @@ function obj.getobject(tag, frame)
     cacheExist = cbResult[0] ~= 0
     cacheX = cbResult[1]; cacheY = cbResult[2]; cacheZ = cbResult[3]
     cacheZoom = cbResult[4]; cacheRz = cbResult[5]; cacheAlpha = cbResult[6]; cacheLayer = cbResult[7]
+    cacheVolume = cbResult[8]; cacheLength = cbResult[9]
+    local meta = ffi.string(base + CB_TAG_OFFSET, i32[OFF_CB_TAGLEN])
+    local s1 = meta:find("\0", 1, true)
+    local s2 = s1 and meta:find("\0", s1 + 1, true)
+    if s1 and s2 then
+        cacheCharacter = meta:sub(1, s1 - 1)
+        cacheText = meta:sub(s1 + 1, s2 - 1)
+        cacheKind = meta:sub(s2 + 1)
+    else
+        cacheCharacter = ""; cacheText = ""; cacheKind = ""
+    end
     return buildObject()
 end
 

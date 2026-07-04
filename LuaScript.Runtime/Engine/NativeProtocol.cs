@@ -43,7 +43,7 @@ namespace LuaScript.Engine
         public const int CallbackTagOffset = ErrorOffset + ErrorMax;
         public const int CallbackTagMax = 8192;
         public const int CallbackResultOffset = CallbackTagOffset + CallbackTagMax;
-        public const int CallbackResultCount = 8;
+        public const int CallbackResultCount = 10;
 
         public const int StringParamsOffset = CallbackResultOffset + CallbackResultCount * 8;
         public const int MinStringParamsCapacity = 64 * 1024;
@@ -80,6 +80,8 @@ namespace LuaScript.Engine
         public const int CbRz = 5;
         public const int CbAlpha = 6;
         public const int CbLayer = 7;
+        public const int CbVolume = 8;
+        public const int CbLength = 9;
 
         public static long DrawRingOffset(int stringCapacity) => StringParamsOffset + stringCapacity;
 
