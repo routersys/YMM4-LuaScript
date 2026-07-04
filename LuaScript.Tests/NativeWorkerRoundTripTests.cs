@@ -525,7 +525,7 @@ namespace LuaScript.Tests
 
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
-            var resolved = new SceneObjectInfo("a", true, 12d, 34d, 56d, 2d, 90d, 200d, 7);
+            var resolved = new SceneObjectInfo("a", true, 12d, 34d, 56d, 2d, 90d, 200d, 7, 120, 75d, "reimu", "hello", "VoiceItem");
             Func<string, int, SceneObjectInfo?> resolver = (tag, frame) =>
                 tag == "a" && frame == 5 ? resolved : null;
 
@@ -533,7 +533,11 @@ namespace LuaScript.Tests
                 "local o = obj.getobject(\"a\", 5) " +
                 "obj.x = o.x obj.y = o.y obj.z = o.z " +
                 "obj.zoom = o.zoom obj.rz = o.rz obj.alpha = o.alpha " +
-                "obj.sx = o.sy obj.rzr = o.rzr";
+                "obj.sx = o.sy obj.rzr = o.rzr " +
+                "obj.ox = o.volume obj.oy = o.length " +
+                "obj.oz = (o.character == \"reimu\") and 1 or 0 " +
+                "obj.rx = (o.text == \"hello\") and 1 or 0 " +
+                "obj.ry = (o.kind == \"VoiceItem\") and 1 or 0";
 
             bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, resolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
 
@@ -546,6 +550,11 @@ namespace LuaScript.Tests
             Assert.Equal(200d, fields[NativeProtocol.Alpha]);
             Assert.Equal(2d, fields[NativeProtocol.Sx]);
             Assert.Equal(90d * Math.PI / 180d, fields[NativeProtocol.Rzr]);
+            Assert.Equal(75d, fields[NativeProtocol.Ox]);
+            Assert.Equal(120d, fields[NativeProtocol.Oy]);
+            Assert.Equal(1d, fields[NativeProtocol.Oz]);
+            Assert.Equal(1d, fields[NativeProtocol.Rx]);
+            Assert.Equal(1d, fields[NativeProtocol.Ry]);
         }
 
         [Fact]
@@ -559,7 +568,7 @@ namespace LuaScript.Tests
             Func<string, int, SceneObjectInfo?> resolver = (tag, frame) =>
             {
                 calls++;
-                return tag == "a" ? new SceneObjectInfo("a", true, x, 0, 0, 1, 0, 255, 0) : null;
+                return tag == "a" ? new SceneObjectInfo("a", true, x, 0, 0, 1, 0, 255, 0, 0, 0d, "", "", "") : null;
             };
 
             const string script =
