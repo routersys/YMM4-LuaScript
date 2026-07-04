@@ -21,7 +21,7 @@
 
 <div class="note">
 変換は字句単位で行い、<strong>文字列とコメントの内側は変換しません</strong>。
-また Lua に存在しない記号（<code>?</code> <code>!</code> <code>&amp;</code> <code>|</code> や <code>in &lt;</code> の並び）だけを入口にしているため、
+また Lua に存在しない記号（<code>?</code> <code>!</code> <code>&amp;</code> <code>|</code> <code>=&gt;</code> <code>`</code> や <code>in &lt;</code> の並び）だけを入口にしているため、
 通常の Lua スクリプトはそのまま動作します。
 </div>
 
@@ -130,6 +130,123 @@ end</code></pre>
 
 <div class="note">
 <code>in &lt;</code> の並びは通常の Lua には現れないため、<code>ipairs</code> や <code>pairs</code> を使う汎用 for には影響しません。
+</div>
+
+<h2>三項演算子</h2>
+
+<p>
+<code>条件 ? A : B</code> は、条件が真のとき <code>A</code> を、偽のとき <code>B</code> を返します。
+<code>a and A or B</code> と違い、<code>A</code> が <code>false</code> や <code>nil</code> のときも、その値をそのまま返します。
+</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>c ? 1 : 2</code></td><td><code>c</code> が真なら <code>1</code>、偽なら <code>2</code></td></tr>
+</table>
+
+<pre><code>obj.alpha = obj.frame == 0 ? 0 : 255</code></pre>
+
+<div class="note">
+<code>? :</code> は条件を 1 度だけ評価する無名関数に展開します。<code>:</code> のあとにもう一度 <code>? :</code> を書けば、else 側で分岐を続けられます。
+</div>
+
+<h2>安全ナビゲーション</h2>
+
+<p>
+<code>t?.name</code> は、<code>t</code> が <code>nil</code> のときは <code>nil</code> を返し、そうでなければ <code>t.name</code> を返します。
+<code>nil</code> の値へ添字アクセスして落ちるのを防ぎます。<code>t?[k]</code> と書けば添字でも同じことができます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>t?.x</code></td><td><code>t</code> が <code>nil</code> なら <code>nil</code>、そうでなければ <code>t.x</code></td></tr>
+<tr><td><code>t?[k]</code></td><td><code>t</code> が <code>nil</code> なら <code>nil</code>、そうでなければ <code>t[k]</code></td></tr>
+</table>
+
+<pre><code>local title = data?.title ?? "無題"</code></pre>
+
+<div class="note">
+<code>?.</code> は対象を 1 度だけ評価する無名関数に展開します。<code>a?.b?.c</code> のように連ねれば、途中が <code>nil</code> でも安全にたどれます。
+</div>
+
+<h2>ラムダ式</h2>
+
+<p>
+<code>(引数) =&gt; 式</code> は、その式を返す無名関数に展開します。引数が 1 つのときは括弧を省いて <code>x =&gt; 式</code>、
+引数が無いときは <code>() =&gt; 式</code> と書けます。本体には 1 つの式を書きます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>展開後</th></tr>
+<tr><td><code>(a, b) =&gt; a + b</code></td><td><code>(function(a, b) return a + b end)</code></td></tr>
+<tr><td><code>x =&gt; x * 2</code></td><td><code>(function(x) return x * 2 end)</code></td></tr>
+<tr><td><code>() =&gt; 1</code></td><td><code>(function() return 1 end)</code></td></tr>
+</table>
+
+<pre><code>local t = { 3, 1, 2 }
+table.sort(t, (a, b) =&gt; a &lt; b)</code></pre>
+
+<div class="note">
+<code>=&gt;</code> だけを入口にしているため、比較演算子の <code>&gt;=</code> や <code>&lt;=</code> には影響しません。
+</div>
+
+<h2>パイプ</h2>
+
+<p>
+<code>x |&gt; f</code> は <code>f(x)</code> の形に展開し、左辺を関数の第 1 引数として渡します。
+<code>x |&gt; f(a, b)</code> のように引数を書いたときは、左辺が第 1 引数に入り、残りの引数は後ろへ続きます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>展開後</th></tr>
+<tr><td><code>x |&gt; f</code></td><td><code>f((x))</code></td></tr>
+<tr><td><code>x |&gt; clamp(0, 255)</code></td><td><code>clamp((x), 0, 255)</code></td></tr>
+</table>
+
+<pre><code>local v = obj.track0 |&gt; math.floor |&gt; tostring</code></pre>
+
+<div class="note">
+<code>|&gt;</code> は左から右へ連ねられます。<code>a |&gt; f |&gt; g</code> は <code>g(f(a))</code> と同じ順序で評価します。
+</div>
+
+<h2>補間文字列</h2>
+
+<p>
+バッククォート <code>`</code> で囲んだ文字列の中に <code>{式}</code> を書くと、その値を <code>tostring</code> で文字列にして差し込みます。
+<code>{ }</code> の中では拡張構文もそのまま使えます。
+</p>
+
+<table>
+<tr><th>書き方</th><th>展開後</th></tr>
+<tr><td><code>`x={a}`</code></td><td><code>("x=" .. tostring(a))</code></td></tr>
+<tr><td><code>`hello`</code></td><td><code>"hello"</code></td></tr>
+</table>
+
+<pre><code>obj.text = `フレーム {obj.frame} / {obj.totalframe}`</code></pre>
+
+<div class="note">
+バッククォートを入口にしているため、通常の文字列やコメントの中の <code>`</code> は変換しません。
+</div>
+
+<h2>範囲メンバーシップ</h2>
+
+<p>
+<code>x in &lt;開始..終了&gt;</code> は、<code>x</code> がその範囲に入っているかどうかを判定します。
+<code>..</code> は終端を含み、<code>..&lt;</code> は終端を含みません。
+</p>
+
+<table>
+<tr><th>書き方</th><th>意味</th></tr>
+<tr><td><code>x in &lt;1..5&gt;</code></td><td><code>1 &lt;= x and x &lt;= 5</code></td></tr>
+<tr><td><code>x in &lt;1..&lt;5&gt;</code></td><td><code>1 &lt;= x and x &lt; 5</code>（5 を含まない）</td></tr>
+</table>
+
+<pre><code>if obj.frame in &lt;0..9&gt; then
+    obj.alpha = 255
+end</code></pre>
+
+<div class="note">
+左辺は 1 度だけ評価する無名関数に展開します。範囲 for の <code>for i in &lt;0..10&gt;</code> とは書く位置が異なるため、for のヘッダーには影響しません。
 </div>
 
 <div class="pager">
