@@ -1,4 +1,5 @@
 using LuaScript.Anchor;
+using LuaScript.Compat;
 
 namespace LuaScript
 {
@@ -159,6 +160,52 @@ namespace LuaScript
         }
 
         private readonly Dictionary<string, (byte[] Data, int Width, int Height)> _buffers = new(StringComparer.Ordinal);
+
+        internal IPixelShaderRunner? ShaderRunner { get; set; }
+
+        internal AviUtlPixelShaderLibrary PixelShaders { get; set; } = AviUtlPixelShaderLibrary.Empty;
+
+        internal bool TryGetShaderResource(string id, out byte[] data, out int width, out int height) =>
+            TryReadBuffer(id, out data, out width, out height);
+
+        internal bool TryGetShaderTarget(string id, out byte[] data, out int width, out int height)
+        {
+            data = [];
+            width = 0;
+            height = 0;
+            switch (BufferKind(id, out string key))
+            {
+                case 'o':
+                    EnsurePixelBuffer();
+                    if (_pixelBuffer is null)
+                        return false;
+                    data = _pixelBuffer;
+                    width = ImageWidth;
+                    height = ImageHeight;
+                    return true;
+                case 't':
+                case 'c':
+                    if (!_buffers.TryGetValue(key, out var stored))
+                    {
+                        int w = Math.Max(1, ImageWidth);
+                        int h = Math.Max(1, ImageHeight);
+                        stored = (new byte[w * h * 4], w, h);
+                        _buffers[key] = stored;
+                    }
+                    data = stored.Data;
+                    width = stored.Width;
+                    height = stored.Height;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        internal void NotifyShaderTargetWritten(string id)
+        {
+            if (BufferKind(id, out _) == 'o')
+                MarkPixelsDirty();
+        }
 
         internal bool CopyBuffer(string dst, string src)
         {
