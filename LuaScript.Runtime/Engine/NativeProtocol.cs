@@ -61,6 +61,8 @@ namespace LuaScript.Engine
         public const int CbKindFlushDraws = 10;
         public const int CbKindSceneGet = 11;
         public const int CbKindSceneSet = 12;
+        public const int CbKindPixelShaderStage = 13;
+        public const int CbKindPixelShaderRun = 14;
 
         public const int DrawRingCapacity = 4096;
         public const int DrawEntryDoubles = 24;
@@ -153,7 +155,38 @@ namespace LuaScript.Engine
 
         public const int MaxPixelBufferSize = 3840 * 2160 * 4;
 
+        public const int ShaderMetaDoubles = 20;
+        public const int ShaderConstantsMax = 1024;
+        public const int ShaderResourcesMax = 8;
+
+        public const int ShaderMetaResourceCount = 0;
+        public const int ShaderMetaBlendMode = 1;
+        public const int ShaderMetaCompositeBlend = 2;
+        public const int ShaderMetaSampler = 3;
+        public const int ShaderMetaConstantCount = 4;
+        public const int ShaderMetaImageWidth = 5;
+        public const int ShaderMetaImageHeight = 6;
+        public const int ShaderMetaImageKind = 7;
+        public const int ShaderMetaStatus = 8;
+        public const int ShaderMetaResourceKinds = 9;
+
+        public const int ShaderResourceStaged = 0;
+        public const int ShaderResourceRandom = 1;
+        public const int ShaderResourceTransparent = 2;
+        public const int ShaderResourceObject = 3;
+
+        public const int ShaderTargetExchange = 0;
+        public const int ShaderTargetObject = 1;
+
+        public const long ShaderRegionBytes = ShaderMetaDoubles * 8 + ShaderConstantsMax * 4 + MaxPixelBufferSize;
+
+        public static long ShaderMetaOffset(long bufferSize) => bufferSize - ShaderRegionBytes;
+
+        public static long ShaderConstantsOffset(long bufferSize) => ShaderMetaOffset(bufferSize) + ShaderMetaDoubles * 8;
+
+        public static long ShaderImageOffset(long bufferSize) => ShaderConstantsOffset(bufferSize) + ShaderConstantsMax * 4;
+
         public static long BufferSize(int width, int height, int stringCapacity) =>
-            PixelOffset(stringCapacity) + Math.Max((long)width * height * 4, MaxPixelBufferSize);
+            PixelOffset(stringCapacity) + Math.Max((long)width * height * 4, MaxPixelBufferSize) + ShaderRegionBytes;
     }
 }
