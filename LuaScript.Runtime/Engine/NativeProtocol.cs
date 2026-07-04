@@ -63,6 +63,8 @@ namespace LuaScript.Engine
         public const int CbKindSceneSet = 12;
         public const int CbKindPixelShaderStage = 13;
         public const int CbKindPixelShaderRun = 14;
+        public const int CbKindLoadScene = 15;
+        public const int CbKindLoadBrush = 16;
 
         public const int DrawRingCapacity = 4096;
         public const int DrawEntryDoubles = 24;
