@@ -548,6 +548,17 @@ namespace LuaScript
                             args[1].String,
                             args.Count > 2 ? args[2].CastToNumber() ?? _activeContext.Time : _activeContext.Time);
                         break;
+                    case "scene" when args.Count > 1 && args[1].Type == DataType.String:
+                        LoadScene(
+                            args[1].String,
+                            args.Count > 2 ? args[2].CastToNumber() ?? _activeContext.Time : _activeContext.Time);
+                        break;
+                    case "brush" when args.Count > 1 && args[1].Type == DataType.String:
+                        LoadBrush(
+                            args[1].String,
+                            args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d,
+                            args.Count > 3 ? args[3].CastToNumber() ?? 0d : 0d);
+                        break;
                 }
                 return DynValue.Void;
             }
@@ -944,6 +955,34 @@ namespace LuaScript
                 _mediaLoader ??= _mediaLoaderFactory();
                 var buffer = _mediaLoader.DecodeImage(path, out int w, out int h);
                 _activeContext!.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
+            private void LoadScene(string name, double time)
+            {
+                var ctx = _activeContext!;
+                var loader = ctx.SceneImageLoader;
+                if (loader is null)
+                    return;
+                var (buffer, w, h) = loader(name, time);
+                if (w <= 0 || h <= 0)
+                    return;
+                ctx.ReplaceBuffer(buffer, w, h);
+                RefreshObjDimensions();
+            }
+
+            private void LoadBrush(string name, double width, double height)
+            {
+                var ctx = _activeContext!;
+                var loader = ctx.BrushImageLoader;
+                if (loader is null)
+                    return;
+                double w = width > 0d ? width : ctx.ImageWidth;
+                double h = height > 0d ? height : ctx.ImageHeight;
+                var (buffer, bw, bh) = loader(name, w, h);
+                if (bw <= 0 || bh <= 0)
+                    return;
+                ctx.ReplaceBuffer(buffer, bw, bh);
                 RefreshObjDimensions();
             }
 
