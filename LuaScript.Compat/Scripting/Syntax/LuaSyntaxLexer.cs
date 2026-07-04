@@ -8,6 +8,7 @@ namespace LuaScript.Compat.Syntax
         {
             "...", "..=", "??=", "||=", "&&=",
             "==", "~=", "<=", ">=", "..", "::", "??", "||", "&&", "!=", "++",
+            "=>", "|>",
             "+=", "-=", "*=", "/=", "%=", "^=",
             "+", "-", "*", "/", "%", "^", "#", "<", ">", "=",
             "(", ")", "{", "}", "[", "]", ";", ":", ",", ".",
@@ -69,6 +70,14 @@ namespace LuaScript.Compat.Syntax
                     int start = i;
                     i = SkipShortString(source, i);
                     tokens.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.String, source.Substring(start, i - start)));
+                    continue;
+                }
+
+                if (c == '`')
+                {
+                    int start = i;
+                    i = SkipShortString(source, i);
+                    tokens.Add(new LuaSyntaxToken(LuaSyntaxTokenKind.InterpolatedString, source.Substring(start, i - start)));
                     continue;
                 }
 

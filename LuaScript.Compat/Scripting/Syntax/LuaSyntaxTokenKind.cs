@@ -6,6 +6,7 @@ namespace LuaScript.Compat.Syntax
         Newline,
         Comment,
         String,
+        InterpolatedString,
         Number,
         Name,
         Operator,
