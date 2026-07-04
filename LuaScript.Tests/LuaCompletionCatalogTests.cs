@@ -47,6 +47,7 @@ namespace LuaScript.Tests
                 "obj.getobject", "obj.getpixel", "obj.setpixel",
                 "obj.getpixeldata", "obj.putpixeldata", "obj.rand", "obj.load",
                 "obj.setfont", "obj.draw", "obj.drawpoly", "obj.copybuffer",
+                "obj.pixelshader",
                 "obj.getvalue", "obj.setoption", "obj.getoption", "obj.pixeloption",
                 "obj.setanchor", "obj.effect", "obj.getinfo"
             ]),

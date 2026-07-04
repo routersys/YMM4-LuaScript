@@ -632,6 +632,133 @@ namespace LuaScript
                 return DynValue.Void;
             }
 
+            [LuaFunction("pixelshader")]
+            private DynValue PixelShader(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 2 ||
+                    args[0].Type != DataType.String || args[1].Type != DataType.String)
+                    return DynValue.Void;
+
+                var ctx = _activeContext;
+                var runner = ctx.ShaderRunner;
+                if (runner is null)
+                    return DynValue.Void;
+
+                string name = args[0].String;
+                if (!ctx.PixelShaders.TryGet(name, out string hlsl))
+                    throw new ScriptRuntimeException($"obj.pixelshader: shader '{name}' is not defined in this script.");
+
+                int resourceCount = CollectShaderResources(ctx, args.Count > 2 ? args[2] : DynValue.Nil);
+                int constantCount = CollectShaderConstants(args.Count > 3 ? args[3] : DynValue.Nil);
+                var blend = ParseShaderBlend(args.Count > 4 ? args[4] : DynValue.Nil);
+                var sampler = ParseShaderSampler(args.Count > 5 ? args[5] : DynValue.Nil);
+
+                string target = args[1].String;
+                if (!ctx.TryGetShaderTarget(target, out byte[] targetData, out int targetWidth, out int targetHeight))
+                    return DynValue.Void;
+
+                var status = runner.TryRun(
+                    hlsl,
+                    AviUtlPixelShaderLibrary.EntryPointOf(name),
+                    _shaderResources.AsSpan(0, resourceCount),
+                    _shaderConstants.AsSpan(0, constantCount),
+                    blend, sampler,
+                    targetData, targetWidth, targetHeight,
+                    out string? error);
+
+                if (status == PixelShaderRunStatus.CompileError)
+                    throw new ScriptRuntimeException($"obj.pixelshader: shader '{name}' failed to compile.\n{error}");
+                if (status == PixelShaderRunStatus.Success)
+                    ctx.NotifyShaderTargetWritten(target);
+                return DynValue.Void;
+            }
+
+            private const int MaxShaderResources = 8;
+            private const int MaxShaderConstants = 1024;
+
+            private static readonly byte[] s_transparentPixel = new byte[4];
+
+            private readonly PixelShaderInput[] _shaderResources = new PixelShaderInput[MaxShaderResources];
+            private readonly float[] _shaderConstants = new float[MaxShaderConstants];
+
+            private static PixelShaderInput TransparentShaderResource => new(s_transparentPixel, 1, 1);
+
+            private int CollectShaderResources(AviUtlScriptContext ctx, DynValue value)
+            {
+                if (value.Type == DataType.String)
+                {
+                    _shaderResources[0] = ResolveShaderResource(ctx, value.String);
+                    return 1;
+                }
+                if (value.Type != DataType.Table)
+                    return 0;
+
+                var table = value.Table;
+                int count = table.Length;
+                if (count > MaxShaderResources)
+                    throw new ScriptRuntimeException($"obj.pixelshader: too many resources ({count}). Up to {MaxShaderResources} are supported.");
+                for (int i = 0; i < count; i++)
+                {
+                    var entry = table.Get(i + 1);
+                    _shaderResources[i] = entry.Type == DataType.String
+                        ? ResolveShaderResource(ctx, entry.String)
+                        : TransparentShaderResource;
+                }
+                return count;
+            }
+
+            private static PixelShaderInput ResolveShaderResource(AviUtlScriptContext ctx, string id)
+            {
+                if (string.Equals(id, "random", StringComparison.Ordinal))
+                    return PixelShaderInput.Random;
+                if (ctx.TryGetShaderResource(id, out var data, out int width, out int height))
+                    return new PixelShaderInput(data, width, height);
+                return TransparentShaderResource;
+            }
+
+            private int CollectShaderConstants(DynValue value)
+            {
+                if (value.Type != DataType.Table)
+                    return 0;
+                var table = value.Table;
+                int count = table.Length;
+                if (count > MaxShaderConstants)
+                    throw new ScriptRuntimeException($"obj.pixelshader: too many constants ({count}). Up to {MaxShaderConstants} are supported.");
+                for (int i = 0; i < count; i++)
+                    _shaderConstants[i] = (float)(table.Get(i + 1).CastToNumber() ?? 0d);
+                return count;
+            }
+
+            private static PixelShaderBlend ParseShaderBlend(DynValue value)
+            {
+                if (value.Type != DataType.String)
+                    return PixelShaderBlend.Copy;
+                return value.String switch
+                {
+                    "copy" => PixelShaderBlend.Copy,
+                    "mask" => PixelShaderBlend.Mask,
+                    "draw" => PixelShaderBlend.Draw,
+                    "add" => PixelShaderBlend.Add,
+                    _ => throw new ScriptRuntimeException($"obj.pixelshader: unknown blend '{value.String}'. Use copy, mask, draw or add."),
+                };
+            }
+
+            private static PixelShaderSampler ParseShaderSampler(DynValue value)
+            {
+                if (value.Type != DataType.String)
+                    return PixelShaderSampler.None;
+                return value.String switch
+                {
+                    "clip" => PixelShaderSampler.Clip,
+                    "clamp" => PixelShaderSampler.Clamp,
+                    "loop" => PixelShaderSampler.Loop,
+                    "mirror" => PixelShaderSampler.Mirror,
+                    "dot" => PixelShaderSampler.Dot,
+                    _ => throw new ScriptRuntimeException($"obj.pixelshader: unknown sampler '{value.String}'. Use clip, clamp, loop, mirror or dot."),
+                };
+            }
+
             [LuaFunction("getvalue")]
             private DynValue GetValue(CallbackArguments args)
             {
