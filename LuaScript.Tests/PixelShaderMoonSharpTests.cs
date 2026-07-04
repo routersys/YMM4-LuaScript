@@ -260,6 +260,17 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void PixelShader_NumericBlend_IsComposite()
+        {
+            using var engine = CreateEngine();
+            var (ctx, runner) = NewContext(ShaderSource);
+
+            engine.Execute(ShaderSource + "\nobj.pixelshader(\"ps\", \"object\", \"object\", {}, 11)", ctx);
+
+            Assert.Equal(PixelShaderBlend.Composite(11d), runner.Blend);
+        }
+
+        [Fact]
         public void PixelShader_UnknownBlend_Throws()
         {
             using var engine = CreateEngine();
