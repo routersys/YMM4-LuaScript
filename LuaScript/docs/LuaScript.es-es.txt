@@ -652,10 +652,15 @@
                 buf     : Tabla que recibe los datos. Los valores se guardan en
                           buf[1]..buf[n]. Pase nil para recibir la tabla como el
                           tercer valor de retorno.
-                archivo : Ruta de un archivo de audio. Pase "audiobuffer" para
-                          leer el audio del elemento al que está aplicado este
-                          efecto (tras aplicar volumen, panorama, fundidos y
-                          efectos de audio).
+                archivo : Ruta de un archivo de audio. También se aceptan los
+                          siguientes nombres especiales.
+                  "audiobuffer" : Lee el audio de toda la escena en edición
+                                  (todos los elementos de la línea de tiempo
+                                  mezclados).
+                  "itembuffer"  : Lee el audio del elemento al que está aplicado
+                                  este efecto (tras aplicar volumen, panorama,
+                                  fundidos y efectos de audio). Es una extensión
+                                  exclusiva de YMM4.
                 tipo : Clase de datos a obtener, como cadena. Por defecto "pcm".
                   "pcm"      : PCM monoaural en escala de 16 bits (-32768 a 32767).
                   "spectrum" : Volumen por banda de frecuencia (aprox. 0 a 32768).
@@ -671,10 +676,11 @@
                            Se pueden leer hasta 1024 valores por llamada.
                 Devuelve: el número de valores leídos, la frecuencia de muestreo
                 [, la tabla].
-                La posición de lectura es la posición de reproducción actual del
-                objeto (obj.time). "pcm" devuelve muestras consecutivas desde esa
-                posición; "spectrum" / "fourier" analizan el intervalo que
-                comienza allí.
+                La posición de lectura es la posición actual de la línea de
+                tiempo para "audiobuffer" y la posición de reproducción actual
+                del objeto (obj.time) en los demás casos. "pcm" devuelve muestras
+                consecutivas desde esa posición; "spectrum" / "fourier" analizan
+                el intervalo que comienza allí.
                 Ejemplo:
                   local buf = {}
                   local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
@@ -683,10 +689,10 @@
                   end
                 * Funciona en ambos motores. Si el audio no puede leerse, la
                   cantidad es 0 y no se produce ningún error.
-                * En AviUtl "audiobuffer" se refiere al búfer de audio en
-                  reproducción; en YMM4 se refiere al audio del propio elemento.
-                  Los elementos sin audio (imágenes, figuras, etc.) devuelven una
-                  cantidad de 0.
+                * "itembuffer" devuelve una cantidad de 0 para los elementos sin
+                  audio (imágenes, figuras, etc.). Cuando los componentes
+                  internos de YMM4 no están disponibles, recurre al audio previo
+                  a la aplicación del volumen y demás efectos.
 
         o obj.getinfo(nombre)
                 Obtiene diversa información del entorno. Un nombre no admitido

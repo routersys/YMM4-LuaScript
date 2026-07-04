@@ -645,9 +645,14 @@
                 buf  : A table that receives the data. Values are stored in
                        buf[1]..buf[n]. Pass nil to receive the table as the third
                        return value instead.
-                file : Path of an audio file. Pass "audiobuffer" to read the audio
-                       of the item this effect is attached to (after volume, pan,
-                       fade, and audio effects are applied).
+                file : Path of an audio file. The following special names are
+                       also accepted.
+                  "audiobuffer" : Reads the audio of the whole scene being edited
+                                  (all items on the timeline mixed together).
+                  "itembuffer"  : Reads the audio of the item this effect is
+                                  attached to (after volume, pan, fade, and audio
+                                  effects are applied). This is a YMM4-specific
+                                  extension.
                 type : Kind of data to get, as a string. Defaults to "pcm".
                   "pcm"      : Mono PCM on a 16-bit scale (-32768 to 32767).
                   "spectrum" : Volume per frequency band (roughly 0 to 32768).
@@ -661,9 +666,11 @@
                        Up to 1024 values can be read per call.
                 Returns: the number of values read, the sampling rate
                 [, the table].
-                The read position is the current playback position of the object
-                (obj.time). "pcm" returns consecutive samples from that position;
-                "spectrum" / "fourier" analyze the interval starting there.
+                The read position is the current timeline position for
+                "audiobuffer", and the current playback position of the object
+                (obj.time) otherwise. "pcm" returns consecutive samples from that
+                position; "spectrum" / "fourier" analyze the interval starting
+                there.
                 Example:
                   local buf = {}
                   local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
@@ -672,9 +679,10 @@
                   end
                 * Works in both engines. When the audio cannot be read, the count
                   is 0 and no error is raised.
-                * In AviUtl "audiobuffer" refers to the audio buffer being played;
-                  in YMM4 it refers to the audio of the item itself. Items without
-                  audio (images, shapes, etc.) return a count of 0.
+                * "itembuffer" returns a count of 0 for items without audio
+                  (images, shapes, etc.). When the YMM4 internals are not
+                  available, it falls back to the audio before volume and other
+                  effects are applied.
 
         o obj.getinfo(name)
                 Gets various environment information. An unsupported name returns nil.

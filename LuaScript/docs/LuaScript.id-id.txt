@@ -648,9 +648,13 @@
                 buf  : Tabel yang menerima data. Nilai disimpan di buf[1]..buf[n].
                        Berikan nil untuk menerima tabel sebagai nilai kembali
                        ketiga.
-                file : Jalur berkas audio. Berikan "audiobuffer" untuk membaca
-                       audio dari item tempat efek ini terpasang (setelah volume,
-                       pan, fade, dan efek audio diterapkan).
+                file : Jalur berkas audio. Nama khusus berikut juga diterima.
+                  "audiobuffer" : Membaca audio seluruh scene yang sedang
+                                  disunting (semua item di lini masa dicampur
+                                  menjadi satu).
+                  "itembuffer"  : Membaca audio dari item tempat efek ini
+                                  terpasang (setelah volume, pan, fade, dan efek
+                                  audio diterapkan). Ini ekstensi khusus YMM4.
                 tipe : Jenis data yang diambil, sebagai string. Bawaan "pcm".
                   "pcm"      : PCM mono pada skala 16-bit (-32768 sampai 32767).
                   "spectrum" : Volume per pita frekuensi (sekitar 0 sampai 32768).
@@ -665,10 +669,11 @@
                          sedikit. Maksimal 1024 nilai per panggilan.
                 Mengembalikan: banyaknya nilai yang terbaca, laju sampel
                 [, tabel].
-                Posisi baca adalah posisi pemutaran objek saat ini (obj.time).
-                "pcm" mengembalikan sampel berurutan dari posisi itu;
-                "spectrum" / "fourier" menganalisis interval yang dimulai dari
-                sana.
+                Posisi baca adalah posisi lini masa saat ini untuk
+                "audiobuffer", dan posisi pemutaran objek saat ini (obj.time)
+                untuk lainnya. "pcm" mengembalikan sampel berurutan dari posisi
+                itu; "spectrum" / "fourier" menganalisis interval yang dimulai
+                dari sana.
                 Contoh:
                   local buf = {}
                   local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
@@ -677,9 +682,10 @@
                   end
                 * Bekerja di kedua mesin. Jika audio tidak dapat dibaca,
                   jumlahnya 0 dan tidak terjadi kesalahan.
-                * Di AviUtl "audiobuffer" merujuk ke buffer audio yang sedang
-                  diputar; di YMM4 merujuk ke audio item itu sendiri. Item tanpa
-                  audio (gambar, bentuk, dsb.) mengembalikan jumlah 0.
+                * "itembuffer" mengembalikan jumlah 0 untuk item tanpa audio
+                  (gambar, bentuk, dsb.). Jika komponen internal YMM4 tidak
+                  tersedia, digunakan audio sebelum volume dan efek lainnya
+                  diterapkan.
 
         o obj.getinfo(name)
                 Mengambil berbagai informasi lingkungan. Nama yang tidak didukung
