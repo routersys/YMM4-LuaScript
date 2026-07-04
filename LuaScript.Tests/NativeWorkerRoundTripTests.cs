@@ -1431,6 +1431,19 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void PixelShader_ReportsClearError()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+
+            bool ok = RunWorker("obj.pixelshader(\"ps\", \"object\", \"object\")", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            Assert.False(ok);
+            Assert.Contains("pixelshader", error);
+        }
+
+        [Fact]
         public void RuntimeError_IsReported_AndWorkerSurvives()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
