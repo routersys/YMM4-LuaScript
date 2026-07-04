@@ -32,7 +32,32 @@ namespace LuaScript
         {
             EnsureBitmaps(width, height);
             RenderToStaging(input, bounds);
+            return ReadStagingPixels(width, height);
+        }
 
+        public byte[] LoadBrushPixels(ID2D1Brush brush, int width, int height)
+        {
+            EnsureBitmaps(width, height);
+
+            var dc = _ctx.DeviceContext;
+            var rt = (ID2D1RenderTarget)dc;
+            using var savedTarget = dc.Target;
+
+            dc.Target = _renderTarget;
+            dc.BeginDraw();
+            dc.Clear(null);
+            rt.Transform = Matrix3x2.CreateTranslation(width / 2f, height / 2f);
+            rt.FillRectangle(new RawRectF(-width / 2f, -height / 2f, width / 2f, height / 2f), brush);
+            rt.Transform = Matrix3x2.Identity;
+            dc.EndDraw();
+            dc.Target = savedTarget;
+
+            _stagingBitmap!.CopyFromBitmap(_renderTarget!);
+            return ReadStagingPixels(width, height);
+        }
+
+        private unsafe byte[] ReadStagingPixels(int width, int height)
+        {
             var mapped = _stagingBitmap!.Map(MapOptions.Read);
             try
             {
