@@ -95,6 +95,8 @@ local CB_KIND_SCENEGET = 11
 local CB_KIND_SCENESET = 12
 local CB_KIND_PIXELSHADER_STAGE = 13
 local CB_KIND_PIXELSHADER_RUN = 14
+local CB_KIND_LOADSCENE = 15
+local CB_KIND_LOADBRUSH = 16
 local MAX_PIXEL_BUFFER = 3840 * 2160 * 4
 local SHADER_META_DOUBLES = 20
 local SHADER_CONSTANTS_MAX = 1024
@@ -519,6 +521,35 @@ local function loadMovie(path, time)
     applyLoadResult()
 end
 
+local function loadScene(name, time)
+    local payload = tostring(name or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADSCENE
+    cbResult[0] = time or obj.time or 0
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
+local function loadBrush(name, w, h)
+    local payload = tostring(name or "")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_LOADBRUSH
+    cbResult[0] = w or width
+    cbResult[1] = h or height
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
+end
+
 function obj.load(kind, ...)
     if kind == "figure" then
         loadFigure(...)
@@ -528,6 +559,10 @@ function obj.load(kind, ...)
         loadImage(...)
     elseif kind == "movie" then
         loadMovie(...)
+    elseif kind == "scene" then
+        loadScene(...)
+    elseif kind == "brush" then
+        loadBrush(...)
     end
 end
 
