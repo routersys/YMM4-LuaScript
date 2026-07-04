@@ -39,7 +39,15 @@ namespace LuaScript.Generator
         OptionalReference,
     }
 
-    internal sealed record LuaUpdateModel(string LuaName, string MethodName, LuaUpdateKind Kind);
+    internal enum LuaValueKind
+    {
+        Number,
+        Boolean,
+        String,
+        Other,
+    }
+
+    internal sealed record LuaUpdateModel(string LuaName, string MethodName, LuaUpdateKind Kind, LuaValueKind ValueKind);
 
     internal sealed record LuaCatalogEntry(
         string Table,
@@ -309,12 +317,30 @@ namespace LuaScript.Generator
 
             var returnType = method.ReturnType;
             LuaUpdateKind kind;
+            ITypeSymbol valueType;
             if (returnType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T)
+            {
                 kind = LuaUpdateKind.OptionalValue;
+                valueType = ((INamedTypeSymbol)returnType).TypeArguments[0];
+            }
             else if (returnType.IsReferenceType)
+            {
                 kind = LuaUpdateKind.OptionalReference;
+                valueType = returnType;
+            }
             else
+            {
                 kind = LuaUpdateKind.Direct;
+                valueType = returnType;
+            }
+
+            var valueKind = valueType.SpecialType switch
+            {
+                SpecialType.System_Double or SpecialType.System_Int32 => LuaValueKind.Number,
+                SpecialType.System_Boolean => LuaValueKind.Boolean,
+                SpecialType.System_String => LuaValueKind.String,
+                _ => LuaValueKind.Other,
+            };
 
             bool inCatalog = true;
             foreach (var argument in attribute.NamedArguments)
@@ -325,7 +351,7 @@ namespace LuaScript.Generator
 
             if (inCatalog)
                 entry = new LuaCatalogEntry(tableName, luaName, false, EquatableArray<string>.Empty);
-            return new LuaUpdateModel(luaName, method.Name, kind);
+            return new LuaUpdateModel(luaName, method.Name, kind, valueKind);
         }
 
         private static string FormatDouble(double value) =>
@@ -387,13 +413,19 @@ namespace LuaScript.Generator
                     switch (update.Kind)
                     {
                         case LuaUpdateKind.OptionalValue:
-                            builder.AppendLine($"{body}{{ var value = {update.MethodName}(context); if (value.HasValue) table[\"{update.LuaName}\"] = value.Value; }}");
+                            builder.AppendLine(update.ValueKind == LuaValueKind.Other
+                                ? $"{body}{{ var value = {update.MethodName}(context); if (value.HasValue) table[\"{update.LuaName}\"] = value.Value; }}"
+                                : $"{body}{{ var value = {update.MethodName}(context); if (value.HasValue) table.Set(\"{update.LuaName}\", {WrapValue(update.ValueKind, "value.Value")}); }}");
                             break;
                         case LuaUpdateKind.OptionalReference:
-                            builder.AppendLine($"{body}{{ var value = {update.MethodName}(context); if (value is not null) table[\"{update.LuaName}\"] = value; }}");
+                            builder.AppendLine(update.ValueKind == LuaValueKind.Other
+                                ? $"{body}{{ var value = {update.MethodName}(context); if (value is not null) table[\"{update.LuaName}\"] = value; }}"
+                                : $"{body}{{ var value = {update.MethodName}(context); if (value is not null) table.Set(\"{update.LuaName}\", {WrapValue(update.ValueKind, "value")}); }}");
                             break;
                         default:
-                            builder.AppendLine($"{body}table[\"{update.LuaName}\"] = {update.MethodName}(context);");
+                            builder.AppendLine(update.ValueKind == LuaValueKind.Other
+                                ? $"{body}table[\"{update.LuaName}\"] = {update.MethodName}(context);"
+                                : $"{body}table.Set(\"{update.LuaName}\", {WrapValue(update.ValueKind, $"{update.MethodName}(context)")});");
                             break;
                     }
                 }
@@ -408,6 +440,13 @@ namespace LuaScript.Generator
             builder.AppendLine("}");
             return builder.ToString();
         }
+
+        private static string WrapValue(LuaValueKind kind, string expression) => kind switch
+        {
+            LuaValueKind.Number => $"global::MoonSharp.Interpreter.DynValue.NewNumber({expression})",
+            LuaValueKind.Boolean => $"global::MoonSharp.Interpreter.DynValue.NewBoolean({expression})",
+            _ => $"global::MoonSharp.Interpreter.DynValue.NewString({expression})",
+        };
 
         private static string EmitArguments(EquatableArray<LuaParameterModel> parameters)
         {
