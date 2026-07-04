@@ -1,21 +1,16 @@
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using LuaScript.Compat;
-using YukkuriMovieMaker.Player.Audio;
+using YukkuriMovieMaker.ItemEditor;
 using YukkuriMovieMaker.Player.Audio.Effects;
 using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Plugin.FileSource;
 using YukkuriMovieMaker.Project;
 using YukkuriMovieMaker.Project.Items;
-using YukkuriMovieMaker.Settings;
 
 namespace LuaScript
 {
     internal sealed class AudioSampleProvider : IDisposable
     {
-        private static readonly object s_ctorLock = new();
-        private static ConstructorInfo? s_effectedSourceCtor;
-        private static bool s_ctorResolved;
-
         private readonly AviUtlAudioConverter _converter = new();
         private readonly double[] _data = new double[AviUtlAudioConverter.MaxSamples];
         private float[] _readBuffer = [];
@@ -94,7 +89,7 @@ namespace LuaScript
             }
         }
 
-        public (int Count, int Rate) ReadItem(IAudioItem? item, Scene? scene, double time, int fps, string type, int size)
+        public (int Count, int Rate) ReadItem(IAudioItem? item, Scene? scene, double time, string type, int size)
         {
             try
             {
@@ -114,7 +109,7 @@ namespace LuaScript
                 {
                     _itemSource?.Dispose();
                     _itemSource = null;
-                    _itemSource = CreateEffectedSource(item, scene, fps) ?? CreateRawItemSource(item, scene);
+                    _itemSource = CreateItemSource(item, scene) ?? CreateRawItemSource(item, scene);
                     _itemSourceItem = item;
                     _itemSourceScene = scene;
                     _itemSourceFile = file;
@@ -161,6 +156,22 @@ namespace LuaScript
             return floats;
         }
 
+        private static IAudioStream? CreateItemSource(IAudioItem item, Scene scene)
+        {
+            try
+            {
+                return CreateEditorItemSource(item, scene);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static IAudioStream CreateEditorItemSource(IAudioItem item, Scene scene) =>
+            new EffectedItemSourceForEditorInfo(item, item.AudioEffects, scene);
+
         private static IAudioStream? CreateRawItemSource(IAudioItem item, Scene scene)
         {
             try
@@ -171,47 +182,6 @@ namespace LuaScript
             {
                 return null;
             }
-        }
-
-        private static IAudioStream? CreateEffectedSource(IAudioItem item, Scene scene, int fps)
-        {
-            var ctor = ResolveEffectedSourceCtor();
-            if (ctor is null)
-                return null;
-            try
-            {
-                return ctor.Invoke([item, scene, 0, fps, ResamplerMode.Linear, false, false, false]) as IAudioStream;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static ConstructorInfo? ResolveEffectedSourceCtor()
-        {
-            if (s_ctorResolved)
-                return s_effectedSourceCtor;
-            lock (s_ctorLock)
-            {
-                if (!s_ctorResolved)
-                {
-                    try
-                    {
-                        s_effectedSourceCtor = typeof(Scene).Assembly
-                            .GetType("YukkuriMovieMaker.Player.Audio.EffectedItemSource")?
-                            .GetConstructor([
-                                typeof(IAudioItem), typeof(Scene), typeof(int), typeof(int),
-                                typeof(ResamplerMode), typeof(bool), typeof(bool), typeof(bool)]);
-                    }
-                    catch
-                    {
-                        s_effectedSourceCtor = null;
-                    }
-                    s_ctorResolved = true;
-                }
-            }
-            return s_effectedSourceCtor;
         }
 
         public void Dispose()

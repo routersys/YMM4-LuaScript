@@ -1278,7 +1278,7 @@ namespace LuaScript
             else if (string.Equals(file, "itembuffer", StringComparison.Ordinal))
             {
                 var (audioItem, scene) = ResolveOwnAudioItem(desc);
-                result = _audioProvider.ReadItem(audioItem, scene, desc.ItemPosition.Time.TotalSeconds, desc.FPS, type, size);
+                result = _audioProvider.ReadItem(audioItem, scene, desc.ItemPosition.Time.TotalSeconds, type, size);
             }
             else
             {
