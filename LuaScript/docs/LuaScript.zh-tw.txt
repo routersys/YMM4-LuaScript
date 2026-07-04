@@ -488,7 +488,9 @@
                   "cache:名稱" : 具名快取(跨影格保留)
                 範例：obj.copybuffer("tmp", "obj")  -- 儲存
                       obj.copybuffer("obj", "tmp")  -- 還原
-                ※ 由於 YMM4 的結構，無法取得 "frm"(影格緩衝區 / 背景)。
+                ※ "frm"(影格緩衝區)可以作為複製來源使用。其內容是把物件按目前
+                  位置合成到場景大小的透明區域而得到的虛擬影像。由於YMM4無法
+                  存取背景，因此不包含背景。不能作為複製目標使用。
 
         ○ obj.pixelshader(註冊名, 輸出目標, 資源 [, 常數 [, blend [, sampler]]])
                 在GPU上執行腳本內定義的HLSL像素著色器。
@@ -499,13 +501,19 @@
                   float4 註冊名(float4 pos : SV_Position) : SV_Target { ... }
                   ]]
                 註冊名   : 以字串指定已定義著色器的名稱。
-                輸出目標 : "object"、"tempbuffer"、"cache:名稱" 之一。
+                輸出目標 : "object"、"tempbuffer"、"cache:名稱"、"framebuffer"
+                           之一。"framebuffer" 會繪製到場景大小的虛擬影格緩衝區，
+                           並用結果取代物件影像。
                 資源     : 要參照的緩衝區名稱陣列,綁定到 t0~t7。只有一個時可以
                            直接用字串指定。指定 "random" 時會綁定 0.0~1.0
-                           亂數值的 256x256 區域(R32_FLOAT)。
+                           亂數值的 256x256 區域(R32_FLOAT)。指定 "framebuffer"
+                           時會綁定把物件按目前位置合成後的場景大小虛擬影格
+                           緩衝區。
                 常數     : 數值陣列,以float陣列形式設定到常數緩衝區(b0)。
                 blend    : "copy"(原樣)、"mask"(僅乘算α值)、"draw"(alpha混合)、
-                           "add"(加算)之一。省略時為 "copy"。
+                           "add"(加算)之一。省略時為 "copy"。以數值指定與
+                           obj.setoption("blend", 編號) 相同的編號時，會以YMM4
+                           的合成模式把著色器輸出合成到輸出目標。
                 sampler  : "clip"、"clamp"、"loop"、"mirror"、"dot" 之一。
                            設定到 SamplerState(s0)。省略時不設定。
                 像素著色器的輸入可以使用以下任一種。
@@ -513,8 +521,9 @@
                   float4 名稱(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                 uv 會被設定為繪製範圍對應 0.0~1.0。
                 例: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
-                ※ 在MoonSharp引擎上執行(無指令時自動選擇)。
-                ※ 由於YMM4的結構,"framebuffer" 無法使用。
+                ※ 在兩個引擎中均可使用。著色器本身始終在宿主端的GPU上執行。
+                ※ 由於YMM4無法存取背景，"framebuffer" 的初始內容是把物件合成到
+                  場景大小透明區域後的虛擬影像。
                 ※ 在無法使用GPU的環境中會跳過該呼叫。
 
         ○ obj.getvalue(目標)

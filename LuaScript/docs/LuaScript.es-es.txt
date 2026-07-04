@@ -518,8 +518,11 @@
                   "cache:nombre" : Caché con nombre (se conserva entre fotogramas)
                 Ejemplo: obj.copybuffer("tmp", "obj")  -- guardar
                          obj.copybuffer("obj", "tmp")  -- restaurar
-                * "frm" (búfer de fotograma / fondo) no puede obtenerse por la
-                  estructura de YMM4.
+                * "frm" (búfer de fotograma) puede usarse como origen de copia. Su
+                  contenido es una imagen virtual creada componiendo el objeto en su
+                  posicion actual sobre un area transparente del tamano de la
+                  escena. YMM4 no puede acceder al fondo, por lo que el fondo no se
+                  incluye. No puede usarse como destino de copia.
 
         o obj.pixelshader(nombre, destino, recursos [, constantes [, blend [, sampler]]])
                 Ejecuta en la GPU un sombreador de pixeles HLSL definido dentro del
@@ -531,16 +534,24 @@
                   float4 nombre(float4 pos : SV_Position) : SV_Target { ... }
                   ]]
                 nombre     : Nombre del sombreador definido, como cadena.
-                destino    : Uno de "object", "tempbuffer", "cache:nombre".
+                destino    : Uno de "object", "tempbuffer", "cache:nombre",
+                             "framebuffer". "framebuffer" dibuja en un bufer de
+                             fotograma virtual del tamano de la escena y reemplaza
+                             la imagen del objeto con el resultado.
                 recursos   : Arreglo de nombres de bufer asignados a t0-t7. Un solo
                              nombre puede pasarse directamente como cadena. "random"
                              asigna una region de 256x256 (R32_FLOAT) con valores
-                             aleatorios entre 0.0 y 1.0.
+                             aleatorios entre 0.0 y 1.0. "framebuffer" asigna el
+                             bufer de fotograma virtual del tamano de la escena con
+                             el objeto compuesto en su posicion actual.
                 constantes : Arreglo de numeros, empaquetado en el bufer de
                              constantes b0 como arreglo de floats.
                 blend      : "copy" (tal cual), "mask" (multiplica solo el alfa),
                              "draw" (mezcla alfa), "add" (aditivo). Por defecto
-                             "copy".
+                             "copy". Pasar un numero igual a un modo de
+                             obj.setoption("blend", n) compone la salida del
+                             sombreador sobre el destino con el modo de fusion de
+                             YMM4 correspondiente.
                 sampler    : Uno de "clip", "clamp", "loop", "mirror", "dot". Se
                              asigna a SamplerState s0. Sin asignar si se omite.
                 La entrada del sombreador puede ser cualquiera de las siguientes.
@@ -548,9 +559,11 @@
                   float4 nombre(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                 uv se configura para que el area de dibujo abarque 0.0-1.0.
                 Ejemplo: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
-                * Se ejecuta en el motor MoonSharp (seleccionado automaticamente sin
-                  directiva).
-                * "framebuffer" no puede usarse por la estructura de YMM4.
+                * Funciona en ambos motores. El sombreador siempre se ejecuta en la
+                  GPU del lado del host.
+                * YMM4 no puede acceder al fondo, por lo que el contenido inicial de
+                  "framebuffer" es una imagen virtual creada componiendo el objeto
+                  sobre un area transparente del tamano de la escena.
                 * La llamada se omite en entornos sin una GPU utilizable.
 
         o obj.getvalue(target)

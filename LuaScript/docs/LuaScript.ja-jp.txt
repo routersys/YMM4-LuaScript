@@ -503,7 +503,10 @@
                   "cache:名前" : 名前付きキャッシュ(フレーム間で保持)
                 例：obj.copybuffer("tmp", "obj")  -- 退避
                     obj.copybuffer("obj", "tmp")  -- 復元
-                ※ "frm"(フレームバッファ/背景)はYMM4の構造上取得できません。
+                ※ "frm"(フレームバッファ)はコピー元として使用できます。内容は
+                  シーンサイズの透明な領域へオブジェクトを現在位置に合成した
+                  仮想の画像です。YMM4は背景を参照できないため、背景は含まれ
+                  ません。コピー先には使用できません。
 
         ○obj.pixelshader(登録名, 出力先, リソース [, 定数 [, blend [, sampler]]])
                 スクリプト内に定義したHLSLのピクセルシェーダーをGPUで実行します。
@@ -514,14 +517,22 @@
                   float4 登録名(float4 pos : SV_Position) : SV_Target { ... }
                   ]]
                 登録名   : 定義したシェーダーの名前を文字列で指定します。
-                出力先   : "object", "tempbuffer", "cache:名前" のいずれか。
+                出力先   : "object", "tempbuffer", "cache:名前", "framebuffer" の
+                           いずれか。"framebuffer" はシーンサイズの仮想フレーム
+                           バッファへ描画し、結果でオブジェクト画像を置き換え
+                           ます。
                 リソース : 参照するバッファ名の配列。t0～t7 に設定されます。1つの
                            場合は文字列で直接指定できます。"random" を指定すると
                            0.0～1.0 の乱数値の 256x256 領域(R32_FLOAT)になります。
+                           "framebuffer" を指定すると、オブジェクトを現在位置に
+                           合成したシーンサイズの仮想フレームバッファになります。
                 定数     : 数値の配列。定数バッファ(b0)へfloatの配列として設定
                            されます。
                 blend    : "copy"(そのまま), "mask"(α値のみ乗算), "draw"(アルファ
                            ブレンド), "add"(加算)のいずれか。省略時は "copy"。
+                           obj.setoption("blend", 番号) と同じ番号を数値で指定
+                           すると、シェーダーの出力をYMM4の合成モードで出力先へ
+                           合成します。
                 sampler  : "clip", "clamp", "loop", "mirror", "dot" のいずれか。
                            SamplerState(s0)に設定されます。省略時は未設定。
                 ピクセルシェーダーの入力は下記のいずれかを使用できます。
@@ -529,8 +540,10 @@
                   float4 名前(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                 uv は描画範囲が 0.0～1.0 になるように設定されます。
                 例：obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
-                ※ MoonSharpエンジンで動きます(ディレクティブ無しで自動選択)。
-                ※ "framebuffer" はYMM4の構造上使用できません。
+                ※ 両エンジンで動きます。シェーダーの実行自体はどちらのエンジン
+                  でもホスト側のGPUで行われます。
+                ※ YMM4は背景を参照できないため、"framebuffer" の初期内容は透明な
+                  シーンサイズ領域へオブジェクトを合成した仮想の画像です。
                 ※ GPUが使用できない環境では呼び出しはスキップされます。
 
         ○obj.getvalue(対象)

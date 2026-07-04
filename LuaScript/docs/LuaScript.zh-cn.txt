@@ -488,7 +488,9 @@
                   "cache:名称" : 命名缓存(跨帧保留)
                 示例：obj.copybuffer("tmp", "obj")  -- 保存
                       obj.copybuffer("obj", "tmp")  -- 恢复
-                ※ 由于 YMM4 的结构，无法获取 "frm"(帧缓冲区 / 背景)。
+                ※ "frm"(帧缓冲区)可以作为复制源使用。其内容是把对象按当前位置
+                  合成到场景大小的透明区域而得到的虚拟图像。由于YMM4无法访问
+                  背景，因此不包含背景。不能作为复制目标使用。
 
         ○ obj.pixelshader(注册名, 输出目标, 资源 [, 常量 [, blend [, sampler]]])
                 在GPU上执行脚本内定义的HLSL像素着色器。
@@ -499,13 +501,19 @@
                   float4 注册名(float4 pos : SV_Position) : SV_Target { ... }
                   ]]
                 注册名   : 以字符串指定已定义着色器的名称。
-                输出目标 : "object"、"tempbuffer"、"cache:名称" 之一。
+                输出目标 : "object"、"tempbuffer"、"cache:名称"、"framebuffer"
+                           之一。"framebuffer" 会绘制到场景大小的虚拟帧缓冲区，
+                           并用结果替换对象图像。
                 资源     : 要引用的缓冲区名称数组,绑定到 t0~t7。只有一个时可以
                            直接用字符串指定。指定 "random" 时会绑定 0.0~1.0
-                           随机值的 256x256 区域(R32_FLOAT)。
+                           随机值的 256x256 区域(R32_FLOAT)。指定 "framebuffer"
+                           时会绑定把对象按当前位置合成后的场景大小虚拟帧
+                           缓冲区。
                 常量     : 数值数组,以float数组形式设置到常量缓冲区(b0)。
                 blend    : "copy"(原样)、"mask"(仅乘算α值)、"draw"(alpha混合)、
-                           "add"(加算)之一。省略时为 "copy"。
+                           "add"(加算)之一。省略时为 "copy"。以数值指定与
+                           obj.setoption("blend", 编号) 相同的编号时，会以YMM4
+                           的合成模式把着色器输出合成到输出目标。
                 sampler  : "clip"、"clamp"、"loop"、"mirror"、"dot" 之一。
                            设置到 SamplerState(s0)。省略时不设置。
                 像素着色器的输入可以使用以下任意一种。
@@ -513,8 +521,9 @@
                   float4 名称(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                 uv 会被设置为绘制范围对应 0.0~1.0。
                 例: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
-                ※ 在MoonSharp引擎上运行(无指令时自动选择)。
-                ※ 由于YMM4的结构,"framebuffer" 无法使用。
+                ※ 在两个引擎中均可使用。着色器本身始终在宿主端的GPU上执行。
+                ※ 由于YMM4无法访问背景，"framebuffer" 的初始内容是把对象合成到
+                  场景大小透明区域后的虚拟图像。
                 ※ 在无法使用GPU的环境中会跳过该调用。
 
         ○ obj.getvalue(目标)
