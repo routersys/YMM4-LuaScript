@@ -150,7 +150,7 @@ end</code></pre>
 <code>? :</code> は条件を 1 度だけ評価する無名関数に展開します。<code>:</code> のあとにもう一度 <code>? :</code> を書けば、else 側で分岐を続けられます。
 </div>
 
-<h2>安全ナビゲーション</h2>
+<h2>nil 条件演算子</h2>
 
 <p>
 <code>t?.name</code> は、<code>t</code> が <code>nil</code> のときは <code>nil</code> を返し、そうでなければ <code>t.name</code> を返します。
@@ -228,7 +228,7 @@ table.sort(t, (a, b) =&gt; a &lt; b)</code></pre>
 バッククォートを入口にしているため、通常の文字列やコメントの中の <code>`</code> は変換しません。
 </div>
 
-<h2>範囲メンバーシップ</h2>
+<h2>範囲判定</h2>
 
 <p>
 <code>x in &lt;開始..終了&gt;</code> は、<code>x</code> がその範囲に入っているかどうかを判定します。
