@@ -107,4 +107,8 @@
 <data name="DiagnosticCompile" xml:space="preserve"><value>语法错误</value></data>
 <data name="DiagnosticRuntime" xml:space="preserve"><value>运行时错误</value></data>
 <data name="DiagnosticTimeout" xml:space="preserve"><value>执行超时</value></data>
+<data name="AnchorX" xml:space="preserve"><value>X</value></data>
+<data name="AnchorY" xml:space="preserve"><value>Y</value></data>
+<data name="AnchorZ" xml:space="preserve"><value>Z</value></data>
+<data name="AnchorDesc" xml:space="preserve"><value>所选锚点的坐标</value></data>
 </root>

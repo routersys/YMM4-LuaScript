@@ -107,4 +107,8 @@
 <data name="DiagnosticCompile" xml:space="preserve"><value>구문 오류</value></data>
 <data name="DiagnosticRuntime" xml:space="preserve"><value>런타임 오류</value></data>
 <data name="DiagnosticTimeout" xml:space="preserve"><value>시간 초과</value></data>
+<data name="AnchorX" xml:space="preserve"><value>X</value></data>
+<data name="AnchorY" xml:space="preserve"><value>Y</value></data>
+<data name="AnchorZ" xml:space="preserve"><value>Z</value></data>
+<data name="AnchorDesc" xml:space="preserve"><value>선택한 앵커 포인트의 좌표</value></data>
 </root>

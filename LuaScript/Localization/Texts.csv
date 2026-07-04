@@ -47,3 +47,7 @@ LuaFileFilter,,Luaスクリプト (*.lua)|*.lua|すべてのファイル (*.*)|*
 DiagnosticCompile,,構文エラー,Syntax error,语法错误,語法錯誤,구문 오류,Error de sintaxis,خطأ في بناء الجملة,Kesalahan sintaksis
 DiagnosticRuntime,,実行時エラー,Runtime error,运行时错误,執行時錯誤,런타임 오류,Error de ejecución,خطأ وقت التشغيل,Kesalahan runtime
 DiagnosticTimeout,,タイムアウト,Timed out,执行超时,執行逾時,시간 초과,Tiempo de espera agotado,انتهت المهلة,Waktu habis
+AnchorX,,X,X,X,X,X,X,X,X
+AnchorY,,Y,Y,Y,Y,Y,Y,Y,Y
+AnchorZ,,Z,Z,Z,Z,Z,Z,Z,Z
+AnchorDesc,,選択中のアンカーポイントの座標,Coordinate of the selected anchor point,所选锚点的坐标,所選錨點的座標,선택한 앵커 포인트의 좌표,Coordenada del punto de anclaje seleccionado,إحداثيات نقطة الإرساء المحددة,Koordinat titik jangkar yang dipilih

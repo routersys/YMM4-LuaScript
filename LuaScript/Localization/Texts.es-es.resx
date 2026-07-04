@@ -107,4 +107,8 @@
 <data name="DiagnosticCompile" xml:space="preserve"><value>Error de sintaxis</value></data>
 <data name="DiagnosticRuntime" xml:space="preserve"><value>Error de ejecución</value></data>
 <data name="DiagnosticTimeout" xml:space="preserve"><value>Tiempo de espera agotado</value></data>
+<data name="AnchorX" xml:space="preserve"><value>X</value></data>
+<data name="AnchorY" xml:space="preserve"><value>Y</value></data>
+<data name="AnchorZ" xml:space="preserve"><value>Z</value></data>
+<data name="AnchorDesc" xml:space="preserve"><value>Coordenada del punto de anclaje seleccionado</value></data>
 </root>
