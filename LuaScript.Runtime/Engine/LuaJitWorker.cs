@@ -71,6 +71,8 @@ namespace LuaScript.Engine
             Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
+            Func<string, double, (byte[] buffer, int w, int h)> loadScene,
+            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
             Action<string, int, bool, int, double[]> setAnchor,
@@ -160,7 +162,7 @@ namespace LuaScript.Engine
                 }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor, sceneGetValue, sceneSetValue, runPixelShader);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, runPixelShader);
                 }
                 _workEvent.Set();
             }
@@ -321,6 +323,8 @@ namespace LuaScript.Engine
             Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)> loadText,
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
+            Func<string, double, (byte[] buffer, int w, int h)> loadScene,
+            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
@@ -344,6 +348,12 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindLoadMovie:
                     ResolveLoadMovieCallback(view, loadMovie);
+                    break;
+                case NativeProtocol.CbKindLoadScene:
+                    ResolveLoadSceneCallback(view, loadScene);
+                    break;
+                case NativeProtocol.CbKindLoadBrush:
+                    ResolveLoadBrushCallback(view, loadBrush);
                     break;
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
@@ -769,6 +779,65 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffLoadResultWidth, result.w);
             view.Write(NativeProtocol.OffLoadResultHeight, result.h);
             WritePixelRegion(result.buffer, pixelSize);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveLoadSceneCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, double, (byte[] buffer, int w, int h)> loadScene)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string name = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+            double time = view.ReadDouble(NativeProtocol.CallbackResultOffset);
+
+            (byte[] buffer, int w, int h) result;
+            try { result = loadScene(name, time); }
+            catch { result = ([], 0, 0); }
+
+            long pixelSize = (long)result.w * result.h * 4;
+            if (result.w <= 0 || result.h <= 0 || pixelSize > PixelRegionCapacity)
+            {
+                view.Write(NativeProtocol.OffLoadResultWidth, 0);
+                view.Write(NativeProtocol.OffLoadResultHeight, 0);
+                view.Write(NativeProtocol.OffCallbackFound, 0);
+                return;
+            }
+
+            view.Write(NativeProtocol.OffLoadResultWidth, result.w);
+            view.Write(NativeProtocol.OffLoadResultHeight, result.h);
+            WritePixelRegion(result.buffer, (int)pixelSize);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private void ResolveLoadBrushCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string name = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
+
+            long rOff = NativeProtocol.CallbackResultOffset;
+            double width = view.ReadDouble(rOff + 0 * 8);
+            double height = view.ReadDouble(rOff + 1 * 8);
+
+            (byte[] buffer, int w, int h) result;
+            try { result = loadBrush(name, width, height); }
+            catch { result = ([], 0, 0); }
+
+            long pixelSize = (long)result.w * result.h * 4;
+            if (result.w <= 0 || result.h <= 0 || pixelSize > PixelRegionCapacity)
+            {
+                view.Write(NativeProtocol.OffLoadResultWidth, 0);
+                view.Write(NativeProtocol.OffLoadResultHeight, 0);
+                view.Write(NativeProtocol.OffCallbackFound, 0);
+                return;
+            }
+
+            view.Write(NativeProtocol.OffLoadResultWidth, result.w);
+            view.Write(NativeProtocol.OffLoadResultHeight, result.h);
+            WritePixelRegion(result.buffer, (int)pixelSize);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 

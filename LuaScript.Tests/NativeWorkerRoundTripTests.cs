@@ -22,6 +22,8 @@ namespace LuaScript.Tests
 
         private readonly LuaJitWorker _worker = new(NativeDir, ScriptPath);
 
+        private Func<string, double, (byte[] buffer, int w, int h)> _loadScene = (_, _) => ([], 0, 0);
+        private Func<string, double, double, (byte[] buffer, int w, int h)> _loadBrush = (_, _, _) => ([], 0, 0);
         private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
         private PixelShaderInvoke? _runPixelShader;
@@ -70,7 +72,7 @@ namespace LuaScript.Tests
                     System.Runtime.InteropServices.Marshal.Copy(uploaded, 0, address, uploaded.Length);
                 },
                 width, height, timeoutMs,
-                resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor,
+                resolveObject, loadFigure, loadText, loadImage, loadMovie, _loadScene, _loadBrush, addEffect, addDraw, setAnchor,
                 _sceneGet, _sceneSet,
                 _runPixelShader,
                 out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
@@ -106,7 +108,7 @@ namespace LuaScript.Tests
                     observedCapacity = capacity;
                     System.Runtime.InteropServices.Marshal.Copy(pixels, 0, address, pixels.Length);
                 },
-                w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, _loadScene, _loadBrush, NoAddEffect, NoAddDraw, NoSetAnchor,
                 _sceneGet, _sceneSet,
                 _runPixelShader,
                 out _, out _, out _, out _, out string? error);
@@ -1025,6 +1027,138 @@ namespace LuaScript.Tests
             Assert.Equal(mh, rh);
             Assert.NotNull(newPixels);
             Assert.Equal(frame, newPixels!.AsSpan(0, frame.Length).ToArray());
+        }
+
+        [Fact]
+        public void LoadScene_RoundTripsNameAndTime()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int sw = 2, sh = 2;
+            var rendered = new byte[sw * sh * 4];
+            for (int i = 0; i < rendered.Length; i++)
+                rendered[i] = (byte)((i * 13 + 1) & 0xFF);
+
+            string? capturedName = null;
+            double capturedTime = -1;
+            _loadScene = (name, time) =>
+            {
+                capturedName = name;
+                capturedTime = time;
+                return (rendered, sw, sh);
+            };
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+
+            bool ok = RunWorker(
+                "obj.load('scene', 'サブシーン', 2.5)",
+                fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal("サブシーン", capturedName);
+            Assert.Equal(2.5d, capturedTime);
+            Assert.True(dirty);
+            Assert.True(bufferReplaced);
+            Assert.Equal(sw, rw);
+            Assert.Equal(sh, rh);
+            Assert.NotNull(newPixels);
+            Assert.Equal(rendered, newPixels!.AsSpan(0, rendered.Length).ToArray());
+        }
+
+        [Fact]
+        public void LoadScene_DefaultsTimeToObjTime_AndKeepsImageOnFailure()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            double capturedTime = -1;
+            _loadScene = (_, time) =>
+            {
+                capturedTime = time;
+                return ([], 0, 0);
+            };
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 1.25d);
+
+            bool ok = RunWorker(
+                "obj.load('scene', 'missing') obj.x = obj.w",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1.25d, capturedTime);
+            Assert.False(dirty);
+            Assert.False(bufferReplaced);
+            Assert.Equal(2d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
+        public void LoadBrush_RoundTripsNameAndSize()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int bw = 3, bh = 2;
+            var rendered = new byte[bw * bh * 4];
+            for (int i = 0; i < rendered.Length; i++)
+                rendered[i] = (byte)((i * 11 + 2) & 0xFF);
+
+            string? capturedName = null;
+            double capturedW = -1, capturedH = -1;
+            _loadBrush = (name, w, h) =>
+            {
+                capturedName = name;
+                capturedW = w;
+                capturedH = h;
+                return (rendered, bw, bh);
+            };
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+
+            bool ok = RunWorker(
+                "obj.load('brush', '縞模様', 3, 2)",
+                fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal("縞模様", capturedName);
+            Assert.Equal(3d, capturedW);
+            Assert.Equal(2d, capturedH);
+            Assert.True(dirty);
+            Assert.True(bufferReplaced);
+            Assert.Equal(bw, rw);
+            Assert.Equal(bh, rh);
+            Assert.NotNull(newPixels);
+            Assert.Equal(rendered, newPixels!.AsSpan(0, rendered.Length).ToArray());
+        }
+
+        [Fact]
+        public void LoadBrush_DefaultsSizeToObjectDimensions()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            double capturedW = -1, capturedH = -1;
+            _loadBrush = (_, w, h) =>
+            {
+                capturedW = w;
+                capturedH = h;
+                return ([], 0, 0);
+            };
+
+            var pixels = new byte[4 * 2 * 4];
+            var fields = Fields(4, 2, 0d);
+
+            bool ok = RunWorker(
+                "obj.load('brush', '市松模様')",
+                fields, NoStringParams, () => pixels, 4, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(4d, capturedW);
+            Assert.Equal(2d, capturedH);
+            Assert.False(dirty);
         }
 
         [Fact]

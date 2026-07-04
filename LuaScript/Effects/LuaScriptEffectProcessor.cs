@@ -138,6 +138,11 @@ namespace LuaScript
         private Func<string, string, double, bool, bool, int, (byte[] buffer, int w, int h)>? _nativeLoadText;
         private Func<string, (byte[] buffer, int w, int h)>? _nativeLoadImage;
         private Func<string, double, (byte[] buffer, int w, int h)>? _nativeLoadMovie;
+        private Func<string, double, (byte[] Buffer, int Width, int Height)>? _loadSceneImage;
+        private Func<string, double, double, (byte[] Buffer, int Width, int Height)>? _loadBrushImage;
+        private SceneImageRenderer? _sceneImageRenderer;
+        private BrushImageRenderer? _brushImageRenderer;
+        private bool _sceneImageLoaded;
         private Action<string, IReadOnlyList<KeyValuePair<string, object>>>? _nativeAddEffect;
         private Action<DrawCommand>? _nativeAddDraw;
         private Action<string, int, bool, int, double[]>? _nativeSetAnchor;
@@ -182,6 +187,8 @@ namespace LuaScript
             _pixelShaderRunner = new PixelShaderRunner { Compositor = _bufferCompositor };
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
+            _context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
+            _context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
             return null;
         }
 
@@ -193,6 +200,8 @@ namespace LuaScript
             var context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
             if (_bufferCompositor is not null)
                 context.Compositor = _bufferCompositor;
+            context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
+            context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
             return context;
         }
 
@@ -469,6 +478,11 @@ namespace LuaScript
             LuaScriptDiagnostics.Instance.Report(script, diagnostics);
 
             _isFirst = false;
+            if (_sceneImageLoaded)
+            {
+                _sceneImageLoaded = false;
+                _isFirst = true;
+            }
             _cachedKey = key;
             _cachedQueries = SnapshotQueries(ctx.ObjectQueries, _cachedQueries);
             _cachedSceneValueQueries = SnapshotQueries(ctx.SceneValueQueries, _cachedSceneValueQueries);
@@ -981,6 +995,8 @@ namespace LuaScript
             _nativeLoadText ??= NativeLoadText;
             _nativeLoadImage ??= NativeLoadImage;
             _nativeLoadMovie ??= NativeLoadMovie;
+            _loadSceneImage ??= LoadSceneImage;
+            _loadBrushImage ??= LoadBrushImage;
             _nativeAddEffect ??= (name, args) => _context.AddEffect(new AviUtlEffectRequest(name, args));
             _nativeAddDraw ??= command => _context.AddDraw(command);
             _nativeSetAnchor ??= ResolveNativeAnchor;
@@ -998,6 +1014,8 @@ namespace LuaScript
                 _nativeLoadText,
                 _nativeLoadImage,
                 _nativeLoadMovie,
+                _loadSceneImage,
+                _loadBrushImage,
                 _nativeAddEffect,
                 _nativeAddDraw,
                 _nativeSetAnchor,
@@ -1152,6 +1170,54 @@ namespace LuaScript
             return (buffer, w, h);
         }
 
+        private static readonly (byte[] Buffer, int Width, int Height) s_noLoadedImage = ([], 0, 0);
+
+        private (byte[] Buffer, int Width, int Height) LoadSceneImage(string name, double time)
+        {
+            var desc = _frameDesc;
+            var devices = _hostDevices;
+            if (desc is null || devices is null)
+                return s_noLoadedImage;
+
+            _pixelLoaderSemaphore.Wait();
+            try
+            {
+                _sceneImageRenderer ??= new SceneImageRenderer(devices);
+                if (!_sceneImageRenderer.TryRender(desc, name, time, out var pixels, out int width, out int height))
+                    return s_noLoadedImage;
+                _sceneImageLoaded = true;
+                return (pixels, width, height);
+            }
+            finally
+            {
+                _pixelLoaderSemaphore.Release();
+            }
+        }
+
+        private (byte[] Buffer, int Width, int Height) LoadBrushImage(string name, double width, double height)
+        {
+            var desc = _frameDesc;
+            var devices = _hostDevices;
+            if (desc is null || devices is null)
+                return s_noLoadedImage;
+
+            int w = (int)Math.Round(width);
+            int h = (int)Math.Round(height);
+
+            _pixelLoaderSemaphore.Wait();
+            try
+            {
+                _brushImageRenderer ??= new BrushImageRenderer(devices);
+                if (!_brushImageRenderer.TryRender(desc, name, w, h, out var pixels, out int outWidth, out int outHeight))
+                    return s_noLoadedImage;
+                return (pixels, outWidth, outHeight);
+            }
+            finally
+            {
+                _pixelLoaderSemaphore.Release();
+            }
+        }
+
         private (byte[] buffer, int w, int h) NativeLoadMovie(string path, double time)
         {
             _nativeMovieDecoder ??= new MovieDecoder();
@@ -1199,6 +1265,8 @@ namespace LuaScript
                 _bufferCompositor?.Dispose();
                 _nativeTextRenderer?.Dispose();
                 _nativeImageDecoder?.Dispose();
+                _sceneImageRenderer?.Dispose();
+                _brushImageRenderer?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _pixelManager?.Dispose();
                 _pixelManager = null;
