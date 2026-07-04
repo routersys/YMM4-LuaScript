@@ -132,6 +132,8 @@ local dirty = false
 local pixelsValid = false
 local drawTarget = "frame"
 local pdData, pdCapacity, pdValid, pdDirty = nil, 0, false, false
+local convSrcData, convSrcCap = nil, 0
+local resizeSrcData, resizeSrcCap = nil, 0
 
 local function ensurePixels()
     if pixelsValid then return end
@@ -838,6 +840,223 @@ function obj.copybuffer(dst, src)
         ffi.copy(arr, data, n)
         buffers[dkey] = { data = arr, w = w, h = h }
     end
+end
+
+function obj.fill(r, g, b, a, x, y, w, h)
+    ensurePixels()
+    flushPixelData()
+    r = r or 0; g = g or 0; b = b or 0; a = a or 255
+    x = math.floor(x or 0); y = math.floor(y or 0)
+    w = math.floor(w or width); h = math.floor(h or height)
+    local x0 = clamp(x, 0, width)
+    local y0 = clamp(y, 0, height)
+    local x1 = clamp(x + w, 0, width)
+    local y1 = clamp(y + h, 0, height)
+    if x1 <= x0 or y1 <= y0 then return end
+    local aK = clamp(a, 0, 255) / 255
+    local pb = math.floor(clamp(b * aK, 0, 255))
+    local pg = math.floor(clamp(g * aK, 0, 255))
+    local pr = math.floor(clamp(r * aK, 0, 255))
+    local pa = math.floor(clamp(a, 0, 255))
+    for py = y0, y1 - 1 do
+        for px = x0, x1 - 1 do
+            local p = pixels + (py * width + px) * 4
+            p[0] = pb; p[1] = pg; p[2] = pr; p[3] = pa
+        end
+    end
+    dirty = true
+    pdValid = false
+end
+
+function obj.getpixelregion(x, y, w, h)
+    x = math.floor(x or 0); y = math.floor(y or 0)
+    w = math.floor(w or 0); h = math.floor(h or 0)
+    local out = {}
+    if w <= 0 or h <= 0 then return out end
+    ensurePixels()
+    flushPixelData()
+    for j = 0, h - 1 do
+        local sy = y + j
+        for i = 0, w - 1 do
+            local sx = x + i
+            local di = (j * w + i) * 4
+            if sx < 0 or sy < 0 or sx >= width or sy >= height then
+                out[di + 1] = 0; out[di + 2] = 0; out[di + 3] = 0; out[di + 4] = 0
+            else
+                local p = pixels + (sy * width + sx) * 4
+                local a = p[3]
+                if a <= 0 then
+                    out[di + 1] = 0; out[di + 2] = 0; out[di + 3] = 0; out[di + 4] = 0
+                else
+                    local s = 255 / a
+                    out[di + 1] = clamp(p[2] * s, 0, 255)
+                    out[di + 2] = clamp(p[1] * s, 0, 255)
+                    out[di + 3] = clamp(p[0] * s, 0, 255)
+                    out[di + 4] = a
+                end
+            end
+        end
+    end
+    return out
+end
+
+function obj.putpixelregion(x, y, w, h, data)
+    if type(data) ~= "table" then return end
+    x = math.floor(x or 0); y = math.floor(y or 0)
+    w = math.floor(w or 0); h = math.floor(h or 0)
+    if w <= 0 or h <= 0 then return end
+    ensurePixels()
+    flushPixelData()
+    for j = 0, h - 1 do
+        local dy = y + j
+        if dy >= 0 and dy < height then
+            for i = 0, w - 1 do
+                local dx = x + i
+                if dx >= 0 and dx < width then
+                    local si = (j * w + i) * 4
+                    local a = clamp(data[si + 4] or 0, 0, 255)
+                    local aK = a / 255
+                    local p = pixels + (dy * width + dx) * 4
+                    p[0] = math.floor(clamp((data[si + 3] or 0) * aK, 0, 255))
+                    p[1] = math.floor(clamp((data[si + 2] or 0) * aK, 0, 255))
+                    p[2] = math.floor(clamp((data[si + 1] or 0) * aK, 0, 255))
+                    p[3] = math.floor(a)
+                end
+            end
+        end
+    end
+    dirty = true
+    pdValid = false
+end
+
+function obj.convolve(kernel, size, divisor, offset)
+    if type(kernel) ~= "table" then return end
+    size = math.floor(size or 0)
+    if size < 1 or size % 2 == 0 then return end
+    ensurePixels()
+    flushPixelData()
+    local taps = size * size
+    local k = {}
+    local sum = 0
+    for i = 1, taps do
+        local v = tonumber(kernel[i]) or 0
+        k[i] = v
+        sum = sum + v
+    end
+    local inv = divisor or sum
+    if inv == 0 then inv = 1 end
+    offset = offset or 0
+    local total = width * height * 4
+    if not convSrcData or convSrcCap < total then
+        convSrcData = ffi.new("double[?]", total)
+        convSrcCap = total
+    end
+    local src = convSrcData
+    for pi = 0, width * height - 1 do
+        local p = pixels + pi * 4
+        local di = pi * 4
+        local a = p[3]
+        src[di + 3] = a
+        if a <= 0 then
+            src[di] = 0; src[di + 1] = 0; src[di + 2] = 0
+        else
+            local s = 255 / a
+            src[di] = clamp(p[2] * s, 0, 255)
+            src[di + 1] = clamp(p[1] * s, 0, 255)
+            src[di + 2] = clamp(p[0] * s, 0, 255)
+        end
+    end
+    local half = math.floor(size / 2)
+    for y = 0, height - 1 do
+        for x = 0, width - 1 do
+            local sr, sg, sb, sa = 0, 0, 0, 0
+            for ky = 0, size - 1 do
+                local sy = clamp(y + ky - half, 0, height - 1)
+                for kx = 0, size - 1 do
+                    local sx = clamp(x + kx - half, 0, width - 1)
+                    local kv = k[ky * size + kx + 1]
+                    local si = (sy * width + sx) * 4
+                    sr = sr + src[si] * kv
+                    sg = sg + src[si + 1] * kv
+                    sb = sb + src[si + 2] * kv
+                    sa = sa + src[si + 3] * kv
+                end
+            end
+            local rr = clamp(sr / inv + offset, 0, 255)
+            local gg = clamp(sg / inv + offset, 0, 255)
+            local bb = clamp(sb / inv + offset, 0, 255)
+            local aa = clamp(sa / inv + offset, 0, 255)
+            local aK = aa / 255
+            local p = pixels + (y * width + x) * 4
+            p[0] = math.floor(clamp(bb * aK, 0, 255))
+            p[1] = math.floor(clamp(gg * aK, 0, 255))
+            p[2] = math.floor(clamp(rr * aK, 0, 255))
+            p[3] = math.floor(aa)
+        end
+    end
+    dirty = true
+    pdValid = false
+end
+
+function obj.resize(newW, newH, mode)
+    newW = math.floor(newW or 0); newH = math.floor(newH or 0)
+    if newW < 1 then newW = 1 end
+    if newH < 1 then newH = 1 end
+    local dstCount = newW * newH * 4
+    if dstCount > pixelCapacity then return end
+    ensurePixels()
+    flushPixelData()
+    local cw, ch = width, height
+    local srcCount = cw * ch * 4
+    if not resizeSrcData or resizeSrcCap < srcCount then
+        resizeSrcData = ffi.new("uint8_t[?]", srcCount)
+        resizeSrcCap = srcCount
+    end
+    ffi.copy(resizeSrcData, pixels, srcCount)
+    local src = resizeSrcData
+    local linear = mode ~= "nearest"
+    for y = 0, newH - 1 do
+        for x = 0, newW - 1 do
+            local o = pixels + (y * newW + x) * 4
+            if not linear then
+                local sx = clamp(math.floor((x + 0.5) * cw / newW), 0, cw - 1)
+                local sy = clamp(math.floor((y + 0.5) * ch / newH), 0, ch - 1)
+                local p = src + (sy * cw + sx) * 4
+                o[0] = p[0]; o[1] = p[1]; o[2] = p[2]; o[3] = p[3]
+            else
+                local u = (x + 0.5) * cw / newW - 0.5
+                local v = (y + 0.5) * ch / newH - 0.5
+                local x0 = math.floor(u)
+                local y0 = math.floor(v)
+                local tx = u - x0
+                local ty = v - y0
+                for c = 0, 3 do
+                    local acc = 0
+                    for j = 0, 1 do
+                        local sy = clamp(y0 + j, 0, ch - 1)
+                        local wy = (j == 0) and (1 - ty) or ty
+                        for i = 0, 1 do
+                            local sx = clamp(x0 + i, 0, cw - 1)
+                            local wx = (i == 0) and (1 - tx) or tx
+                            acc = acc + src[(sy * cw + sx) * 4 + c] * wy * wx
+                        end
+                    end
+                    o[c] = math.floor(clamp(acc, 0, 255))
+                end
+            end
+        end
+    end
+    width = newW; height = newH
+    i32[OFF_WIDTH] = newW; i32[OFF_HEIGHT] = newH
+    dirty = true
+    pixelsValid = true
+    pdValid = false
+    pdDirty = false
+    obj.w = newW; obj.h = newH
+    obj.hw = newW / 2; obj.hh = newH / 2
+    obj.cx = newW / 2; obj.cy = newH / 2
+    obj.cz = 0
+    obj.diagonal = math.sqrt(newW * newW + newH * newH)
 end
 
 local SCENE_VALUE_MAX = 4095
