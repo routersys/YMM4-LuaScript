@@ -754,6 +754,7 @@ namespace LuaScript
                         arg => item.ApplyAnchorDrag(group, index, arg.Delta.X, arg.Delta.Y, is3D ? arg.Delta.Z : 0d))
                     {
                         Shape = VideoControllerPointShape.Circle,
+                        OnDragStart = _ => item.BeginAnchorEdit(group, index, is3D),
                     };
                     builder.Add(new VideoEffectController(item, [point]));
                 }
