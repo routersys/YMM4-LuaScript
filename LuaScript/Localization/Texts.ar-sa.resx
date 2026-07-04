@@ -107,6 +107,7 @@
 <data name="DiagnosticCompile" xml:space="preserve"><value>خطأ في بناء الجملة</value></data>
 <data name="DiagnosticRuntime" xml:space="preserve"><value>خطأ وقت التشغيل</value></data>
 <data name="DiagnosticTimeout" xml:space="preserve"><value>انتهت المهلة</value></data>
+<data name="AnchorGroup" xml:space="preserve"><value>مرساة</value></data>
 <data name="AnchorX" xml:space="preserve"><value>X</value></data>
 <data name="AnchorY" xml:space="preserve"><value>Y</value></data>
 <data name="AnchorZ" xml:space="preserve"><value>Z</value></data>
