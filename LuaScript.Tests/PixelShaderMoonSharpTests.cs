@@ -346,11 +346,11 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void ResolveAuto_PixelShaderScript_RoutesToMoonSharp()
+        public void ResolveAuto_PixelShaderScript_RoutesToNative()
         {
-            Assert.Equal(Engine.ScriptEngineKind.MoonSharp, Engine.ScriptDirective.ResolveAuto("obj.pixelshader(\"ps\", \"object\", \"object\")"));
+            Assert.Equal(Engine.ScriptEngineKind.Native, Engine.ScriptDirective.ResolveAuto("obj.pixelshader(\"ps\", \"object\", \"object\")"));
             Assert.Equal(Engine.ScriptEngineKind.Native, Engine.ScriptDirective.ResolveAuto("obj.setpixel(0, 0, 1, 2, 3)"));
-            Assert.Equal(Engine.ScriptEngineKind.Native, Engine.ScriptDirective.ResolveAuto("--!native\nobj.pixelshader(\"ps\", \"object\", \"object\")"));
+            Assert.Equal(Engine.ScriptEngineKind.MoonSharp, Engine.ScriptDirective.ResolveAuto("--!moonsharp\nobj.pixelshader(\"ps\", \"object\", \"object\")"));
         }
     }
 }

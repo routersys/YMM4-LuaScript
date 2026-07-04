@@ -11,13 +11,8 @@ namespace LuaScript.Engine
         {
             if (string.IsNullOrEmpty(script))
                 return ScriptEngineKind.MoonSharp;
-            if (TryGetDirective(script, out var kind))
-                return kind;
-            return RequiresHostServices(script) ? ScriptEngineKind.MoonSharp : ScriptEngineKind.Native;
+            return TryGetDirective(script, out var kind) ? kind : ScriptEngineKind.Native;
         }
-
-        private static bool RequiresHostServices(string script) =>
-            script.Contains("pixelshader", StringComparison.Ordinal);
 
         public static bool TryResolveExplicit(string? script, out ScriptEngineKind kind) =>
             TryGetDirective(script, out kind);
