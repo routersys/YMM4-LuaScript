@@ -66,6 +66,7 @@ namespace LuaScript.Engine
         public const int CbKindLoadScene = 15;
         public const int CbKindLoadBrush = 16;
         public const int CbKindBrush = 17;
+        public const int CbKindGetAudio = 18;
 
         public const int DrawRingCapacity = 4096;
         public const int DrawEntryDoubles = 24;

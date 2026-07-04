@@ -76,6 +76,8 @@ namespace LuaScript
 
         public Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] Buffer, int Width, int Height)>? BrushImageLoader { get; set; }
 
+        public Func<string, string, int, (int Count, int Rate, double[] Data)>? AudioLoader { get; set; }
+
         private readonly Dictionary<string, string> _stringParameters = new(StringComparer.Ordinal);
 
         public IReadOnlyDictionary<string, string> StringParameters => _stringParameters;
