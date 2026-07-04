@@ -183,7 +183,7 @@ namespace LuaScript
             map.TryAdd(Normalize(key), type);
         }
 
-        private static string Normalize(string value) => Ymm4PropertyBinder.Normalize(value);
+        private static string Normalize(string value) => ParameterBinder.Normalize(value);
 
         private static void ApplyParameters(IVideoEffect model, AviUtlEffectMapping? mapping, IReadOnlyList<KeyValuePair<string, object>> arguments)
         {
@@ -192,11 +192,11 @@ namespace LuaScript
 
             if (mapping is null)
             {
-                Ymm4PropertyBinder.ApplyArguments(model, arguments);
+                ParameterBinder.ApplyArguments(model, arguments);
                 return;
             }
 
-            var properties = Ymm4PropertyBinder.GetProperties(model.GetType());
+            var properties = ParameterBinder.GetProperties(model.GetType());
             foreach (var (key, value) in arguments)
             {
                 if (!mapping.TryGetParameter(key, out var parameter) ||
@@ -205,7 +205,7 @@ namespace LuaScript
 
                 try
                 {
-                    Ymm4PropertyBinder.SetValue(model, property, value, parameter);
+                    ParameterBinder.SetValue(model, property, value, parameter);
                 }
                 catch
                 {

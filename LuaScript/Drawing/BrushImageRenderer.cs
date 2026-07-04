@@ -57,7 +57,7 @@ namespace LuaScript
             {
                 if (arguments.Count > 0)
                 {
-                    Ymm4PropertyBinder.ApplyArguments(entry.Parameter, arguments);
+                    ParameterBinder.ApplyArguments(entry.Parameter, arguments);
                     if (entry.AppliedKeys.Length != arguments.Count)
                         entry.AppliedKeys = new string[arguments.Count];
                     for (int i = 0; i < arguments.Count; i++)

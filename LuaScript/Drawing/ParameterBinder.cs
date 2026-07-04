@@ -9,7 +9,7 @@ using YukkuriMovieMaker.Commons;
 
 namespace LuaScript
 {
-    internal static class Ymm4PropertyBinder
+    internal static class ParameterBinder
     {
         public static readonly AviUtlParameterMapping Identity = new(string.Empty, string.Empty, 1d, 0d);
 
