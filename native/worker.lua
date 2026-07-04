@@ -98,6 +98,7 @@ local CB_KIND_PIXELSHADER_RUN = 14
 local CB_KIND_LOADSCENE = 15
 local CB_KIND_LOADBRUSH = 16
 local CB_KIND_BRUSH = 17
+local CB_KIND_GETAUDIO = 18
 local MAX_PIXEL_BUFFER = 3840 * 2160 * 4
 local SHADER_META_DOUBLES = 20
 local SHADER_CONSTANTS_MAX = 1024
@@ -688,6 +689,30 @@ function obj.getvalue(target)
     local v = obj[target]
     if type(v) == "number" then return v end
     return 0
+end
+
+function obj.getaudio(buf, file, datatype, size)
+    if type(file) ~= "string" then return 0, 0 end
+    local payload = file .. "\0" .. tostring(datatype or "pcm")
+    local len = #payload
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    i32[OFF_CB_TAGLEN] = len
+    cbResult[0] = tonumber(size) or 0
+    i32[OFF_CB_KIND] = CB_KIND_GETAUDIO
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    local count = math.floor(cbResult[0])
+    local rate = math.floor(cbResult[1])
+    local out = buf
+    if type(out) ~= "table" then
+        if buf ~= nil then return count, rate end
+        out = {}
+    end
+    for i = 0, count - 1 do out[i + 1] = cbTagD[i] end
+    if buf == nil then return count, rate, out end
+    return count, rate
 end
 
 function obj.getinfo(name)
