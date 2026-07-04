@@ -656,7 +656,8 @@
                     "arm"  : une el centro del objeto con cada punto en orden.
                     "xyz"  : trata los puntos como coordenadas 3D. 2D por defecto.
                 Devuelve el número de puntos de anclaje. Funciona en ambos motores.
-                El modo de barra "track" aún no se admite y devuelve 0.
+                El nombre "track" también se admite; una cantidad de 0 coloca 1 punto.
+                El ancla seleccionada puede ajustarse numéricamente con los deslizadores X / Y / Z del grupo Anclaje.
                 Ejemplo:
                   num = obj.track0
                   obj.setanchor("pos", num, "loop")
@@ -994,12 +995,11 @@
                 x Carga de módulos mediante require y acceso arbitrario a archivos como
                   io / dofile (la carga de imagen / vídeo con obj.load sí se admite con
                   validación de cabecera).
-                x obj.setanchor, etc.
 
 
 - Funciones no admitidas / Limitaciones -
 
-        x obj.rand1(), obj.mes(), obj.setanchor(), etc. de AviUtl2 no son compatibles.
+        x obj.rand1(), obj.mes(), etc. de AviUtl2 no son compatibles.
         x El acceso arbitrario a archivos desde scripts (require, dofile, io, etc.) no es compatible.
           Solo obj.load("image"/"movie") carga archivos confirmados como medios genuinos
           mediante validación de la cabecera inicial.

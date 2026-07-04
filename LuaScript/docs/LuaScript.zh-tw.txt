@@ -592,7 +592,8 @@
                     "arm"  : 從物件中心依序連接到各錨點。
                     "xyz"  : 以 3D 座標處理錨點。預設是 2D。
                 回傳設置的錨點數量。兩個引擎都可用。
-                名稱指定 "track" 的軌道條連動暫不支援，回傳 0。
+                名稱指定 "track" 時也已支援，個數為 0 時放置 1 個。
+                選取的錨點可透過錨點群組的 X / Y / Z 滑桿進行數值調整。
                 範例：
                   num = obj.track0
                   obj.setanchor("pos", num, "loop")
@@ -906,12 +907,11 @@
         呼叫它們的腳本不會如預期運作。
                 × 透過 require 載入模組，以及 io / dofile 等任意檔案存取
                   (obj.load 的影像 / 影片載入已附檔頭驗證支援)。
-                × obj.setanchor 等。
 
 
 - 不支援項目·限制事項 -
 
-        × 不支援 AviUtl2 的 obj.rand1()、obj.mes()、obj.setanchor() 等。
+        × 不支援 AviUtl2 的 obj.rand1()、obj.mes() 等。
         × 不支援腳本進行任意檔案存取（require、dofile、io 等）。
           僅 obj.load("image"/"movie") 會載入經檔頭驗證確認為真正媒體的檔案。
         × 修改 obj.z 會反映至繪製中（包含在 ReadBack 中），

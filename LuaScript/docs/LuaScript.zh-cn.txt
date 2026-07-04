@@ -591,7 +591,8 @@
                     "arm"  : 从对象中心依次连接到各锚点。
                     "xyz"  : 以 3D 坐标处理锚点。默认是 2D。
                 返回设置的锚点数量。两个引擎都可用。
-                名称指定 "track" 的轨道条联动暂不支持，返回 0。
+                名称指定 "track" 时也已支持，个数为 0 时放置 1 个。
+                选中的锚点可通过锚点组的 X / Y / Z 滑块进行数值调整。
                 示例：
                   num = obj.track0
                   obj.setanchor("pos", num, "loop")
@@ -905,12 +906,11 @@
         调用它们的脚本不会按预期运行。
                 × 通过 require 加载模块，以及 io / dofile 等任意文件访问
                   (obj.load 的图像 / 视频加载已带文件头校验支持)。
-                × obj.setanchor 等。
 
 
 - 不支持项目·限制事项 -
 
-        × 不支持 AviUtl2 的 obj.rand1()、obj.mes()、obj.setanchor() 等。
+        × 不支持 AviUtl2 的 obj.rand1()、obj.mes() 等。
         × 不支持脚本进行任意文件访问（require、dofile、io 等）。
           仅 obj.load("image"/"movie") 会加载经文件头校验确认为真正媒体的文件。
         × 修改 obj.z 会反映到绘制中（包含在 ReadBack 中），

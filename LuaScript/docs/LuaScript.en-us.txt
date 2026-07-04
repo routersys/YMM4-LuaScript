@@ -645,7 +645,8 @@
                     "arm"  : connect the object center to each anchor point in order.
                     "xyz"  : treat the anchor points as 3D coordinates. 2D by default.
                 Returns the number of anchor points. It works in both engines.
-                The "track" trackbar mode is not supported yet and returns 0.
+                The "track" name is also supported; a count of 0 places 1 point.
+                The selected anchor can be adjusted numerically via the X / Y / Z sliders in the Anchor group.
                 Example:
                   num = obj.track0
                   obj.setanchor("pos", num, "loop")
@@ -977,12 +978,11 @@
                 x Module loading via require, and arbitrary file access such as io /
                   dofile (image / video loading via obj.load is supported with header
                   validation).
-                x obj.setanchor, etc.
 
 
 - Unsupported Features / Limitations -
 
-        x obj.rand1(), obj.mes(), obj.setanchor(), etc. from AviUtl2 are not supported.
+        x obj.rand1(), obj.mes(), etc. from AviUtl2 are not supported.
         x Arbitrary file access from scripts (require, dofile, io, etc.) is not supported.
           Only obj.load("image"/"movie") loads files confirmed to be genuine media by
           leading-header validation.

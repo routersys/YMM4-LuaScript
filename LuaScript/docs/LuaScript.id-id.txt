@@ -653,7 +653,8 @@
                     "arm"  : menghubungkan pusat objek ke tiap titik secara berurutan.
                     "xyz"  : memperlakukan titik sebagai koordinat 3D. Bawaan 2D.
                 Mengembalikan jumlah titik jangkar. Bekerja pada kedua mesin.
-                Mode bilah "track" belum didukung dan mengembalikan 0.
+                Nama "track" juga didukung; jumlah 0 menempatkan 1 titik.
+                Jangkar yang dipilih dapat disesuaikan secara numerik melalui slider X / Y / Z di grup Jangkar.
                 Contoh:
                   num = obj.track0
                   obj.setanchor("pos", num, "loop")
@@ -987,12 +988,11 @@
                 x Pemuatan modul melalui require, dan akses berkas sembarang seperti
                   io / dofile (pemuatan gambar / video via obj.load didukung dengan
                   validasi header).
-                x obj.setanchor, dll.
 
 
 - Fitur yang Tidak Didukung / Batasan -
 
-        x obj.rand1(), obj.mes(), obj.setanchor(), dll. dari AviUtl2 tidak didukung.
+        x obj.rand1(), obj.mes(), dll. dari AviUtl2 tidak didukung.
         x Akses berkas sembarang dari skrip (require, dofile, io, dll.) tidak didukung.
           Hanya obj.load("image"/"movie") yang memuat berkas yang dipastikan sebagai
           media asli melalui validasi header awal.
