@@ -818,7 +818,7 @@ namespace LuaScript.Engine
 
         private void EnsureWorker(int width, int height, int stringCapacity)
         {
-            long required = NativeProtocol.PixelOffset(stringCapacity) + (long)width * height * 4;
+            long required = NativeProtocol.PixelOffset(stringCapacity) + (long)width * height * 4 + NativeProtocol.ShaderRegionBytes;
             if (_alive && _process is { HasExited: false } && _stringParamsCapacity == stringCapacity && required <= _allocatedSize)
                 return;
 

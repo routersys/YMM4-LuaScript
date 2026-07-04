@@ -187,6 +187,9 @@ namespace LuaScript.Engine
         public static long ShaderImageOffset(long bufferSize) => ShaderConstantsOffset(bufferSize) + ShaderConstantsMax * 4;
 
         public static long BufferSize(int width, int height, int stringCapacity) =>
-            PixelOffset(stringCapacity) + Math.Max((long)width * height * 4, MaxPixelBufferSize) + ShaderRegionBytes;
+            PixelOffset(stringCapacity) + PixelRegionSize(width, height) + ShaderRegionBytes;
+
+        public static long PixelRegionSize(int width, int height) =>
+            (Math.Max((long)width * height * 4, MaxPixelBufferSize) + 7) & ~7L;
     }
 }
