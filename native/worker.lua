@@ -818,6 +818,10 @@ local function buildObject()
     }
 end
 
+function obj.pixelshader()
+    error("obj.pixelshader is not supported on the native engine. Remove the --!native directive.", 2)
+end
+
 function obj.getobject(tag, frame)
     if type(tag) ~= "string" then return nil end
     if frame then frame = math.floor(frame) else frame = math.floor(obj.timelineframe or 0) end
