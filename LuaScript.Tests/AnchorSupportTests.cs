@@ -14,6 +14,35 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void NormalizeCount_DefaultsTrackToSinglePoint()
+        {
+            Assert.Equal(1, AnchorSupport.NormalizeCount(AnchorSupport.TrackGroup, 0));
+            Assert.Equal(1, AnchorSupport.NormalizeCount(AnchorSupport.TrackGroup, -3));
+            Assert.Equal(4, AnchorSupport.NormalizeCount(AnchorSupport.TrackGroup, 4));
+            Assert.Equal(0, AnchorSupport.NormalizeCount("pos", 0));
+            Assert.Equal(AnchorSupport.MaxAnchors, AnchorSupport.NormalizeCount("pos", 100));
+        }
+
+        [Fact]
+        public void SetPosition_ReplacesOrAppendsAbsolute()
+        {
+            var source = ImmutableList.Create(new LuaAnchorPoint { Group = "pos", Index = 2, X = 10, Y = 20, Z = 30 });
+
+            var replaced = AnchorSupport.SetPosition(source, "pos", 2, 1, 2, 3);
+            Assert.Single(replaced);
+            Assert.Equal(1, replaced[0].X);
+            Assert.Equal(2, replaced[0].Y);
+            Assert.Equal(3, replaced[0].Z);
+
+            var appended = AnchorSupport.SetPosition(source, "pos", 5, 7, 8, 9);
+            Assert.Equal(2, appended.Count);
+            Assert.Equal(5, appended[1].Index);
+            Assert.Equal(7, appended[1].X);
+            Assert.Equal(8, appended[1].Y);
+            Assert.Equal(9, appended[1].Z);
+        }
+
+        [Fact]
         public void ApplyOption_SetsConnectionAndDimension()
         {
             var connection = AnchorConnection.None;
