@@ -830,7 +830,7 @@
                 cond ? a : b returns a when cond is truthy and b otherwise.
                 It returns the false or nil branch as is.
 
-        o Safe navigation (?. ?[ ])
+        o nil-conditional (?. ?[ ])
                 t?.x returns nil when t is nil, otherwise t.x.
                 t?[k] is index access. t is evaluated once.
 
@@ -846,7 +846,7 @@
                 `x={a}` expands to ("x=" .. tostring(a)).
                 Write an expression inside { }, where extension syntax is also available.
 
-        o Range membership (in <..>)
+        o Range check (in <..>)
                 x in <1..5> tests 1 <= x and x <= 5.
                 <1..<5> excludes the upper bound. The left side is evaluated once.
 

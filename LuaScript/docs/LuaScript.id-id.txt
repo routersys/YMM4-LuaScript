@@ -839,7 +839,7 @@
                 cond ? a : b mengembalikan a saat cond bernilai benar, dan b jika tidak.
                 Cabang false atau nil dikembalikan apa adanya.
 
-        o Navigasi aman (?. ?[ ])
+        o Kondisional nil (?. ?[ ])
                 t?.x mengembalikan nil saat t bernilai nil, jika tidak t.x.
                 t?[k] adalah akses indeks. t dievaluasi sekali.
 
@@ -855,7 +855,7 @@
                 `x={a}` diperluas menjadi ("x=" .. tostring(a)).
                 Tulis ekspresi di dalam { }, yang juga mendukung sintaks ekstensi.
 
-        o Keanggotaan rentang (in <..>)
+        o Pemeriksaan rentang (in <..>)
                 x in <1..5> menguji 1 <= x and x <= 5.
                 <1..<5> tidak menyertakan batas atas. Sisi kiri dievaluasi sekali.
 

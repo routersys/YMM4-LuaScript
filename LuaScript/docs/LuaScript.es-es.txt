@@ -843,7 +843,7 @@
                 cond ? a : b devuelve a cuando cond es verdadero y b en caso contrario.
                 Devuelve la rama false o nil tal cual.
 
-        o Navegación segura (?. ?[ ])
+        o Condicional de nil (?. ?[ ])
                 t?.x devuelve nil cuando t es nil; en caso contrario, t.x.
                 t?[k] es acceso por índice. t se evalúa una sola vez.
 
@@ -859,7 +859,7 @@
                 `x={a}` se expande a ("x=" .. tostring(a)).
                 Escribe una expresión dentro de { }, donde también está disponible la sintaxis extendida.
 
-        o Pertenencia a rango (in <..>)
+        o Comprobación de rango (in <..>)
                 x in <1..5> comprueba 1 <= x and x <= 5.
                 <1..<5> excluye el límite superior. El lado izquierdo se evalúa una sola vez.
 
