@@ -1904,5 +1904,217 @@ namespace LuaScript.Tests
             Assert.True(ok2, error);
             Assert.Equal(7d, fields2[NativeProtocol.X]);
         }
+
+        [Fact]
+        public void Fill_WritesPremultipliedColor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.fill(200, 100, 50, 255)",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            for (int i = 0; i < w * h; i++)
+            {
+                Assert.Equal(50, pixels[i * 4 + 0]);
+                Assert.Equal(100, pixels[i * 4 + 1]);
+                Assert.Equal(200, pixels[i * 4 + 2]);
+                Assert.Equal(255, pixels[i * 4 + 3]);
+            }
+        }
+
+        [Fact]
+        public void Fill_Rectangle_TouchesOnlyRequestedPixels()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 3, h = 1;
+            var pixels = new byte[w * h * 4];
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.fill(255, 255, 255, 255, 1, 0, 1, 1)",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(new byte[] { 0, 0, 0, 0 }, pixels.AsSpan(0, 4).ToArray());
+            Assert.Equal(new byte[] { 255, 255, 255, 255 }, pixels.AsSpan(4, 4).ToArray());
+            Assert.Equal(new byte[] { 0, 0, 0, 0 }, pixels.AsSpan(8, 4).ToArray());
+        }
+
+        [Fact]
+        public void GetPixelRegion_ReturnsStraightRgba()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[] { 50, 100, 200, 255 };
+            var fields = Fields(1, 1, 0d);
+
+            bool ok = RunWorker(
+                "local t = obj.getpixelregion(0, 0, 1, 1) obj.x = t[1] obj.y = t[2] obj.z = t[3] obj.alpha = t[4]",
+                fields, NoStringParams, () => pixels, 1, 1, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(200d, fields[NativeProtocol.X]);
+            Assert.Equal(100d, fields[NativeProtocol.Y]);
+            Assert.Equal(50d, fields[NativeProtocol.Z]);
+            Assert.Equal(255d, fields[NativeProtocol.Alpha]);
+        }
+
+        [Fact]
+        public void PutPixelRegion_WritesPremultipliedColor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 1;
+            var pixels = new byte[w * h * 4];
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.putpixelregion(0, 0, 2, 1, {200, 100, 50, 255, 10, 20, 30, 255})",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(new byte[] { 50, 100, 200, 255 }, pixels.AsSpan(0, 4).ToArray());
+            Assert.Equal(new byte[] { 30, 20, 10, 255 }, pixels.AsSpan(4, 4).ToArray());
+        }
+
+        [Fact]
+        public void RegionRoundTrip_PreservesOpaquePixels()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[]
+            {
+                10, 20, 30, 255, 40, 50, 60, 255,
+                70, 80, 90, 255, 100, 110, 120, 255,
+            };
+            var original = (byte[])pixels.Clone();
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "local t = obj.getpixelregion(0, 0, obj.w, obj.h) obj.fill(0, 0, 0, 0) obj.putpixelregion(0, 0, obj.w, obj.h, t)",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(original, pixels);
+        }
+
+        [Fact]
+        public void Convolve_Identity_LeavesOpaqueBufferUnchanged()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[]
+            {
+                10, 20, 30, 255, 40, 50, 60, 255,
+                70, 80, 90, 255, 100, 110, 120, 255,
+            };
+            var original = (byte[])pixels.Clone();
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.convolve({0, 0, 0, 0, 1, 0, 0, 0, 0}, 3)",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(original, pixels);
+        }
+
+        [Fact]
+        public void Convolve_BoxBlur_AveragesHorizontalStep()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 1;
+            var pixels = new byte[] { 0, 0, 0, 255, 255, 255, 255, 255 };
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.convolve({1, 1, 1, 1, 1, 1, 1, 1, 1}, 3)",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(85, pixels[0]);
+            Assert.Equal(85, pixels[1]);
+            Assert.Equal(85, pixels[2]);
+            Assert.Equal(255, pixels[3]);
+            Assert.Equal(170, pixels[6]);
+            Assert.Equal(255, pixels[7]);
+        }
+
+        [Fact]
+        public void Resize_Nearest_ReplicatesBlocks()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[]
+            {
+                13, 12, 13, 255, 23, 22, 23, 255,
+                33, 32, 33, 255, 43, 42, 43, 255,
+            };
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.resize(4, 4, 'nearest')",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out byte[]? result, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.True(bufferReplaced);
+            Assert.Equal(4, rw);
+            Assert.Equal(4, rh);
+            Assert.NotNull(result);
+            byte SampleR(int x, int y) => result![(y * 4 + x) * 4 + 2];
+            Assert.Equal(13, SampleR(0, 0));
+            Assert.Equal(13, SampleR(1, 1));
+            Assert.Equal(23, SampleR(2, 0));
+            Assert.Equal(33, SampleR(0, 2));
+            Assert.Equal(43, SampleR(3, 3));
+        }
+
+        [Fact]
+        public void Resize_UpdatesObjDimensions()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[4 * 4 * 4];
+            var fields = Fields(4, 4, 0d);
+
+            bool ok = RunWorker(
+                "obj.resize(8, 2) obj.x = obj.w obj.y = obj.h obj.z = obj.diagonal",
+                fields, NoStringParams, () => pixels, 4, 4, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out bool bufferReplaced, out _, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(bufferReplaced);
+            Assert.Equal(8, rw);
+            Assert.Equal(2, rh);
+            Assert.Equal(8d, fields[NativeProtocol.X]);
+            Assert.Equal(2d, fields[NativeProtocol.Y]);
+            Assert.Equal(Math.Sqrt(8d * 8d + 2d * 2d), fields[NativeProtocol.Z]);
+        }
     }
 }
