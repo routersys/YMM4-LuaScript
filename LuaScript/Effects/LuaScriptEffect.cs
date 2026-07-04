@@ -295,21 +295,21 @@ namespace LuaScript
             return Color.FromRgb(r, g, b);
         }
 
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorX), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [Display(GroupName = nameof(Texts.AnchorGroup), Name = nameof(Texts.AnchorX), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
         [TextBoxSlider("F1", "", -9999, 9999)]
         [ShowPropertyEditorWhen(nameof(IsAnchorSelected), true)]
         [JsonIgnore]
         public double AnchorX { get => _anchorX; set { if (Set(ref _anchorX, value) && !_anchorSyncing) ApplyAnchorEdit(); } }
         double _anchorX;
 
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorY), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [Display(GroupName = nameof(Texts.AnchorGroup), Name = nameof(Texts.AnchorY), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
         [TextBoxSlider("F1", "", -9999, 9999)]
         [ShowPropertyEditorWhen(nameof(IsAnchorSelected), true)]
         [JsonIgnore]
         public double AnchorY { get => _anchorY; set { if (Set(ref _anchorY, value) && !_anchorSyncing) ApplyAnchorEdit(); } }
         double _anchorY;
 
-        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorZ), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [Display(GroupName = nameof(Texts.AnchorGroup), Name = nameof(Texts.AnchorZ), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
         [TextBoxSlider("F1", "", -9999, 9999)]
         [ShowPropertyEditorWhen(nameof(IsAnchorZVisible), true)]
         [JsonIgnore]
