@@ -137,6 +137,29 @@ end</code></pre>
 現在のオブジェクトが乗っているシーン自身は読み込めず、シーン描画の中からさらにシーンを読み込むこともできません。
 シーンを読み込んだフレームは描画キャッシュを使わず毎回再実行されます。
 模様はブラシプラグインで追加したものも使えますが、パラメータは既定値で描画されます。
+パラメータを変更したいときは <code>obj.brush</code> を使います。
+</div>
+
+<h2>obj.brush — 模様のパラメータ指定付き描画</h2>
+
+<p>
+<code>obj.brush(模様名 [, 幅, 高さ] [, パラメータ名, 値, ...])</code> は、YMM4 の模様（ブラシ）を
+パラメータ指定付きで描画してオブジェクトの画像を置き換えます。描画は <code>obj.load("brush", ...)</code> と同じで、
+加えて <code>obj.effect</code> と同じ「名前と値の組」で模様のパラメータを変更できます。
+AviUtl に存在しない YMM4 向けの独自拡張です。
+</p>
+
+<table>
+<tr><th>引数</th><th>説明</th></tr>
+<tr><td><code>模様名</code></td><td>模様一覧に表示される名前</td></tr>
+<tr><td><code>幅, 高さ</code></td><td>生成サイズ（px）。省略時は現在の <code>obj.w</code> / <code>obj.h</code>。両方を数値で並べたときだけサイズとして解釈する</td></tr>
+<tr><td><code>パラメータ名, 値</code></td><td>模様の設定項目の表示名または内部のプロパティ名と、その値の組。値は数値・真偽値・文字列で、色は <code>0xRRGGBB</code> の数値</td></tr>
+</table>
+
+<pre><code>obj.brush("縞模様", "Angle", 45, "Color1", 0xff3366)</code></pre>
+
+<div class="note">
+指定しなかったパラメータは既定値で描画されます。組をすべて省略した呼び出しは <code>obj.load("brush")</code> と同じです。
 </div>
 
 <p><code>obj.load("figure", ...)</code> で指定できる図形名は次のとおりです。</p>
