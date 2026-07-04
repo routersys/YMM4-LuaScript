@@ -640,6 +640,42 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", etc.
                 Returns: a number (0 for an unknown target).
 
+        o obj.getaudio(buf, file [, type [, size]])
+                Gets audio data.
+                buf  : A table that receives the data. Values are stored in
+                       buf[1]..buf[n]. Pass nil to receive the table as the third
+                       return value instead.
+                file : Path of an audio file. Pass "audiobuffer" to read the audio
+                       of the item this effect is attached to (after volume, pan,
+                       fade, and audio effects are applied).
+                type : Kind of data to get, as a string. Defaults to "pcm".
+                  "pcm"      : Mono PCM on a 16-bit scale (-32768 to 32767).
+                  "spectrum" : Volume per frequency band (roughly 0 to 32768).
+                               size is the number of bands (up to 512, default 32).
+                  "fourier"  : Magnitudes of the discrete Fourier transform
+                               (roughly 0.0 to 1.0). The frequency range is
+                               1/2048 to 1/2; the default count is 1024.
+                  "xxxx.l" / "xxxx.r" : Left / right channel variant of the kinds
+                               above. Without a suffix, both channels are averaged.
+                size : Number of values to get. Fewer values may be returned.
+                       Up to 1024 values can be read per call.
+                Returns: the number of values read, the sampling rate
+                [, the table].
+                The read position is the current playback position of the object
+                (obj.time). "pcm" returns consecutive samples from that position;
+                "spectrum" / "fourier" analyze the interval starting there.
+                Example:
+                  local buf = {}
+                  local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
+                  for i = 1, n do
+                    obj.draw((i - n / 2) * 8, -buf[i] / 200)
+                  end
+                * Works in both engines. When the audio cannot be read, the count
+                  is 0 and no error is raised.
+                * In AviUtl "audiobuffer" refers to the audio buffer being played;
+                  in YMM4 it refers to the audio of the item itself. Items without
+                  audio (images, shapes, etc.) return a count of 0.
+
         o obj.getinfo(name)
                 Gets various environment information. An unsupported name returns nil.
                   "script_path" : Returns the path of the plugin install folder. It
@@ -1005,7 +1041,7 @@
                 Drawing and compositing with obj.draw / obj.drawpoly, buffer
                 operations with obj.copybuffer, generation and loading with
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue, obj.getinfo, and obj.setoption / obj.getoption / obj.pixeloption are
+                obj.getvalue, obj.getaudio, obj.getinfo, and obj.setoption / obj.getoption / obj.pixeloption are
                 supported. See "obj Table - Functions" for details.
 
         o AviUtl / AviUtl2 compatibility map for obj.effect

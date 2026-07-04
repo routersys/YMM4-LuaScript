@@ -592,6 +592,37 @@
                          "alpha","sx","sy","track0"～"track3","time","frame" 等。
                 返回值 : 数值(未知目标返回 0)。
 
+        ○ obj.getaudio(缓冲区, 文件名 [, 类型 [, 数量]])
+                获取音频数据。
+                缓冲区 : 用于存放数据的表。数据存入 缓冲区[1]～缓冲区[n]。
+                         指定 nil 时，表将作为第 3 个返回值返回。
+                文件名 : 音频文件的路径。指定 "audiobuffer" 时，获取附加了本
+                         效果的项目自身的音频(应用音量、声像、淡入淡出和音频
+                         效果之后)。
+                类型 : 以字符串指定要获取的数据种类。省略时为 "pcm"。
+                  "pcm"      : 以 16bit 为基准(-32768～32767)的单声道 PCM。
+                  "spectrum" : 各频段的音量数据(约 0～32768)。数量为频段的
+                               分割数(最多 512，省略时 32)。
+                  "fourier"  : 离散傅里叶变换的振幅数据(约 0.0～1.0)。频率
+                               范围为 1/2048～1/2，省略时为 1024 个。
+                  "xxxx.l" / "xxxx.r" : 上述类型的左 / 右声道版本。未指定时
+                               取左右声道的平均值。
+                数量 : 要获取的数据个数。实际获取的个数可能少于指定值。
+                       一次最多可获取 1024 个。
+                返回值 : 获取的数据个数, 采样率[, 表]。
+                读取位置为对象当前的播放位置(obj.time)。"pcm" 返回从该位置起
+                连续的采样，"spectrum" / "fourier" 则分析从该位置开始的区间。
+                示例：
+                  local buf = {}
+                  local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
+                  for i = 1, n do
+                    obj.draw((i - n / 2) * 8, -buf[i] / 200)
+                  end
+                ※ 在两个引擎中均可使用。无法读取时返回数据个数 0，不会报错。
+                ※ AviUtl 中的 "audiobuffer" 指正在播放的音频缓冲区，而在 YMM4
+                  中指项目自身的音频。没有音频的项目(图像、图形等)返回数据
+                  个数 0。
+
         ○ obj.getinfo(名称)
                 获取各种环境信息。不支持的名称返回 nil。
                   "script_path" : 返回插件安装文件夹的路径，末尾带有路径分隔符。
@@ -926,7 +957,7 @@
         ○ 绘制·合成·加载
                 支持 obj.draw / obj.drawpoly 的绘制合成、obj.copybuffer 的缓冲区操作、
                 obj.load("figure"/"text"/"image"/"movie") 的生成与加载、obj.setfont、
-                obj.effect、obj.getvalue、obj.getinfo 以及 obj.setoption / obj.getoption /
+                obj.effect、obj.getvalue、obj.getaudio、obj.getinfo 以及 obj.setoption / obj.getoption /
                 obj.pixeloption。详情请参阅“obj 表 - 函数”。
 
         ○ obj.effect 的 AviUtl / AviUtl2 兼容映射

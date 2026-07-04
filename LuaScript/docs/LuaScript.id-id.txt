@@ -643,6 +643,44 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", dll.
                 Mengembalikan: sebuah angka (0 untuk target yang tidak dikenal).
 
+        o obj.getaudio(buf, file [, tipe [, jumlah]])
+                Mengambil data audio.
+                buf  : Tabel yang menerima data. Nilai disimpan di buf[1]..buf[n].
+                       Berikan nil untuk menerima tabel sebagai nilai kembali
+                       ketiga.
+                file : Jalur berkas audio. Berikan "audiobuffer" untuk membaca
+                       audio dari item tempat efek ini terpasang (setelah volume,
+                       pan, fade, dan efek audio diterapkan).
+                tipe : Jenis data yang diambil, sebagai string. Bawaan "pcm".
+                  "pcm"      : PCM mono pada skala 16-bit (-32768 sampai 32767).
+                  "spectrum" : Volume per pita frekuensi (sekitar 0 sampai 32768).
+                               jumlah adalah banyaknya pita (maksimal 512,
+                               bawaan 32).
+                  "fourier"  : Magnitudo transformasi Fourier diskrit (sekitar
+                               0.0 sampai 1.0). Rentang frekuensinya 1/2048
+                               sampai 1/2; jumlah bawaannya 1024.
+                  "xxxx.l" / "xxxx.r" : Varian kanal kiri / kanan dari jenis di
+                               atas. Tanpa akhiran, kedua kanal dirata-ratakan.
+                jumlah : Banyaknya nilai yang diambil. Hasilnya bisa lebih
+                         sedikit. Maksimal 1024 nilai per panggilan.
+                Mengembalikan: banyaknya nilai yang terbaca, laju sampel
+                [, tabel].
+                Posisi baca adalah posisi pemutaran objek saat ini (obj.time).
+                "pcm" mengembalikan sampel berurutan dari posisi itu;
+                "spectrum" / "fourier" menganalisis interval yang dimulai dari
+                sana.
+                Contoh:
+                  local buf = {}
+                  local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
+                  for i = 1, n do
+                    obj.draw((i - n / 2) * 8, -buf[i] / 200)
+                  end
+                * Bekerja di kedua mesin. Jika audio tidak dapat dibaca,
+                  jumlahnya 0 dan tidak terjadi kesalahan.
+                * Di AviUtl "audiobuffer" merujuk ke buffer audio yang sedang
+                  diputar; di YMM4 merujuk ke audio item itu sendiri. Item tanpa
+                  audio (gambar, bentuk, dsb.) mengembalikan jumlah 0.
+
         o obj.getinfo(name)
                 Mengambil berbagai informasi lingkungan. Nama yang tidak didukung
                 mengembalikan nil.
@@ -1017,7 +1055,7 @@
                 Penggambaran dan komposisi dengan obj.draw / obj.drawpoly, operasi
                 buffer dengan obj.copybuffer, pembuatan dan pemuatan dengan
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue, obj.getinfo, serta obj.setoption / obj.getoption / obj.pixeloption
+                obj.getvalue, obj.getaudio, obj.getinfo, serta obj.setoption / obj.getoption / obj.pixeloption
                 didukung. Lihat "Tabel obj - Fungsi" untuk detailnya.
 
         o Peta kompatibilitas AviUtl / AviUtl2 untuk obj.effect

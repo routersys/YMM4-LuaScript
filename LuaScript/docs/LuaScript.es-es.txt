@@ -647,6 +647,47 @@
                          "alpha","sx","sy","track0"~"track3","time","frame", etc.
                 Devuelve: un número (0 para un target desconocido).
 
+        o obj.getaudio(buf, archivo [, tipo [, cantidad]])
+                Obtiene datos de audio.
+                buf     : Tabla que recibe los datos. Los valores se guardan en
+                          buf[1]..buf[n]. Pase nil para recibir la tabla como el
+                          tercer valor de retorno.
+                archivo : Ruta de un archivo de audio. Pase "audiobuffer" para
+                          leer el audio del elemento al que está aplicado este
+                          efecto (tras aplicar volumen, panorama, fundidos y
+                          efectos de audio).
+                tipo : Clase de datos a obtener, como cadena. Por defecto "pcm".
+                  "pcm"      : PCM monoaural en escala de 16 bits (-32768 a 32767).
+                  "spectrum" : Volumen por banda de frecuencia (aprox. 0 a 32768).
+                               cantidad es el número de bandas (hasta 512, por
+                               defecto 32).
+                  "fourier"  : Magnitudes de la transformada discreta de Fourier
+                               (aprox. 0.0 a 1.0). El rango de frecuencia es de
+                               1/2048 a 1/2; la cantidad por defecto es 1024.
+                  "xxxx.l" / "xxxx.r" : Variante del canal izquierdo / derecho de
+                               los tipos anteriores. Sin sufijo se promedian
+                               ambos canales.
+                cantidad : Número de valores a obtener. Pueden devolverse menos.
+                           Se pueden leer hasta 1024 valores por llamada.
+                Devuelve: el número de valores leídos, la frecuencia de muestreo
+                [, la tabla].
+                La posición de lectura es la posición de reproducción actual del
+                objeto (obj.time). "pcm" devuelve muestras consecutivas desde esa
+                posición; "spectrum" / "fourier" analizan el intervalo que
+                comienza allí.
+                Ejemplo:
+                  local buf = {}
+                  local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
+                  for i = 1, n do
+                    obj.draw((i - n / 2) * 8, -buf[i] / 200)
+                  end
+                * Funciona en ambos motores. Si el audio no puede leerse, la
+                  cantidad es 0 y no se produce ningún error.
+                * En AviUtl "audiobuffer" se refiere al búfer de audio en
+                  reproducción; en YMM4 se refiere al audio del propio elemento.
+                  Los elementos sin audio (imágenes, figuras, etc.) devuelven una
+                  cantidad de 0.
+
         o obj.getinfo(nombre)
                 Obtiene diversa información del entorno. Un nombre no admitido
                 devuelve nil.
@@ -1024,7 +1065,7 @@
                 Se admiten el dibujo y composición con obj.draw / obj.drawpoly, las
                 operaciones de búfer con obj.copybuffer, la generación y carga con
                 obj.load("figure"/"text"/"image"/"movie"), obj.setfont, obj.effect,
-                obj.getvalue, obj.getinfo y obj.setoption / obj.getoption / obj.pixeloption.
+                obj.getvalue, obj.getaudio, obj.getinfo y obj.setoption / obj.getoption / obj.pixeloption.
                 Consulte "Tabla obj - Funciones" para más detalles.
 
         o Mapa de compatibilidad AviUtl / AviUtl2 para obj.effect
