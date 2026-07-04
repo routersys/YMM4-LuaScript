@@ -219,7 +219,7 @@ namespace LuaScript
 
         private string GetRunnableScript(string source)
         {
-            if (_runnableCached && string.Equals(source, _sourceScript, StringComparison.Ordinal))
+            if (_runnableCached && ReferenceEquals(source, _sourceScript))
                 return _runnableScript;
 
             var (code, lineMap, changedLines) = AviUtlScript.TransformWithMap(source);
@@ -478,11 +478,23 @@ namespace LuaScript
             return outDesc;
         }
 
+        private string? _effectTargetSource;
+        private AviUtlEngine _effectTarget;
+
+        private AviUtlEngine ResolveEffectTarget(string? script)
+        {
+            if (!ReferenceEquals(_effectTargetSource, script) || _effectTargetSource is null)
+            {
+                _effectTarget = AviUtlCompatMap.ResolveTarget(script);
+                _effectTargetSource = script;
+            }
+            return _effectTarget;
+        }
+
         private ID2D1Image ApplyEffectChain(ID2D1Image source, IReadOnlyList<AviUtlEffectRequest> requests, EffectDescription desc, ref DrawDescription drawDescription)
         {
             _effectChain ??= new VideoEffectChain(_ownCtx!);
-            var target = AviUtlCompatMap.ResolveTarget(item.Script);
-            return _effectChain.Apply(source, requests, desc, target, ref drawDescription);
+            return _effectChain.Apply(source, requests, desc, ResolveEffectTarget(item.Script), ref drawDescription);
         }
 
         private static (double Bpm, int Beat, double Offset) ResolveBpm(EffectDescription desc)
@@ -842,7 +854,7 @@ namespace LuaScript
 
         private void EnsureKernel(string runnable)
         {
-            if (_kernelResolved && string.Equals(runnable, _kernelSource, StringComparison.Ordinal))
+            if (_kernelResolved && ReferenceEquals(runnable, _kernelSource))
                 return;
 
             _kernelSource = runnable;
@@ -856,7 +868,7 @@ namespace LuaScript
 
         private void EnsureDirective(string runnable)
         {
-            if (_directiveCached && string.Equals(runnable, _directiveSource, StringComparison.Ordinal))
+            if (_directiveCached && ReferenceEquals(runnable, _directiveSource))
                 return;
 
             _directiveSource = runnable;
