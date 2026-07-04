@@ -31,6 +31,7 @@
 <p>
 返り値は対象アイテム自身の座標・回転・拡大率であり、グループ制御・カメラ制御による変形は含みません。
 同じタグのアイテムが複数あるときは、対象フレームで表示中のものが優先されます。
+音声アイテム（合成音声等）も対象になり、座標・拡大率・回転・不透明度は字幕の表示情報を返します。
 </p>
 
 <table>
@@ -42,7 +43,23 @@
 <tr><td><code>rx</code> / <code>ry</code> / <code>rxr</code> / <code>ryr</code></td><td>常に 0（X・Y 軸回転は取得しません）</td></tr>
 <tr><td><code>alpha</code></td><td>不透明度（0.0 ～ 255.0）</td></tr>
 <tr><td><code>layer</code></td><td>レイヤー番号</td></tr>
+<tr><td><code>length</code></td><td>アイテムの長さ（フレーム数）</td></tr>
+<tr><td><code>volume</code></td><td>音量設定の現在値（音声アイテムのみ。他は 0）</td></tr>
+<tr><td><code>character</code></td><td>キャラクター名（音声アイテムのみ。他は空文字列）</td></tr>
+<tr><td><code>text</code></td><td>セリフまたは表示テキスト（音声・テキストアイテムのみ。他は空文字列）</td></tr>
+<tr><td><code>kind</code></td><td>アイテムの種別名（例：VoiceItem, TextItem, ImageItem）</td></tr>
 </table>
+
+<div class="note">
+<code>length</code> / <code>volume</code> / <code>character</code> / <code>text</code> / <code>kind</code> は
+AviUtl に存在しない YMM4 向けの独自拡張です。従来エンジンと高速ランタイムの両方で動作します。
+</div>
+
+<h3>キャラクター名で演出を分ける</h3>
+<pre><code>local v = obj.getobject("voice")
+if v and v.character == "魔理沙" then
+    obj.effect("単色化", "強さ", 100, "color", 0xffee55)
+end</code></pre>
 
 <h3>発射元の座標に合わせる</h3>
 <pre><code>local src = obj.getobject("routersys")
