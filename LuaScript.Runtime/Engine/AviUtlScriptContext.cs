@@ -156,7 +156,7 @@ namespace LuaScript
                 _buffers["t"] = temp;
             }
 
-            Compositor.TryCompose(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, command);
+            Compositor.TryCompose(temp.Data, temp.Width, temp.Height, src, ImageWidth, ImageHeight, command with { Blend = 0d });
         }
 
         private readonly Dictionary<string, (byte[] Data, int Width, int Height)> _buffers = new(StringComparer.Ordinal);
