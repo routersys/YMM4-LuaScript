@@ -221,6 +221,7 @@ obj.load("text", "サンプル")</code></pre>
 <tr><td><code>obj.setoption(name [, value])</code></td><td>オプションを設定する。<code>antialias</code> は <code>obj.draw</code> で参照される。<code>blend</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の合成モードを番号で指定する。番号は下記の「合成モード」を参照。<code>draw_state</code> は真偽値で、<code>true</code> なら作業画像を出力し、<code>false</code> なら入力をそのまま通す。<code>drawtarget</code> は <code>obj.draw</code>／<code>obj.drawpoly</code> の描画先を <code>"framebuffer"</code> と <code>"tempbuffer"</code> で切り替える。詳細は下記の「描画先」を参照</td></tr>
 <tr><td><code>obj.getoption(name)</code></td><td>設定したオプションを取得する</td></tr>
 <tr><td><code>obj.getvalue(name)</code></td><td><code>obj</code> の数値メンバーを名前で取得する</td></tr>
+<tr><td><code>obj.getaudio(buf, file [, type, size])</code></td><td>音声データを取得する。詳細は下記の「音声データ」を参照</td></tr>
 <tr><td><code>obj.getinfo(name)</code></td><td>各種の環境情報を名前で取得する。詳細は下記の「環境情報」を参照</td></tr>
 <tr><td><code>obj.pixeloption(name [, value])</code></td><td>ピクセル処理向けのオプションを設定する</td></tr>
 <tr><td><code>obj.setanchor(name, count [, option, ...])</code></td><td>プレビュー上にドラッグ可能なアンカーポイントを表示し、その座標を <code>name</code> の Lua 変数へ格納する。設置数を返す。詳細は下記の「アンカーポイント」を参照</td></tr>
@@ -366,6 +367,37 @@ GPU を利用できない環境では呼び出しはスキップされ、画像�
 obj.setanchor("pos", num, "loop")
 for i = 0, num - 1 do
   obj.draw(pos[i * 2 + 1], pos[i * 2 + 2])
+end</code></pre>
+
+<h3>音声データ</h3>
+
+<p>
+<code>obj.getaudio(buf, file [, type, size])</code> は音声データを取得します。
+<code>buf</code> に渡したテーブルの <code>buf[1]</code>～<code>buf[n]</code> へデータを格納し、取得したデータ数とサンプリングレートを返します。
+<code>buf</code> に <code>nil</code> を渡すと、テーブルを 3 番目の戻り値として返します。
+<code>file</code> には音声ファイルのパスを指定します。<code>"audiobuffer"</code> を指定すると、このエフェクトを付けたアイテム自身の音声（音量・パン・フェード・音声エフェクト適用後）を取得します。
+</p>
+
+<table>
+<tr><th>type</th><th>内容</th></tr>
+<tr><td><code>"pcm"</code></td><td>16bit スケール基準（-32768～32767）のモノラル PCM</td></tr>
+<tr><td><code>"spectrum"</code></td><td>周波数帯ごとの音量データ（0～32768 目安）。<code>size</code> は分割する帯域の数で、最大 512、省略時は 32</td></tr>
+<tr><td><code>"fourier"</code></td><td>離散フーリエ変換の振幅データ（0.0～1.0 目安）。周波数範囲は 1/2048～1/2 で、省略時は 1024 個</td></tr>
+<tr><td><code>"xxxx.l"</code> / <code>"xxxx.r"</code></td><td>上記種別の左 / 右チャンネル版。無指定のときは左右の平均</td></tr>
+</table>
+
+<p>
+読み取り位置はオブジェクトの現在の再生位置（<code>obj.time</code>）です。
+<code>"pcm"</code> は現在位置から連続したサンプルを返し、<code>"spectrum"</code>／<code>"fourier"</code> は現在位置からの区間を解析して返します。
+1 回で取得できるデータ数は最大 1024 個で、取得できた数が指定より少ないことがあります。
+取得できない場合はデータ数 0 を返し、エラーにはなりません。両エンジンで動きます。
+AviUtl の <code>"audiobuffer"</code> は再生中の音声バッファを指しますが、YMM4 ではアイテム自身の音声を指します。音声を持たないアイテム（画像や図形等）ではデータ数 0 になります。
+</p>
+
+<pre><code>local buf = {}
+local n = obj.getaudio(buf, "audiobuffer", "spectrum", 32)
+for i = 1, n do
+  obj.draw((i - n / 2) * 8, -buf[i] / 200)
 end</code></pre>
 
 <h3>環境情報</h3>

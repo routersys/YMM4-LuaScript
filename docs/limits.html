@@ -24,6 +24,8 @@
 <li>ファイルアクセス不可: <code>require</code>・<code>dofile</code>・<code>io</code> などは使えません。</li>
 <li>使えない標準ライブラリ: <code>io</code>・<code>os</code>・<code>debug</code>・<code>coroutine</code>・
   <code>package</code>・<code>ffi</code> は無効です（<a href="stdlib.html">標準ライブラリ</a>）。</li>
+<li><code>obj.getaudio</code> が 1 回で取得できるデータ数は最大 1024 個です。取得できない場合は
+  データ数 0 を返し、エラーにはなりません。</li>
 </ul>
 
 <h2>乱数について</h2>
