@@ -1058,6 +1058,11 @@ namespace LuaScript
                     ["rzr"] = info.Rz * Math.PI / 180d,
                     ["alpha"] = info.Alpha,
                     ["layer"] = info.Layer,
+                    ["volume"] = info.Volume,
+                    ["length"] = info.Length,
+                    ["character"] = info.Character ?? string.Empty,
+                    ["text"] = info.Text ?? string.Empty,
+                    ["kind"] = info.Kind ?? string.Empty,
                 };
                 return DynValue.NewTable(table);
             }
