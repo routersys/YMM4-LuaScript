@@ -1434,16 +1434,161 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void PixelShader_ReportsClearError()
+        public void PixelShader_RoundTrip_StagesResourcesAndWritesTarget()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = (byte)(i + 1);
+            var original = (byte[])pixels.Clone();
+            var fields = Fields(2, 2, 0d);
+
+            string? observedName = null;
+            PixelShaderInput[] observedResources = [];
+            float[] observedConstants = [];
+            PixelShaderBlend observedBlend = default;
+            PixelShaderSampler observedSampler = default;
+            int observedWidth = 0;
+            int observedHeight = 0;
+            _runPixelShader = (string name, ReadOnlySpan<PixelShaderInput> resources, ReadOnlySpan<float> constants, PixelShaderBlend blend, PixelShaderSampler sampler, byte[] target, int targetWidth, int targetHeight, out string? shaderError) =>
+            {
+                observedName = name;
+                observedResources = resources.ToArray();
+                observedConstants = constants.ToArray();
+                observedBlend = blend;
+                observedSampler = sampler;
+                observedWidth = targetWidth;
+                observedHeight = targetHeight;
+                for (int i = 0; i < targetWidth * targetHeight * 4; i++)
+                    target[i] = 0x5A;
+                shaderError = null;
+                return PixelShaderRunStatus.Success;
+            };
+
+            bool ok = RunWorker(
+                "obj.pixelshader(\"ps\", \"object\", {\"object\", \"random\"}, {1, 2.5}, 25, \"clamp\")",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out byte[]? resultPixels, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal("ps", observedName);
+            Assert.Equal(2, observedResources.Length);
+            Assert.False(observedResources[0].IsRandom);
+            Assert.Equal(2, observedResources[0].Width);
+            Assert.Equal(2, observedResources[0].Height);
+            Assert.Equal(original, observedResources[0].Data!.AsSpan(0, 16).ToArray());
+            Assert.True(observedResources[1].IsRandom);
+            Assert.Equal([1f, 2.5f], observedConstants);
+            Assert.Equal(PixelShaderBlend.Composite(25d), observedBlend);
+            Assert.Equal(PixelShaderSampler.Clamp, observedSampler);
+            Assert.Equal(2, observedWidth);
+            Assert.Equal(2, observedHeight);
+            Assert.NotNull(resultPixels);
+            Assert.All(resultPixels.AsSpan(0, 16).ToArray(), static b => Assert.Equal(0x5A, b));
+        }
+
+        [Fact]
+        public void PixelShader_TempBufferTarget_RoundTripsThroughCopyBuffer()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
             var pixels = new byte[16];
             var fields = Fields(2, 2, 0d);
 
-            bool ok = RunWorker("obj.pixelshader(\"ps\", \"object\", \"object\")", fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+            _runPixelShader = (string name, ReadOnlySpan<PixelShaderInput> resources, ReadOnlySpan<float> constants, PixelShaderBlend blend, PixelShaderSampler sampler, byte[] target, int targetWidth, int targetHeight, out string? shaderError) =>
+            {
+                for (int i = 0; i < targetWidth * targetHeight * 4; i++)
+                    target[i] = 0x33;
+                shaderError = null;
+                return PixelShaderRunStatus.Success;
+            };
+
+            bool ok = RunWorker(
+                "obj.pixelshader(\"ps\", \"tempbuffer\", \"object\")\nobj.copybuffer(\"obj\", \"tmp\")",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out byte[]? resultPixels, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.NotNull(resultPixels);
+            Assert.All(resultPixels.AsSpan(0, 16).ToArray(), static b => Assert.Equal(0x33, b));
+        }
+
+        [Fact]
+        public void PixelShader_FramebufferTarget_ReplacesObjectWithSceneSize()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            fields[NativeProtocol.SceneWidth] = 4;
+            fields[NativeProtocol.SceneHeight] = 3;
+
+            int observedWidth = 0;
+            int observedHeight = 0;
+            _runPixelShader = (string name, ReadOnlySpan<PixelShaderInput> resources, ReadOnlySpan<float> constants, PixelShaderBlend blend, PixelShaderSampler sampler, byte[] target, int targetWidth, int targetHeight, out string? shaderError) =>
+            {
+                observedWidth = targetWidth;
+                observedHeight = targetHeight;
+                for (int i = 0; i < targetWidth * targetHeight * 4; i++)
+                    target[i] = 0x77;
+                shaderError = null;
+                return PixelShaderRunStatus.Success;
+            };
+
+            bool ok = RunWorker(
+                "obj.pixelshader(\"ps\", \"framebuffer\", \"object\")",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out bool replaced, out byte[]? resultPixels, out int resultW, out int resultH, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.True(replaced);
+            Assert.Equal(4, observedWidth);
+            Assert.Equal(3, observedHeight);
+            Assert.Equal(4, resultW);
+            Assert.Equal(3, resultH);
+            Assert.NotNull(resultPixels);
+            Assert.All(resultPixels.AsSpan(0, 48).ToArray(), static b => Assert.Equal(0x77, b));
+        }
+
+        [Fact]
+        public void PixelShader_CompileError_IsReportedToScript()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+
+            _runPixelShader = (string name, ReadOnlySpan<PixelShaderInput> resources, ReadOnlySpan<float> constants, PixelShaderBlend blend, PixelShaderSampler sampler, byte[] target, int targetWidth, int targetHeight, out string? shaderError) =>
+            {
+                shaderError = "obj.pixelshader: shader 'ps' failed to compile.\nerror X3000: syntax error";
+                return PixelShaderRunStatus.CompileError;
+            };
+
+            bool ok = RunWorker(
+                "obj.pixelshader(\"ps\", \"object\", \"object\")",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
             Assert.False(ok);
-            Assert.Contains("pixelshader", error);
+            Assert.Contains("X3000", error);
+        }
+
+        [Fact]
+        public void PixelShader_WithoutHost_IsSilentlySkipped()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            _runPixelShader = null;
+
+            bool ok = RunWorker(
+                "obj.pixelshader(\"ps\", \"object\", \"object\")\nobj.x = 12",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.False(dirty);
+            Assert.Equal(12d, fields[NativeProtocol.X]);
         }
 
         [Fact]

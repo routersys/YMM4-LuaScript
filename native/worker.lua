@@ -93,6 +93,16 @@ local CB_KIND_REQUESTPIXELS = 9
 local CB_KIND_FLUSHDRAWS = 10
 local CB_KIND_SCENEGET = 11
 local CB_KIND_SCENESET = 12
+local CB_KIND_PIXELSHADER_STAGE = 13
+local CB_KIND_PIXELSHADER_RUN = 14
+local MAX_PIXEL_BUFFER = 3840 * 2160 * 4
+local SHADER_META_DOUBLES = 20
+local SHADER_CONSTANTS_MAX = 1024
+local SHADER_RESOURCES_MAX = 8
+local SHADER_REGION_BYTES = SHADER_META_DOUBLES * 8 + SHADER_CONSTANTS_MAX * 4 + MAX_PIXEL_BUFFER
+local SHADER_META_OFFSET = mapSize - SHADER_REGION_BYTES
+local SHADER_CONST_OFFSET = SHADER_META_OFFSET + SHADER_META_DOUBLES * 8
+local SHADER_IMAGE_OFFSET = SHADER_CONST_OFFSET + SHADER_CONSTANTS_MAX * 4
 
 assert(loadfile(shimPath))()
 
@@ -107,7 +117,10 @@ local pixels = ffi.cast("uint8_t*", base + PIXEL_OFFSET)
 local ringD = ffi.cast("double*", base + DRAW_RING_OFFSET)
 local cbResult = ffi.cast("double*", base + CB_RESULT_OFFSET)
 local cbTagD = ffi.cast("double*", base + CB_TAG_OFFSET)
-local pixelCapacity = mapSize - PIXEL_OFFSET
+local shaderMeta = ffi.cast("double*", base + SHADER_META_OFFSET)
+local shaderConst = ffi.cast("float*", base + SHADER_CONST_OFFSET)
+local shaderImage = base + SHADER_IMAGE_OFFSET
+local pixelCapacity = SHADER_META_OFFSET - PIXEL_OFFSET
 local buffers = {}
 local options = {}
 local pixeloptions = {}
@@ -296,6 +309,32 @@ local function compositeDrawPolyInto(dst, dstW, dstH, src, srcW, srcH, poly, alp
             end
         end
     end
+end
+
+local frameBufferData, frameBufferCapacity = nil, 0
+local frameBufferW, frameBufferH = 0, 0
+local frameBufferValid = false
+
+local function ensureFrameBuffer()
+    local sw = math.max(1, math.floor(f64[39]))
+    local sh = math.max(1, math.floor(f64[40]))
+    local n = sw * sh * 4
+    if not frameBufferData or frameBufferCapacity < n then
+        frameBufferData = ffi.new("uint8_t[?]", n)
+        frameBufferCapacity = n
+        frameBufferValid = false
+    end
+    if not frameBufferValid or frameBufferW ~= sw or frameBufferH ~= sh then
+        ffi.fill(frameBufferData, n)
+        ensurePixels()
+        flushPixelData()
+        frameBufferW = sw
+        frameBufferH = sh
+        compositeDrawInto(frameBufferData, sw, sh, pixels, width, height,
+            sw * 0.5 + f64[8], sh * 0.5 + f64[9], f64[17], f64[18], f64[19] / 255, true)
+        frameBufferValid = true
+    end
+    return frameBufferData, frameBufferW, frameBufferH
 end
 
 local function ensureTemp()
@@ -684,6 +723,8 @@ function obj.copybuffer(dst, src)
         local b = buffers[skey]
         if not b then return end
         data, w, h = b.data, b.w, b.h
+    elseif sk == "f" then
+        data, w, h = ensureFrameBuffer()
     else
         return
     end
@@ -818,8 +859,172 @@ local function buildObject()
     }
 end
 
-function obj.pixelshader()
-    error("obj.pixelshader is not supported on the native engine. Remove the --!native directive.", 2)
+local SHADER_BLEND_MODES = { copy = 0, mask = 1, draw = 2, add = 3 }
+local SHADER_SAMPLERS = { clip = 1, clamp = 2, loop = 3, mirror = 4, dot = 5 }
+
+local function stageShaderImage(slot, data, w, h)
+    if w * h * 4 > MAX_PIXEL_BUFFER then
+        error("obj.pixelshader: resource is too large for the native engine.", 4)
+    end
+    ffi.copy(shaderImage, data, w * h * 4)
+    shaderMeta[5] = w
+    shaderMeta[6] = h
+    shaderMeta[7] = slot
+    i32[OFF_CB_KIND] = CB_KIND_PIXELSHADER_STAGE
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+local function resolveShaderResource(slot, id)
+    if type(id) ~= "string" then return 2 end
+    if id == "random" then return 1 end
+    local bk, bkey = bufferKind(id)
+    if bk == "o" then
+        ensurePixels()
+        flushPixelData()
+        return 3
+    end
+    if bk == "f" then
+        local data, w, h = ensureFrameBuffer()
+        stageShaderImage(slot, data, w, h)
+        return 0
+    end
+    if bk == "t" or bk == "c" then
+        local b = buffers[bkey]
+        if b then
+            stageShaderImage(slot, b.data, b.w, b.h)
+            return 0
+        end
+    end
+    return 2
+end
+
+function obj.pixelshader(name, target, resources, constants, blend, sampler)
+    if type(name) ~= "string" or type(target) ~= "string" then return end
+
+    local blendMode, compositeBlend = 0, 0
+    local blendType = type(blend)
+    if blendType == "number" then
+        blendMode = 4
+        compositeBlend = blend
+    elseif blendType == "string" then
+        blendMode = SHADER_BLEND_MODES[blend]
+        if not blendMode then
+            error("obj.pixelshader: unknown blend '" .. blend .. "'. Use copy, mask, draw, add or a blend number.", 2)
+        end
+    end
+
+    local samplerMode = 0
+    if type(sampler) == "string" then
+        samplerMode = SHADER_SAMPLERS[sampler]
+        if not samplerMode then
+            error("obj.pixelshader: unknown sampler '" .. sampler .. "'. Use clip, clamp, loop, mirror or dot.", 2)
+        end
+    end
+
+    local constantCount = 0
+    if type(constants) == "table" then
+        constantCount = #constants
+        if constantCount > SHADER_CONSTANTS_MAX then
+            error("obj.pixelshader: too many constants (" .. constantCount .. "). Up to " .. SHADER_CONSTANTS_MAX .. " are supported.", 2)
+        end
+        for i = 1, constantCount do
+            shaderConst[i - 1] = tonumber(constants[i]) or 0
+        end
+    end
+
+    local resourceCount = 0
+    if type(resources) == "string" then
+        resourceCount = 1
+        shaderMeta[9] = resolveShaderResource(0, resources)
+    elseif type(resources) == "table" then
+        resourceCount = #resources
+        if resourceCount > SHADER_RESOURCES_MAX then
+            error("obj.pixelshader: too many resources (" .. resourceCount .. "). Up to " .. SHADER_RESOURCES_MAX .. " are supported.", 2)
+        end
+        for i = 1, resourceCount do
+            shaderMeta[9 + (i - 1)] = resolveShaderResource(i - 1, resources[i])
+        end
+    end
+
+    local tk, tkey = bufferKind(target)
+    local targetKind, targetW, targetH, targetData
+    if tk == "o" then
+        ensurePixels()
+        flushPixelData()
+        targetKind, targetW, targetH = 1, width, height
+    elseif tk == "t" or tk == "c" then
+        local b = buffers[tkey]
+        if not b then
+            b = { data = ffi.new("uint8_t[?]", width * height * 4), w = width, h = height }
+            buffers[tkey] = b
+        end
+        targetKind, targetW, targetH, targetData = 0, b.w, b.h, b.data
+    elseif tk == "f" then
+        local data, w, h = ensureFrameBuffer()
+        targetKind, targetW, targetH, targetData = 0, w, h, data
+    else
+        return
+    end
+
+    if targetData then
+        if targetW * targetH * 4 > MAX_PIXEL_BUFFER then
+            error("obj.pixelshader: target is too large for the native engine.", 2)
+        end
+        ffi.copy(shaderImage, targetData, targetW * targetH * 4)
+    end
+
+    shaderMeta[0] = resourceCount
+    shaderMeta[1] = blendMode
+    shaderMeta[2] = compositeBlend
+    shaderMeta[3] = samplerMode
+    shaderMeta[4] = constantCount
+    shaderMeta[5] = targetW
+    shaderMeta[6] = targetH
+    shaderMeta[7] = targetKind
+
+    local len = #name
+    if len > CB_TAG_MAX then len = CB_TAG_MAX end
+    ffi.copy(base + CB_TAG_OFFSET, name, len)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_PIXELSHADER_RUN
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+
+    local status = shaderMeta[8]
+    if status == 2 then
+        error(ffi.string(base + CB_TAG_OFFSET, i32[OFF_CB_TAGLEN]), 2)
+    end
+    if status ~= 0 then return end
+
+    if tk == "o" then
+        dirty = true
+        pixelsValid = true
+        pdValid = false
+        pdDirty = false
+        return
+    end
+
+    ffi.copy(targetData, shaderImage, targetW * targetH * 4)
+    if tk == "f" then
+        local need = targetW * targetH * 4
+        if need <= pixelCapacity then
+            ffi.copy(pixels, targetData, need)
+            width = targetW; height = targetH
+            i32[OFF_WIDTH] = targetW; i32[OFF_HEIGHT] = targetH
+            dirty = true
+            pixelsValid = true
+            pdValid = false
+            pdDirty = false
+            obj.w = targetW; obj.h = targetH
+            obj.hw = targetW / 2; obj.hh = targetH / 2
+            obj.cx = targetW / 2; obj.cy = targetH / 2
+            obj.cz = 0
+            obj.diagonal = math.sqrt(targetW * targetW + targetH * targetH)
+        end
+    end
 end
 
 function obj.getobject(tag, frame)
@@ -951,6 +1156,7 @@ while true do
     pixelsValid = false
     pdValid = false
     pdDirty = false
+    frameBufferValid = false
     ringD[0] = 0
     local version = i32[OFF_SCRIPT_VERSION]
     if version ~= lastScriptVersion then
