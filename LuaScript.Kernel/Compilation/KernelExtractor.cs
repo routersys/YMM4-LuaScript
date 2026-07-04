@@ -6,7 +6,7 @@ namespace LuaScript.Engine.Kernel
     internal sealed class KernelExtractor
     {
         private readonly List<KExpr> _bindings = [];
-        private readonly Dictionary<string, int> _scope = new(StringComparer.Ordinal);
+        private Dictionary<string, int> _scope = new(StringComparer.Ordinal);
         private readonly SortedSet<KernelUniform> _uniforms = [];
 
         private string _widthVariable = string.Empty;
@@ -46,31 +46,39 @@ namespace LuaScript.Engine.Kernel
 
             if (index >= block.Count || block[index] is not NumericForStmt outer)
                 return null;
-            if (index + 1 != block.Count)
+            int tail = index + 1;
+            if (tail < block.Count && IsPutPixelData(block[tail]))
+                tail++;
+            if (tail != block.Count)
                 return null;
 
             if (!TryAxis(outer, out string outerVar, out KAxis outerAxis))
                 return null;
+            _scope.Remove(outerVar);
             if (outer.Body.Count != 1 || outer.Body[0] is not NumericForStmt inner)
                 return null;
             if (!TryAxis(inner, out string innerVar, out KAxis innerAxis))
                 return null;
+            _scope.Remove(innerVar);
             if (outerAxis == innerAxis)
                 return null;
             if (_pixelDataVariable is not null &&
                 (string.Equals(outerVar, _pixelDataVariable, StringComparison.Ordinal) ||
                  string.Equals(innerVar, _pixelDataVariable, StringComparison.Ordinal)))
                 return null;
-            if (_scope.ContainsKey(outerVar))
-                _scope.Remove(outerVar);
-            if (_scope.ContainsKey(innerVar))
-                _scope.Remove(innerVar);
 
             _widthVariable = outerAxis == KAxis.X ? outerVar : innerVar;
             _heightVariable = outerAxis == KAxis.Y ? outerVar : innerVar;
 
             return _pixelDataVariable is null ? BuildKernel(inner.Body) : BuildPixelDataKernel(inner.Body);
         }
+
+        private bool IsPutPixelData(LuaStmt statement) =>
+            _pixelDataVariable is not null &&
+            statement is CallStmt { Call: CallExpr { Arguments.Count: 1 } call } &&
+            IsObjectMethod(call, "putpixeldata") &&
+            call.Arguments[0] is NameExpr { } handle &&
+            string.Equals(handle.Name, _pixelDataVariable, StringComparison.Ordinal);
 
         private bool TryBindPixelData(LocalStmt local)
         {
@@ -104,6 +112,9 @@ namespace LuaScript.Engine.Kernel
                         break;
                     case AssignStmt assign:
                         BindAssign(assign);
+                        break;
+                    case IfStmt conditional:
+                        LowerConditional(conditional);
                         break;
                     case CallStmt { Call: MethodCallExpr set } when IsPixelDataSet(set, out int writeChannel):
                         var value = ClampChannel(Lower(set.Arguments[1]));
@@ -140,9 +151,23 @@ namespace LuaScript.Engine.Kernel
             if (expression is MemberExpr { Target: NameExpr { Name: "obj" }, Name: var field } &&
                 KernelUniforms.TryResolveMember("obj", field, out var uniform))
                 return uniform == KernelUniform.Width;
+            if (expression is NameExpr { } alias &&
+                TryUniformAlias(alias.Name, out var aliased))
+                return aliased == KernelUniform.Width;
             return _pixelDataVariable is not null &&
                 expression is MemberExpr { Target: NameExpr { } target, Name: "width" } &&
                 string.Equals(target.Name, _pixelDataVariable, StringComparison.Ordinal);
+        }
+
+        private bool TryUniformAlias(string name, out KernelUniform uniform)
+        {
+            if (_scope.TryGetValue(name, out int slot) && _bindings[slot] is KUniformRef reference)
+            {
+                uniform = reference.Uniform;
+                return true;
+            }
+            uniform = default;
+            return false;
         }
 
         private bool TryPixelDataChannel(LuaExpr expression, out int channel)
@@ -221,6 +246,9 @@ namespace LuaScript.Engine.Kernel
                     case AssignStmt assign:
                         BindAssign(assign);
                         break;
+                    case IfStmt conditional:
+                        LowerConditional(conditional);
+                        break;
                     default:
                         return null;
                 }
@@ -274,6 +302,76 @@ namespace LuaScript.Engine.Kernel
                 lowered[i] = Lower(assign.Values[i]);
             for (int i = 0; i < assign.Targets.Count; i++)
                 _scope[((NameExpr)assign.Targets[i]).Name] = AddBinding(lowered[i]);
+        }
+
+        private void LowerConditional(IfStmt statement) =>
+            LowerConditional(statement.Clauses, 0, statement.ElseBody);
+
+        private void LowerConditional(IReadOnlyList<IfClause> clauses, int index, IReadOnlyList<LuaStmt>? elseBody)
+        {
+            var clause = clauses[index];
+            var condition = LowerBool(clause.Condition);
+            var baseline = _scope;
+
+            _scope = new Dictionary<string, int>(baseline, StringComparer.Ordinal);
+            LowerBranchBody(clause.Body);
+            var taken = _scope;
+
+            _scope = new Dictionary<string, int>(baseline, StringComparer.Ordinal);
+            if (index + 1 < clauses.Count)
+                LowerConditional(clauses, index + 1, elseBody);
+            else if (elseBody is not null)
+                LowerBranchBody(elseBody);
+            var skipped = _scope;
+
+            var merged = new Dictionary<string, int>(baseline.Count, StringComparer.Ordinal);
+            foreach (var name in baseline.Keys)
+            {
+                int whenTrue = taken[name];
+                int whenFalse = skipped[name];
+                merged[name] = whenTrue == whenFalse
+                    ? whenTrue
+                    : AddBinding(new KSelect(condition, new KLocalRef(whenTrue), new KLocalRef(whenFalse)));
+            }
+            _scope = merged;
+        }
+
+        private void LowerBranchBody(IReadOnlyList<LuaStmt> body)
+        {
+            Dictionary<string, int>? shadowed = null;
+            HashSet<string>? introduced = null;
+            foreach (var statement in body)
+            {
+                switch (statement)
+                {
+                    case LocalStmt local:
+                        foreach (var name in local.Names)
+                        {
+                            if (introduced?.Contains(name) == true || shadowed?.ContainsKey(name) == true)
+                                continue;
+                            if (_scope.TryGetValue(name, out int slot))
+                                (shadowed ??= new(StringComparer.Ordinal))[name] = slot;
+                            else
+                                (introduced ??= new(StringComparer.Ordinal)).Add(name);
+                        }
+                        BindLocal(local);
+                        break;
+                    case AssignStmt assign:
+                        BindAssign(assign);
+                        break;
+                    case IfStmt nested:
+                        LowerConditional(nested);
+                        break;
+                    default:
+                        throw new KernelUnsupportedException("Unsupported statement in a conditional branch.");
+                }
+            }
+            if (shadowed is not null)
+                foreach (var (name, slot) in shadowed)
+                    _scope[name] = slot;
+            if (introduced is not null)
+                foreach (var name in introduced)
+                    _scope.Remove(name);
         }
 
         private void EnsureNotCoordinateName(string name)
@@ -342,6 +440,16 @@ namespace LuaScript.Engine.Kernel
 
             if (member.Target is NameExpr target && KernelUniforms.TryResolveMember(target.Name, member.Name, out var uniform))
                 return UseUniform(uniform);
+
+            if (_pixelDataVariable is not null &&
+                member.Target is NameExpr { } handle &&
+                string.Equals(handle.Name, _pixelDataVariable, StringComparison.Ordinal))
+            {
+                if (string.Equals(member.Name, "width", StringComparison.Ordinal))
+                    return UseUniform(KernelUniform.Width);
+                if (string.Equals(member.Name, "height", StringComparison.Ordinal))
+                    return UseUniform(KernelUniform.Height);
+            }
 
             throw new KernelUnsupportedException("Unsupported member access in pixel kernel.");
         }
@@ -469,6 +577,20 @@ namespace LuaScript.Engine.Kernel
                     return true;
                 }
                 if (pixelField == "height")
+                {
+                    axis = KAxis.Y;
+                    return true;
+                }
+            }
+
+            if (bound.Left is NameExpr { } alias && TryUniformAlias(alias.Name, out var aliased))
+            {
+                if (aliased == KernelUniform.Width)
+                {
+                    axis = KAxis.X;
+                    return true;
+                }
+                if (aliased == KernelUniform.Height)
                 {
                     axis = KAxis.Y;
                     return true;
