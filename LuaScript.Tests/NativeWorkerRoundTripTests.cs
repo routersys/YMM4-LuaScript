@@ -23,7 +23,7 @@ namespace LuaScript.Tests
         private readonly LuaJitWorker _worker = new(NativeDir, ScriptPath);
 
         private Func<string, double, (byte[] buffer, int w, int h)> _loadScene = (_, _) => ([], 0, 0);
-        private Func<string, double, double, (byte[] buffer, int w, int h)> _loadBrush = (_, _, _) => ([], 0, 0);
+        private Func<string, double, double, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> _loadBrush = (_, _, _, _) => ([], 0, 0);
         private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
         private PixelShaderInvoke? _runPixelShader;
@@ -1106,7 +1106,7 @@ namespace LuaScript.Tests
 
             string? capturedName = null;
             double capturedW = -1, capturedH = -1;
-            _loadBrush = (name, w, h) =>
+            _loadBrush = (name, w, h, _) =>
             {
                 capturedName = name;
                 capturedW = w;
@@ -1135,12 +1135,89 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void Brush_RoundTripsPairsAndDefaultSize()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int bw = 2, bh = 2;
+            var rendered = new byte[bw * bh * 4];
+            for (int i = 0; i < rendered.Length; i++)
+                rendered[i] = (byte)((i * 7 + 4) & 0xFF);
+
+            string? capturedName = null;
+            double capturedW = -1, capturedH = -1;
+            System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, object>>? captured = null;
+            _loadBrush = (name, w, h, arguments) =>
+            {
+                capturedName = name;
+                capturedW = w;
+                capturedH = h;
+                captured = [.. arguments];
+                return (rendered, bw, bh);
+            };
+
+            var pixels = new byte[4 * 2 * 4];
+            var fields = Fields(4, 2, 0d);
+
+            bool ok = RunWorker(
+                "obj.brush('縞模様', '色1', 0xff0000, '有効', true, 'ラベル', 'abc')",
+                fields, NoStringParams, () => pixels, 4, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool bufferReplaced, out byte[]? newPixels, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal("縞模様", capturedName);
+            Assert.Equal(4d, capturedW);
+            Assert.Equal(2d, capturedH);
+            Assert.NotNull(captured);
+            Assert.Equal(3, captured!.Count);
+            Assert.Equal(new System.Collections.Generic.KeyValuePair<string, object>("色1", (double)0xff0000), captured[0]);
+            Assert.Equal(new System.Collections.Generic.KeyValuePair<string, object>("有効", true), captured[1]);
+            Assert.Equal(new System.Collections.Generic.KeyValuePair<string, object>("ラベル", "abc"), captured[2]);
+            Assert.True(dirty);
+            Assert.True(bufferReplaced);
+            Assert.Equal(bw, rw);
+            Assert.Equal(bh, rh);
+            Assert.NotNull(newPixels);
+            Assert.Equal(rendered, newPixels!.AsSpan(0, rendered.Length).ToArray());
+        }
+
+        [Fact]
+        public void Brush_RoundTripsLeadingSize()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            double capturedW = -1, capturedH = -1;
+            int capturedCount = -1;
+            _loadBrush = (_, w, h, arguments) =>
+            {
+                capturedW = w;
+                capturedH = h;
+                capturedCount = arguments.Count;
+                return ([], 0, 0);
+            };
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+
+            bool ok = RunWorker(
+                "obj.brush('市松模様', 320, 240, 'ズーム', 50)",
+                fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(320d, capturedW);
+            Assert.Equal(240d, capturedH);
+            Assert.Equal(1, capturedCount);
+            Assert.False(dirty);
+        }
+
+        [Fact]
         public void LoadBrush_DefaultsSizeToObjectDimensions()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
             double capturedW = -1, capturedH = -1;
-            _loadBrush = (_, w, h) =>
+            _loadBrush = (_, w, h, _) =>
             {
                 capturedW = w;
                 capturedH = h;

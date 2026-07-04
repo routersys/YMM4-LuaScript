@@ -49,7 +49,7 @@ namespace LuaScript.Tests
                 "obj.setfont", "obj.draw", "obj.drawpoly", "obj.copybuffer",
                 "obj.pixelshader",
                 "obj.getvalue", "obj.setoption", "obj.getoption", "obj.pixeloption",
-                "obj.setanchor", "obj.effect", "obj.getinfo"
+                "obj.setanchor", "obj.effect", "obj.brush", "obj.getinfo"
             ]),
             ("math", [
                 "math.abs", "math.ceil", "math.cos", "math.exp", "math.floor",
