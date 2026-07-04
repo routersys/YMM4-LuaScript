@@ -60,15 +60,29 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                The following form using getpixeldata becomes a kernel as well.
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 - The body may use only arithmetic, math.*, comparisons, the
-                  threshold idiom "cond and value1 or value2", and local
+                  threshold idiom "cond and value1 or value2", conditional
+                  assignment to local variables via if/elseif/else, and local
                   variables.
-                - It may reference only the current pixel being processed
-                  (getpixel(x, y)) and values such as obj/scene/time.
+                - Loop bounds may also use aliases such as local w = obj.w.
+                - It may reference only the current pixel being processed and
+                  values such as obj/scene/time.
                 - Anything using neighbor sampling (blur, etc.), writes to other
-                  coordinates, getpixeldata, getobject, table/string operations,
-                  or if statements is not turned into a kernel and automatically
-                  runs on the classic engine.
+                  coordinates, setpixel or set calls inside an if statement,
+                  getobject, or table/string operations is not turned into a
+                  kernel and automatically runs on the classic engine.
 
         Example (turns a white figure red):
                 --!gpu

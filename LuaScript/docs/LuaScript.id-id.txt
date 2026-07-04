@@ -62,14 +62,29 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                Bentuk berikut yang memakai getpixeldata juga menjadi kernel.
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 - Badan hanya boleh memakai aritmetika, math.*, perbandingan,
-                  idiom ambang "cond and nilai1 or nilai2", dan variabel local.
-                - Hanya boleh mereferensikan piksel yang sedang diproses
-                  (getpixel(x, y)) dan nilai seperti obj/scene/time.
+                  idiom ambang "cond and nilai1 or nilai2", penugasan bersyarat
+                  ke variabel local melalui if/elseif/else, dan variabel local.
+                - Batas perulangan juga boleh memakai alias seperti
+                  local w = obj.w.
+                - Hanya boleh mereferensikan piksel yang sedang diproses dan
+                  nilai seperti obj/scene/time.
                 - Apa pun yang memakai sampling tetangga (blur, dll.), penulisan
-                  ke koordinat lain, getpixeldata, getobject, operasi
-                  tabel/string, atau pernyataan if tidak diubah menjadi kernel dan
-                  otomatis berjalan di mesin klasik.
+                  ke koordinat lain, pemanggilan setpixel atau set di dalam
+                  pernyataan if, getobject, atau operasi tabel/string tidak
+                  diubah menjadi kernel dan otomatis berjalan di mesin klasik.
 
         Contoh (membuat figur putih menjadi merah):
                 --!gpu

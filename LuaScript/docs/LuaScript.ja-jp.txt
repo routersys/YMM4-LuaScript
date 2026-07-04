@@ -57,13 +57,28 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                getpixeldata を使う次の形も同様にカーネル化されます。
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 ・本体で使えるのは四則演算・math.*・比較・しきい値の
-                  「条件 and 値1 or 値2」・local 変数のみです。
-                ・参照できるのは処理中の自ピクセル(getpixel(x, y))と
-                  obj/scene/time 等の値だけです。
-                ・近傍参照(ぼかし等)、別座標への書き込み、getpixeldata、
-                  getobject、テーブル/文字列操作、if 文などを含む場合は
-                  カーネル化されず、自動的に従来エンジンで実行されます。
+                  「条件 and 値1 or 値2」・if/elseif/else による local 変数への
+                  条件代入・local 変数のみです。
+                ・ループの上限には local w = obj.w のような別名も使えます。
+                ・参照できるのは処理中の自ピクセルと obj/scene/time 等の
+                  値だけです。
+                ・近傍参照(ぼかし等)、別座標への書き込み、if 文の中での
+                  setpixel や set の呼び出し、getobject、テーブル/文字列操作
+                  などを含む場合はカーネル化されず、自動的に従来エンジンで
+                  実行されます。
 
         例(白い図形が赤くなる):
                 --!gpu

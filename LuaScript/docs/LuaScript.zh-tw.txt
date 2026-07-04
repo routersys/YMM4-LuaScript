@@ -57,13 +57,26 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                使用 getpixeldata 的下列形式同樣會被核心化。
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 · 主體中僅可使用四則運算、math.*、比較、閾值寫法
-                  「條件 and 值1 or 值2」以及 local 變數。
-                · 僅可參照正在處理的自像素（getpixel(x, y)）
-                  以及 obj/scene/time 等值。
-                · 含有鄰域參照（模糊等）、寫入其他座標、getpixeldata、
-                  getobject、表/字串操作、if 陳述式等的腳本不會被核心化，
-                  會自動由傳統引擎執行。
+                  「條件 and 值1 or 值2」、透過 if/elseif/else 對 local 變數的
+                  條件賦值以及 local 變數。
+                · 迴圈上限也可以使用 local w = obj.w 這樣的別名。
+                · 僅可參照正在處理的自像素以及 obj/scene/time 等值。
+                · 含有鄰域參照（模糊等）、寫入其他座標、在 if 陳述式中呼叫
+                  setpixel 或 set、getobject、表/字串操作等的腳本不會被
+                  核心化，會自動由傳統引擎執行。
 
         範例（讓白色圖形變紅）：
                 --!gpu

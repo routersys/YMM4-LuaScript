@@ -61,14 +61,31 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                La siguiente forma con getpixeldata también se convierte en núcleo.
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 - El cuerpo solo puede usar aritmética, math.*, comparaciones, el
-                  modismo de umbral "cond and valor1 or valor2" y variables local.
-                - Solo puede referenciar el píxel actual en proceso
-                  (getpixel(x, y)) y valores como obj/scene/time.
+                  modismo de umbral "cond and valor1 or valor2", la asignación
+                  condicional a variables local mediante if/elseif/else y
+                  variables local.
+                - Los límites del bucle también pueden usar alias como
+                  local w = obj.w.
+                - Solo puede referenciar el píxel actual en proceso y valores
+                  como obj/scene/time.
                 - Todo lo que use muestreo de vecinos (desenfoque, etc.),
-                  escrituras en otras coordenadas, getpixeldata, getobject,
-                  operaciones de tabla/cadena o sentencias if no se convierte en
-                  núcleo y se ejecuta automáticamente en el motor clásico.
+                  escrituras en otras coordenadas, llamadas a setpixel o set
+                  dentro de una sentencia if, getobject u operaciones de
+                  tabla/cadena no se convierte en núcleo y se ejecuta
+                  automáticamente en el motor clásico.
 
         Ejemplo (vuelve roja una figura blanca):
                 --!gpu

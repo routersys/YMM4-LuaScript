@@ -57,13 +57,28 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                getpixeldata를 사용하는 다음 형태도 마찬가지로 커널화됩니다.
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 · 본문에서 사용할 수 있는 것은 사칙연산・math.*・비교・임계값
-                  「조건 and 값1 or 값2」・local 변수뿐입니다.
-                · 참조할 수 있는 것은 처리 중인 자기 픽셀(getpixel(x, y))과
-                  obj/scene/time 등의 값뿐입니다.
-                · 이웃 참조(블러 등), 다른 좌표로의 쓰기, getpixeldata,
-                  getobject, 테이블/문자열 조작, if 문 등을 포함하는 경우에는
-                  커널화되지 않고 자동으로 기존 엔진에서 실행됩니다.
+                  「조건 and 값1 or 값2」・if/elseif/else에 의한 local 변수에
+                  대한 조건 대입・local 변수뿐입니다.
+                · 루프의 상한에는 local w = obj.w 같은 별칭도 사용할 수 있습니다.
+                · 참조할 수 있는 것은 처리 중인 자기 픽셀과 obj/scene/time
+                  등의 값뿐입니다.
+                · 이웃 참조(블러 등), 다른 좌표로의 쓰기, if 문 안에서의
+                  setpixel이나 set 호출, getobject, 테이블/문자열 조작 등을
+                  포함하는 경우에는 커널화되지 않고 자동으로 기존 엔진에서
+                  실행됩니다.
 
         예(흰색 도형이 빨갛게 됨):
                 --!gpu

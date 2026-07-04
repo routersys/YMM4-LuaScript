@@ -57,13 +57,26 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                使用 getpixeldata 的下列形式同样会被内核化。
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 · 主体中仅可使用四则运算、math.*、比较、阈值写法
-                  “条件 and 值1 or 值2”以及 local 变量。
-                · 仅可引用正在处理的自像素（getpixel(x, y)）
-                  以及 obj/scene/time 等值。
-                · 含有邻域参照（模糊等）、写入其他坐标、getpixeldata、
-                  getobject、表/字符串操作、if 语句等的脚本不会被内核化，
-                  会自动由传统引擎执行。
+                  “条件 and 值1 or 值2”、通过 if/elseif/else 对 local 变量的
+                  条件赋值以及 local 变量。
+                · 循环上限也可以使用 local w = obj.w 这样的别名。
+                · 仅可引用正在处理的自像素以及 obj/scene/time 等值。
+                · 含有邻域参照（模糊等）、写入其他坐标、在 if 语句中调用
+                  setpixel 或 set、getobject、表/字符串操作等的脚本不会被
+                  内核化，会自动由传统引擎执行。
 
         示例（让白色图形变红）：
                 --!gpu

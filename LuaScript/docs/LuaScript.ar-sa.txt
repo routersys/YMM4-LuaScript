@@ -58,14 +58,28 @@
                             obj.setpixel(x, y, r2, g2, b2 [, a2])
                         end
                     end
+                الشكل التالي الذي يستخدم getpixeldata يتحول إلى نواة أيضاً.
+                    local data = obj.getpixeldata()
+                    for y = 0, data.height - 1 do
+                        for x = 0, data.width - 1 do
+                            local i = (y * data.width + x) * 4
+                            local r = data:get(i + 1)
+                            data:set(i + 1, r2)
+                            data:set(i + 2, g2)
+                            data:set(i + 3, b2)
+                        end
+                    end
+                    obj.putpixeldata(data)
                 · يجوز في الجسم استخدام العمليات الحسابية و math.* والمقارنات
-                  وصيغة العتبة "cond and value1 or value2" ومتغيرات local فقط.
-                · يجوز الإشارة فقط إلى البكسل الجاري معالجته (getpixel(x, y))
-                  وقيم مثل obj/scene/time.
+                  وصيغة العتبة "cond and value1 or value2" والإسناد الشرطي إلى
+                  متغيرات local عبر if/elseif/else ومتغيرات local فقط.
+                · يجوز أيضاً استخدام أسماء بديلة لحدود الحلقة مثل local w = obj.w.
+                · يجوز الإشارة فقط إلى البكسل الجاري معالجته وقيم مثل
+                  obj/scene/time.
                 · أي استخدام لأخذ عينات الجوار (التمويه، إلخ) أو الكتابة إلى
-                  إحداثيات أخرى أو getpixeldata أو getobject أو عمليات
-                  الجداول/السلاسل أو جُمَل if لا يتحول إلى نواة ويُنفَّذ تلقائياً
-                  على المحرك التقليدي.
+                  إحداثيات أخرى أو استدعاء setpixel أو set داخل جملة if أو
+                  getobject أو عمليات الجداول/السلاسل لا يتحول إلى نواة
+                  ويُنفَّذ تلقائياً على المحرك التقليدي.
 
         مثال (يجعل شكلاً أبيض أحمر):
                 --!gpu
