@@ -295,6 +295,35 @@ namespace LuaScript
             return Color.FromRgb(r, g, b);
         }
 
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorX), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F1", "", -9999, 9999)]
+        [ShowPropertyEditorWhen(nameof(IsAnchorSelected), true)]
+        [JsonIgnore]
+        public double AnchorX { get => _anchorX; set { if (Set(ref _anchorX, value) && !_anchorSyncing) ApplyAnchorEdit(); } }
+        double _anchorX;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorY), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F1", "", -9999, 9999)]
+        [ShowPropertyEditorWhen(nameof(IsAnchorSelected), true)]
+        [JsonIgnore]
+        public double AnchorY { get => _anchorY; set { if (Set(ref _anchorY, value) && !_anchorSyncing) ApplyAnchorEdit(); } }
+        double _anchorY;
+
+        [Display(GroupName = nameof(Texts.ParametersGroup), Name = nameof(Texts.AnchorZ), Description = nameof(Texts.AnchorDesc), ResourceType = typeof(Texts))]
+        [TextBoxSlider("F1", "", -9999, 9999)]
+        [ShowPropertyEditorWhen(nameof(IsAnchorZVisible), true)]
+        [JsonIgnore]
+        public double AnchorZ { get => _anchorZ; set { if (Set(ref _anchorZ, value) && !_anchorSyncing) ApplyAnchorEdit(); } }
+        double _anchorZ;
+
+        [JsonIgnore] public bool IsAnchorSelected { get => _isAnchorSelected; private set => Set(ref _isAnchorSelected, value); }
+        [JsonIgnore] public bool IsAnchorZVisible { get => _isAnchorZVisible; private set => Set(ref _isAnchorZVisible, value); }
+        bool _isAnchorSelected;
+        bool _isAnchorZVisible;
+        string _selectedAnchorGroup = string.Empty;
+        int _selectedAnchorIndex;
+        bool _anchorSyncing;
+
         public ImmutableList<LuaAnchorPoint> Anchors
         {
             get => _anchors;
@@ -306,7 +335,37 @@ namespace LuaScript
         internal int AnchorVersion { get; private set; }
 
         internal void ApplyAnchorDrag(string group, int index, double dx, double dy, double dz)
-            => Anchors = AnchorSupport.ApplyDrag(Anchors, group, index, dx, dy, dz);
+        {
+            Anchors = AnchorSupport.ApplyDrag(Anchors, group, index, dx, dy, dz);
+            if (IsAnchorSelected && index == _selectedAnchorIndex && group == _selectedAnchorGroup)
+                RefreshSelectedAnchor();
+        }
+
+        internal void BeginAnchorEdit(string group, int index, bool is3D)
+        {
+            _selectedAnchorGroup = group;
+            _selectedAnchorIndex = index;
+            RefreshSelectedAnchor();
+            IsAnchorSelected = true;
+            IsAnchorZVisible = is3D;
+        }
+
+        private void RefreshSelectedAnchor()
+        {
+            AnchorSupport.ResolvePosition(_anchors, _selectedAnchorGroup, _selectedAnchorIndex, out double x, out double y, out double z);
+            _anchorSyncing = true;
+            AnchorX = x;
+            AnchorY = y;
+            AnchorZ = z;
+            _anchorSyncing = false;
+        }
+
+        private void ApplyAnchorEdit()
+        {
+            if (!IsAnchorSelected)
+                return;
+            Anchors = AnchorSupport.SetPosition(_anchors, _selectedAnchorGroup, _selectedAnchorIndex, _anchorX, _anchorY, _anchorZ);
+        }
 
         public override IEnumerable<string> CreateExoVideoFilters(int keyFrameIndex, ExoOutputDescription exoOutputDescription) => [];
 
