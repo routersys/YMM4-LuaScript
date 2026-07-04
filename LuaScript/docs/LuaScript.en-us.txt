@@ -521,6 +521,35 @@
                 * "frm" (frame buffer / background) cannot be obtained due to the
                   structure of YMM4.
 
+        o obj.pixelshader(name, target, resources [, constants [, blend [, sampler]]])
+                Runs an HLSL pixel shader defined inside the script on the GPU.
+                Shaders are defined in a multi-line comment using the same notation
+                as AviUtl ExEdit2; the registered name becomes the entry point.
+                  --[[pixelshader@name:
+                  Texture2D src : register(t0);
+                  float4 name(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                name      : Name of the defined shader as a string.
+                target    : One of "object", "tempbuffer", "cache:name".
+                resources : Array of buffer names bound to t0-t7. A single name can
+                            be passed directly as a string. "random" binds a 256x256
+                            region (R32_FLOAT) of random values in 0.0-1.0.
+                constants : Array of numbers, packed into constant buffer b0 as an
+                            array of floats.
+                blend     : "copy" (as is), "mask" (multiplies alpha only), "draw"
+                            (alpha blend), "add" (additive). Default is "copy".
+                sampler   : One of "clip", "clamp", "loop", "mirror", "dot". Bound
+                            to SamplerState s0. Unset when omitted.
+                The pixel shader input can be either of the following.
+                  float4 name(float4 pos : SV_Position) : SV_Target
+                  float4 name(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv is set so that the drawing area spans 0.0-1.0.
+                Example: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                * Runs on the MoonSharp engine (selected automatically without a
+                  directive).
+                * "framebuffer" cannot be used due to the structure of YMM4.
+                * The call is skipped in environments without a usable GPU.
+
         o obj.getvalue(target)
                 Gets the current value of obj (same as obj.x, obj.track0, etc.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

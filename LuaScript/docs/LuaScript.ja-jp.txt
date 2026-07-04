@@ -505,6 +505,34 @@
                     obj.copybuffer("obj", "tmp")  -- 復元
                 ※ "frm"(フレームバッファ/背景)はYMM4の構造上取得できません。
 
+        ○obj.pixelshader(登録名, 出力先, リソース [, 定数 [, blend [, sampler]]])
+                スクリプト内に定義したHLSLのピクセルシェーダーをGPUで実行します。
+                シェーダーは AviUtl ExEdit2 と同じ記法の複数行コメントで定義し、
+                登録名がエントリーポイントになります。
+                  --[[pixelshader@登録名:
+                  Texture2D src : register(t0);
+                  float4 登録名(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                登録名   : 定義したシェーダーの名前を文字列で指定します。
+                出力先   : "object", "tempbuffer", "cache:名前" のいずれか。
+                リソース : 参照するバッファ名の配列。t0～t7 に設定されます。1つの
+                           場合は文字列で直接指定できます。"random" を指定すると
+                           0.0～1.0 の乱数値の 256x256 領域(R32_FLOAT)になります。
+                定数     : 数値の配列。定数バッファ(b0)へfloatの配列として設定
+                           されます。
+                blend    : "copy"(そのまま), "mask"(α値のみ乗算), "draw"(アルファ
+                           ブレンド), "add"(加算)のいずれか。省略時は "copy"。
+                sampler  : "clip", "clamp", "loop", "mirror", "dot" のいずれか。
+                           SamplerState(s0)に設定されます。省略時は未設定。
+                ピクセルシェーダーの入力は下記のいずれかを使用できます。
+                  float4 名前(float4 pos : SV_Position) : SV_Target
+                  float4 名前(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv は描画範囲が 0.0～1.0 になるように設定されます。
+                例：obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                ※ MoonSharpエンジンで動きます(ディレクティブ無しで自動選択)。
+                ※ "framebuffer" はYMM4の構造上使用できません。
+                ※ GPUが使用できない環境では呼び出しはスキップされます。
+
         ○obj.getvalue(対象)
                 obj の現在値を取得します(obj.x や obj.track0 等と同値)。
                 対象   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

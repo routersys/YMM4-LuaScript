@@ -490,6 +490,33 @@
                       obj.copybuffer("obj", "tmp")  -- 恢复
                 ※ 由于 YMM4 的结构，无法获取 "frm"(帧缓冲区 / 背景)。
 
+        ○ obj.pixelshader(注册名, 输出目标, 资源 [, 常量 [, blend [, sampler]]])
+                在GPU上执行脚本内定义的HLSL像素着色器。
+                着色器使用与 AviUtl ExEdit2 相同写法的多行注释来定义,
+                注册名即为入口点。
+                  --[[pixelshader@注册名:
+                  Texture2D src : register(t0);
+                  float4 注册名(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                注册名   : 以字符串指定已定义着色器的名称。
+                输出目标 : "object"、"tempbuffer"、"cache:名称" 之一。
+                资源     : 要引用的缓冲区名称数组,绑定到 t0~t7。只有一个时可以
+                           直接用字符串指定。指定 "random" 时会绑定 0.0~1.0
+                           随机值的 256x256 区域(R32_FLOAT)。
+                常量     : 数值数组,以float数组形式设置到常量缓冲区(b0)。
+                blend    : "copy"(原样)、"mask"(仅乘算α值)、"draw"(alpha混合)、
+                           "add"(加算)之一。省略时为 "copy"。
+                sampler  : "clip"、"clamp"、"loop"、"mirror"、"dot" 之一。
+                           设置到 SamplerState(s0)。省略时不设置。
+                像素着色器的输入可以使用以下任意一种。
+                  float4 名称(float4 pos : SV_Position) : SV_Target
+                  float4 名称(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv 会被设置为绘制范围对应 0.0~1.0。
+                例: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                ※ 在MoonSharp引擎上运行(无指令时自动选择)。
+                ※ 由于YMM4的结构,"framebuffer" 无法使用。
+                ※ 在无法使用GPU的环境中会跳过该调用。
+
         ○ obj.getvalue(目标)
                 获取 obj 的当前值(与 obj.x、obj.track0 等相同)。
                 目标   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

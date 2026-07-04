@@ -519,6 +519,35 @@
                         obj.copybuffer("obj", "tmp")  -- pulihkan
                 * "frm" (buffer frame / latar) tidak dapat diperoleh karena struktur YMM4.
 
+        o obj.pixelshader(nama, target, sumber [, konstanta [, blend [, sampler]]])
+                Menjalankan pixel shader HLSL yang didefinisikan di dalam skrip pada
+                GPU. Shader didefinisikan dalam komentar multibaris dengan notasi
+                yang sama seperti AviUtl ExEdit2; nama terdaftar menjadi entry point.
+                  --[[pixelshader@nama:
+                  Texture2D src : register(t0);
+                  float4 nama(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                nama      : Nama shader yang didefinisikan, berupa string.
+                target    : Salah satu dari "object", "tempbuffer", "cache:nama".
+                sumber    : Array nama buffer yang diikat ke t0-t7. Satu nama dapat
+                            diberikan langsung sebagai string. "random" mengikat
+                            wilayah 256x256 (R32_FLOAT) berisi nilai acak 0.0-1.0.
+                konstanta : Array angka, dikemas ke constant buffer b0 sebagai array
+                            float.
+                blend     : "copy" (apa adanya), "mask" (hanya mengalikan alfa),
+                            "draw" (alpha blend), "add" (aditif). Bawaan "copy".
+                sampler   : Salah satu dari "clip", "clamp", "loop", "mirror",
+                            "dot". Diikat ke SamplerState s0. Tidak diatur jika
+                            dihilangkan.
+                Input pixel shader dapat berupa salah satu dari berikut.
+                  float4 nama(float4 pos : SV_Position) : SV_Target
+                  float4 nama(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv diatur sehingga area gambar mencakup 0.0-1.0.
+                Contoh: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                * Berjalan pada mesin MoonSharp (dipilih otomatis tanpa direktif).
+                * "framebuffer" tidak dapat digunakan karena struktur YMM4.
+                * Panggilan dilewati pada lingkungan tanpa GPU yang dapat digunakan.
+
         o obj.getvalue(target)
                 Mengambil nilai saat ini dari obj (sama dengan obj.x, obj.track0, dll.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

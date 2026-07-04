@@ -521,6 +521,38 @@
                 * "frm" (búfer de fotograma / fondo) no puede obtenerse por la
                   estructura de YMM4.
 
+        o obj.pixelshader(nombre, destino, recursos [, constantes [, blend [, sampler]]])
+                Ejecuta en la GPU un sombreador de pixeles HLSL definido dentro del
+                script. Los sombreadores se definen en un comentario multilinea con
+                la misma notacion que AviUtl ExEdit2; el nombre registrado se
+                convierte en el punto de entrada.
+                  --[[pixelshader@nombre:
+                  Texture2D src : register(t0);
+                  float4 nombre(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                nombre     : Nombre del sombreador definido, como cadena.
+                destino    : Uno de "object", "tempbuffer", "cache:nombre".
+                recursos   : Arreglo de nombres de bufer asignados a t0-t7. Un solo
+                             nombre puede pasarse directamente como cadena. "random"
+                             asigna una region de 256x256 (R32_FLOAT) con valores
+                             aleatorios entre 0.0 y 1.0.
+                constantes : Arreglo de numeros, empaquetado en el bufer de
+                             constantes b0 como arreglo de floats.
+                blend      : "copy" (tal cual), "mask" (multiplica solo el alfa),
+                             "draw" (mezcla alfa), "add" (aditivo). Por defecto
+                             "copy".
+                sampler    : Uno de "clip", "clamp", "loop", "mirror", "dot". Se
+                             asigna a SamplerState s0. Sin asignar si se omite.
+                La entrada del sombreador puede ser cualquiera de las siguientes.
+                  float4 nombre(float4 pos : SV_Position) : SV_Target
+                  float4 nombre(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv se configura para que el area de dibujo abarque 0.0-1.0.
+                Ejemplo: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                * Se ejecuta en el motor MoonSharp (seleccionado automaticamente sin
+                  directiva).
+                * "framebuffer" no puede usarse por la estructura de YMM4.
+                * La llamada se omite en entornos sin una GPU utilizable.
+
         o obj.getvalue(target)
                 Obtiene el valor actual de obj (igual que obj.x, obj.track0, etc.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

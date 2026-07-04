@@ -500,6 +500,34 @@
                     obj.copybuffer("obj", "tmp")  -- 복원
                 ※ "frm"(프레임 버퍼 / 배경)은 YMM4의 구조상 가져올 수 없습니다.
 
+        ○ obj.pixelshader(등록명, 출력 대상, 리소스 [, 상수 [, blend [, sampler]]])
+                스크립트 안에 정의한 HLSL 픽셀 셰이더를 GPU에서 실행합니다.
+                셰이더는 AviUtl ExEdit2와 같은 표기의 여러 줄 주석으로 정의하며,
+                등록명이 엔트리 포인트가 됩니다.
+                  --[[pixelshader@등록명:
+                  Texture2D src : register(t0);
+                  float4 등록명(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                등록명    : 정의한 셰이더의 이름을 문자열로 지정합니다.
+                출력 대상 : "object", "tempbuffer", "cache:이름" 중 하나.
+                리소스    : 참조할 버퍼 이름의 배열이며 t0~t7에 설정됩니다. 하나뿐인
+                            경우 문자열로 직접 지정할 수 있습니다. "random"을
+                            지정하면 0.0~1.0 난수 값의 256x256 영역(R32_FLOAT)이
+                            됩니다.
+                상수      : 숫자 배열이며 상수 버퍼(b0)에 float 배열로 설정됩니다.
+                blend     : "copy"(그대로), "mask"(알파 값만 곱함), "draw"(알파
+                            블렌드), "add"(가산) 중 하나. 생략 시 "copy".
+                sampler   : "clip", "clamp", "loop", "mirror", "dot" 중 하나.
+                            SamplerState(s0)에 설정됩니다. 생략 시 미설정.
+                픽셀 셰이더의 입력은 다음 중 하나를 사용할 수 있습니다.
+                  float4 이름(float4 pos : SV_Position) : SV_Target
+                  float4 이름(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                uv는 그리기 범위가 0.0~1.0이 되도록 설정됩니다.
+                예: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                ※ MoonSharp 엔진에서 동작합니다(디렉티브 없이 자동 선택).
+                ※ "framebuffer"는 YMM4의 구조상 사용할 수 없습니다.
+                ※ GPU를 사용할 수 없는 환경에서는 호출이 건너뛰어집니다.
+
         ○ obj.getvalue(대상)
                 obj의 현재 값을 가져옵니다(obj.x, obj.track0 등과 동일).
                 대상   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

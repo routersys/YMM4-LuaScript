@@ -504,6 +504,35 @@
                       obj.copybuffer("obj", "tmp")  -- استعادة
                 ※ "frm" (مخزن الإطار / الخلفية) لا يمكن الحصول عليه بسبب بنية YMM4.
 
+        ○ obj.pixelshader(الاسم، الوجهة، الموارد [, الثوابت [, blend [, sampler]]])
+                ينفذ على وحدة معالجة الرسومات مظلل بكسلات HLSL معرفا داخل السكربت.
+                تعرف المظللات في تعليق متعدد الأسطر بنفس صيغة AviUtl ExEdit2،
+                ويصبح الاسم المسجل نقطة الدخول.
+                  --[[pixelshader@name:
+                  Texture2D src : register(t0);
+                  float4 name(float4 pos : SV_Position) : SV_Target { ... }
+                  ]]
+                الاسم    : اسم المظلل المعرف كسلسلة نصية.
+                الوجهة   : واحدة من "object" أو "tempbuffer" أو "cache:اسم".
+                الموارد  : مصفوفة أسماء المخازن المؤقتة المربوطة بالسجلات t0-t7.
+                           يمكن تمرير اسم واحد مباشرة كسلسلة نصية. يربط "random"
+                           منطقة 256x256 بتنسيق R32_FLOAT من قيم عشوائية بين
+                           0.0 و1.0.
+                الثوابت  : مصفوفة أرقام تعبأ في مخزن الثوابت b0 كمصفوفة float.
+                blend    : واحد من "copy" (كما هو) أو "mask" (ضرب قيمة ألفا فقط)
+                           أو "draw" (مزج ألفا) أو "add" (إضافي). الافتراضي "copy".
+                sampler  : واحد من "clip" أو "clamp" أو "loop" أو "mirror" أو
+                           "dot". يربط بـ SamplerState s0. غير معين عند الحذف.
+                يمكن أن يكون مدخل مظلل البكسلات أحد التالي.
+                  float4 name(float4 pos : SV_Position) : SV_Target
+                  float4 name(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+                يعين uv بحيث تمتد منطقة الرسم من 0.0 إلى 1.0.
+                مثال: obj.pixelshader("ps", "object", "object", {obj.track0}, "copy")
+                * يعمل على محرك MoonSharp (يختار تلقائيا دون توجيه).
+                * لا يمكن استخدام "framebuffer" بسبب بنية YMM4.
+                * يتخطى الاستدعاء في البيئات التي لا تتوفر فيها وحدة معالجة
+                  رسومات صالحة.
+
         ○ obj.getvalue(الهدف)
                 يحصل على القيمة الحالية لـ obj (مثل obj.x و obj.track0).
                 الهدف   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
