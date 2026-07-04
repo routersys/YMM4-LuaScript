@@ -375,7 +375,8 @@ end</code></pre>
 <code>obj.getaudio(buf, file [, type, size])</code> は音声データを取得します。
 <code>buf</code> に渡したテーブルの <code>buf[1]</code>～<code>buf[n]</code> へデータを格納し、取得したデータ数とサンプリングレートを返します。
 <code>buf</code> に <code>nil</code> を渡すと、テーブルを 3 番目の戻り値として返します。
-<code>file</code> には音声ファイルのパスを指定します。<code>"audiobuffer"</code> を指定すると、このエフェクトを付けたアイテム自身の音声（音量・パン・フェード・音声エフェクト適用後）を取得します。
+<code>file</code> には音声ファイルのパスを指定します。<code>"audiobuffer"</code> を指定すると、編集中のシーン全体の音声（タイムライン上の全アイテムを合成した音声）を取得します。
+YMM4 独自の拡張として <code>"itembuffer"</code> も指定でき、このエフェクトを付けたアイテム自身の音声（音量・パン・フェード・音声エフェクト適用後）を取得します。
 </p>
 
 <table>
@@ -387,11 +388,11 @@ end</code></pre>
 </table>
 
 <p>
-読み取り位置はオブジェクトの現在の再生位置（<code>obj.time</code>）です。
+読み取り位置は、<code>"audiobuffer"</code> はタイムラインの現在の再生位置、それ以外はオブジェクトの現在の再生位置（<code>obj.time</code>）です。
 <code>"pcm"</code> は現在位置から連続したサンプルを返し、<code>"spectrum"</code>／<code>"fourier"</code> は現在位置からの区間を解析して返します。
 1 回で取得できるデータ数は最大 1024 個で、取得できた数が指定より少ないことがあります。
 取得できない場合はデータ数 0 を返し、エラーにはなりません。両エンジンで動きます。
-AviUtl の <code>"audiobuffer"</code> は再生中の音声バッファを指しますが、YMM4 ではアイテム自身の音声を指します。音声を持たないアイテム（画像や図形等）ではデータ数 0 になります。
+<code>"itembuffer"</code> は音声を持たないアイテム（画像や図形等）ではデータ数 0 になります。
 </p>
 
 <pre><code>local buf = {}
