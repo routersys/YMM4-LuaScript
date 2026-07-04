@@ -333,5 +333,250 @@ namespace LuaScript.Tests
         {
             Assert.Equal(30d, Eval("s = 0\nfor i in <0..10, 2> do s = s + i end\nresult = s").Number);
         }
+
+        [Fact]
+        public void Ternary_Rewrites()
+        {
+            Assert.Equal(
+                "x = (function() if c then return (1) else return (2) end end)()",
+                Rewrite("x = c ? 1 : 2"));
+        }
+
+        [Fact]
+        public void Ternary_Evaluates()
+        {
+            Assert.Equal(1d, Eval("result = true ? 1 : 2").Number);
+            Assert.Equal(2d, Eval("result = false ? 1 : 2").Number);
+        }
+
+        [Fact]
+        public void Ternary_ReturnsFalsyBranch()
+        {
+            var value = Eval("result = true ? false : 1");
+            Assert.Equal(DataType.Boolean, value.Type);
+            Assert.False(value.Boolean);
+        }
+
+        [Fact]
+        public void Ternary_InsideCallArgument()
+        {
+            Assert.Equal(3d, Eval("function f(v, w) return v + w end\nresult = f(true ? 1 : 2, 2)").Number);
+        }
+
+        [Fact]
+        public void Ternary_NestedInElse()
+        {
+            Assert.Equal(3d, Eval("a = 3\nresult = a == 1 ? 1 : a == 2 ? 2 : 3").Number);
+        }
+
+        [Theory]
+        [InlineData("x = a and b or c")]
+        [InlineData("t = { x = 1, y = 2 }")]
+        [InlineData("obj:draw()")]
+        [InlineData("::label::")]
+        public void Ternary_DoesNotTouchOtherCode(string source)
+        {
+            Assert.Equal(source, Rewrite(source));
+        }
+
+        [Fact]
+        public void SafeNavigation_ReturnsNilForNilTarget()
+        {
+            Assert.True(Eval("t = nil\nresult = t?.x == nil").Boolean);
+        }
+
+        [Fact]
+        public void SafeNavigation_ReadsMember()
+        {
+            Assert.Equal(5d, Eval("t = { x = 5 }\nresult = t?.x").Number);
+        }
+
+        [Fact]
+        public void SafeNavigation_Chains()
+        {
+            Assert.True(Eval("t = { a = nil }\nresult = t?.a?.b == nil").Boolean);
+            Assert.Equal(7d, Eval("t = { a = { b = 7 } }\nresult = t?.a?.b").Number);
+        }
+
+        [Fact]
+        public void SafeNavigation_Index()
+        {
+            Assert.True(Eval("t = nil\nresult = t?[1] == nil").Boolean);
+            Assert.Equal(9d, Eval("t = { 9 }\nresult = t?[1]").Number);
+        }
+
+        [Fact]
+        public void SafeNavigation_EvaluatesTargetOnce()
+        {
+            const string source = "calls = 0\nfunction f() calls = calls + 1 return { x = 3 } end\nresult = f()?.x";
+            var script = new Script(CoreModules.Preset_SoftSandbox);
+            script.DoString(AviUtlScript.Transform(source));
+            Assert.Equal(3d, script.Globals.Get("result").Number);
+            Assert.Equal(1d, script.Globals.Get("calls").Number);
+        }
+
+        [Fact]
+        public void SafeNavigation_CombinesWithNilCoalesce()
+        {
+            Assert.Equal(4d, Eval("t = nil\nresult = t?.x ?? 4").Number);
+        }
+
+        [Fact]
+        public void Lambda_Rewrites()
+        {
+            Assert.Equal(
+                "f = (function(a, b) return a + b end)",
+                Rewrite("f = (a, b) => a + b"));
+        }
+
+        [Fact]
+        public void Lambda_SingleParameterWithoutParens()
+        {
+            Assert.Equal(9d, Eval("f = x => x * 3\nresult = f(3)").Number);
+        }
+
+        [Fact]
+        public void Lambda_NoParameters()
+        {
+            Assert.Equal(1d, Eval("f = () => 1\nresult = f()").Number);
+        }
+
+        [Fact]
+        public void Lambda_AsSortComparer()
+        {
+            const string source = "t = { 3, 1, 2 }\ntable.sort(t, (a, b) => a < b)\nresult = t[1]";
+            Assert.Equal(1d, Eval(source).Number);
+        }
+
+        [Fact]
+        public void Lambda_DoesNotTouchComparisons()
+        {
+            Assert.Equal("x = a >= b", Rewrite("x = a >= b"));
+            Assert.Equal("x = a <= b", Rewrite("x = a <= b"));
+        }
+
+        [Fact]
+        public void InterpolatedString_Rewrites()
+        {
+            Assert.Equal(
+                "s = (\"x=\" .. tostring(a))",
+                Rewrite("s = `x={a}`"));
+        }
+
+        [Fact]
+        public void InterpolatedString_Evaluates()
+        {
+            Assert.Equal("x=5 y=6", Eval("a = 5\nb = 6\nresult = `x={a} y={b}`").String);
+        }
+
+        [Fact]
+        public void InterpolatedString_PlainLiteral()
+        {
+            Assert.Equal("hello", Eval("result = `hello`").String);
+        }
+
+        [Fact]
+        public void InterpolatedString_ExpressionOnly()
+        {
+            Assert.Equal("7", Eval("result = `{3 + 4}`").String);
+        }
+
+        [Fact]
+        public void InterpolatedString_NestedExtensionSyntax()
+        {
+            Assert.Equal("4", Eval("t = nil\nresult = `{t ?? 4}`").String);
+        }
+
+        [Fact]
+        public void InterpolatedString_Empty()
+        {
+            Assert.Equal("", Eval("result = ``").String);
+        }
+
+        [Fact]
+        public void Backtick_InsideStringOrComment_IsPreserved()
+        {
+            const string source = "x = \"a ` b\"";
+            Assert.Equal(source, Rewrite(source));
+        }
+
+        [Fact]
+        public void Pipe_Rewrites()
+        {
+            Assert.Equal("x = f((v))", Rewrite("x = v |> f"));
+        }
+
+        [Fact]
+        public void Pipe_Evaluates()
+        {
+            Assert.Equal(4d, Eval("function double(v) return v * 2 end\nresult = 2 |> double").Number);
+        }
+
+        [Fact]
+        public void Pipe_InsertsAsFirstArgument()
+        {
+            Assert.Equal(
+                "x = clamp((v), 0, 255)",
+                Rewrite("x = v |> clamp(0, 255)"));
+            Assert.Equal(5d, Eval("function clamp(v, lo, hi) return math.min(math.max(v, lo), hi) end\nresult = 5 |> clamp(0, 255)").Number);
+        }
+
+        [Fact]
+        public void Pipe_Chains()
+        {
+            const string source = "function inc(v) return v + 1 end\nfunction double(v) return v * 2 end\nresult = 3 |> inc |> double";
+            Assert.Equal(8d, Eval(source).Number);
+        }
+
+        [Fact]
+        public void Pipe_MemberFunction()
+        {
+            Assert.Equal(2d, Eval("result = 2.9 |> math.floor").Number);
+        }
+
+        [Fact]
+        public void RangeMembership_Rewrites()
+        {
+            Assert.Equal(
+                "x = (function() local __lc0 = (v) return __lc0 >= (1) and __lc0 <= (5) end)()",
+                Rewrite("x = v in <1..5>"));
+        }
+
+        [Fact]
+        public void RangeMembership_Evaluates()
+        {
+            Assert.True(Eval("result = 3 in <1..5>").Boolean);
+            Assert.True(Eval("result = 5 in <1..5>").Boolean);
+            Assert.False(Eval("result = 6 in <1..5>").Boolean);
+        }
+
+        [Fact]
+        public void RangeMembership_ExclusiveEvaluates()
+        {
+            Assert.False(Eval("result = 5 in <1..<5>").Boolean);
+            Assert.True(Eval("result = 4 in <1..<5>").Boolean);
+        }
+
+        [Fact]
+        public void RangeMembership_InsideIf()
+        {
+            Assert.Equal(1d, Eval("v = 40\nresult = 0\nif v in <30..60> then result = 1 end").Number);
+        }
+
+        [Fact]
+        public void RangeMembership_EvaluatesLeftOnce()
+        {
+            const string source = "calls = 0\nfunction f() calls = calls + 1 return 3 end\nresult = f() in <1..5>";
+            var script = new Script(CoreModules.Preset_SoftSandbox);
+            script.DoString(AviUtlScript.Transform(source));
+            Assert.True(script.Globals.Get("result").Boolean);
+            Assert.Equal(1d, script.Globals.Get("calls").Number);
+        }
+
+        [Fact]
+        public void RangeMembership_DoesNotTouchForHeaders()
+        {
+            Assert.Equal("for i = 0, 10 do end", Rewrite("for i in <0..10> do end"));
+        }
     }
 }
