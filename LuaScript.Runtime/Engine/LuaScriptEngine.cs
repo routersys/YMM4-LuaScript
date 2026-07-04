@@ -1208,14 +1208,14 @@ namespace LuaScript
                 int w = _activeContext!.ImageWidth;
                 int h = _activeContext.ImageHeight;
                 var obj = _objScope.Table;
-                obj["w"] = w;
-                obj["h"] = h;
-                obj["hw"] = w / 2d;
-                obj["hh"] = h / 2d;
-                obj["cx"] = w / 2d;
-                obj["cy"] = h / 2d;
-                obj["cz"] = 0d;
-                obj["diagonal"] = Math.Sqrt((double)w * w + (double)h * h);
+                obj.Set("w", DynValue.NewNumber(w));
+                obj.Set("h", DynValue.NewNumber(h));
+                obj.Set("hw", DynValue.NewNumber(w / 2d));
+                obj.Set("hh", DynValue.NewNumber(h / 2d));
+                obj.Set("cx", DynValue.NewNumber(w / 2d));
+                obj.Set("cy", DynValue.NewNumber(h / 2d));
+                obj.Set("cz", DynValue.NewNumber(0d));
+                obj.Set("diagonal", DynValue.NewNumber(Math.Sqrt((double)w * w + (double)h * h)));
             }
 
             private static DynValue BuildObjectTable(Script script, SceneObjectInfo info)
