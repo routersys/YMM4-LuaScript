@@ -130,6 +130,45 @@ namespace LuaScript.Tests
             Assert.Equal(1d, ctx.Oy);
         }
 
+        private sealed class StubResolver : ISceneObjectResolver
+        {
+            private readonly SceneObjectInfo _info;
+            public StubResolver(SceneObjectInfo info) => _info = info;
+            public bool TryResolve(string tag, int timelineFrame, out SceneObjectInfo info)
+            {
+                if (tag == _info.Tag)
+                {
+                    info = _info;
+                    return true;
+                }
+                info = default;
+                return false;
+            }
+        }
+
+        [Fact]
+        public void GetObjectExposesItemMetadata()
+        {
+            using var engine = CreateEngine();
+            var ctx = NewContext();
+            var info = new SceneObjectInfo("a", true, 12d, 34d, 56d, 2d, 90d, 200d, 7, 120, 75d, "reimu", "hello", "VoiceItem");
+            ctx.ResolverProvider = () => new StubResolver(info);
+
+            engine.Execute(
+                "local o = obj.getobject('a')\n" +
+                "obj.x = o.volume\n" +
+                "obj.y = o.length\n" +
+                "obj.z = (o.character == 'reimu') and 1 or 0\n" +
+                "obj.ox = (o.text == 'hello') and 1 or 0\n" +
+                "obj.oy = (o.kind == 'VoiceItem') and 1 or 0", ctx);
+
+            Assert.Equal(75d, ctx.X);
+            Assert.Equal(120d, ctx.Y);
+            Assert.Equal(1d, ctx.Z);
+            Assert.Equal(1d, ctx.Ox);
+            Assert.Equal(1d, ctx.Oy);
+        }
+
         [Fact]
         public void ObjectWritesFlowBackToContext()
         {
