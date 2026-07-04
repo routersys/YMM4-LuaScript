@@ -521,6 +521,24 @@
                         * The pattern is drawn with its default parameters.
                         Example: obj.load("brush", "Stripe", 400, 300)
 
+        o obj.brush(patternName [, width, height] [, paramName, value, ...])
+                Draws a YMM4 pattern (brush) with parameter overrides and replaces
+                the buffer. The drawing is the same as obj.load("brush"), and in
+                addition the pattern parameters can be changed with the same
+                name-and-value pairs as obj.effect.
+                patternName   : The name shown in the pattern list.
+                width, height : Output size in pixels. Defaults to the current
+                                obj.w / obj.h. Interpreted as the size only when
+                                both are given as numbers.
+                paramName     : The display name of a pattern setting, or its
+                                internal property name.
+                value         : A number, a boolean or a string. Colors are
+                                0xRRGGBB numbers.
+                * Parameters that are not specified are drawn with their default
+                  values. A call without pairs equals obj.load("brush").
+                * This is a YMM4-only extension that does not exist in AviUtl.
+                Example: obj.brush("Stripe", "Angle", 45, "Color1", 0xff3366)
+
         o obj.setfont(font [, size [, style [, color]]])
                 Sets the font used by obj.load("text").
                 style : Bit flags. 1=bold, 2=italic, 3=bold+italic.

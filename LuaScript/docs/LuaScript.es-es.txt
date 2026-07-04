@@ -525,6 +525,24 @@
                         * El patrón se dibuja con sus parámetros por defecto.
                         Ejemplo: obj.load("brush", "Rayas", 400, 300)
 
+        o obj.brush(nombrePatron [, ancho, alto] [, nombreParam, valor, ...])
+                Dibuja un patrón (pincel) de YMM4 con parámetros indicados y
+                reemplaza el búfer. El dibujado es el mismo que obj.load("brush"),
+                y además los parámetros del patrón pueden cambiarse con los mismos
+                pares de nombre y valor que obj.effect.
+                nombrePatron : El nombre mostrado en la lista de patrones.
+                ancho, alto  : Tamaño generado en píxeles. Por defecto los
+                               obj.w / obj.h actuales. Solo se interpreta como
+                               tamaño cuando ambos se dan como números.
+                nombreParam  : El nombre mostrado de un ajuste del patrón, o su
+                               nombre de propiedad interno.
+                valor        : Un número, un booleano o una cadena. Los colores
+                               son números 0xRRGGBB.
+                * Los parámetros no indicados se dibujan con sus valores por
+                  defecto. Una llamada sin pares equivale a obj.load("brush").
+                * Es una extensión exclusiva de YMM4 que no existe en AviUtl.
+                Ejemplo: obj.brush("Rayas", "Angle", 45, "Color1", 0xff3366)
+
         o obj.setfont(fuente [, tamaño [, estilo [, color]]])
                 Establece la fuente usada por obj.load("text").
                 estilo : Bits. 1=negrita, 2=cursiva, 3=negrita+cursiva.

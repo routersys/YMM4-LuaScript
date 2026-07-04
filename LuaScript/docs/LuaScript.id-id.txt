@@ -522,6 +522,24 @@
                         * Pola digambar dengan parameter default.
                         Contoh: obj.load("brush", "Garis-garis", 400, 300)
 
+        o obj.brush(namaPola [, lebar, tinggi] [, namaParam, nilai, ...])
+                Menggambar pola (kuas) YMM4 dengan parameter yang ditentukan dan
+                mengganti buffer. Penggambarannya sama dengan obj.load("brush"),
+                dan parameter pola dapat diubah dengan pasangan nama dan nilai
+                yang sama seperti obj.effect.
+                namaPola      : Nama yang ditampilkan pada daftar pola.
+                lebar, tinggi : Ukuran keluaran dalam piksel. Default
+                                obj.w / obj.h saat ini. Hanya ditafsirkan sebagai
+                                ukuran bila keduanya diberikan sebagai angka.
+                namaParam     : Nama tampilan pengaturan pola, atau nama properti
+                                internalnya.
+                nilai         : Angka, boolean atau string. Warna adalah angka
+                                0xRRGGBB.
+                * Parameter yang tidak ditentukan digambar dengan nilai default.
+                  Panggilan tanpa pasangan sama dengan obj.load("brush").
+                * Ini adalah ekstensi khusus YMM4 yang tidak ada di AviUtl.
+                Contoh: obj.brush("Garis-garis", "Angle", 45, "Color1", 0xff3366)
+
         o obj.setfont(font [, size [, style [, color]]])
                 Mengatur font yang digunakan oleh obj.load("text").
                 style : Flag bit. 1=tebal, 2=miring, 3=tebal+miring.
