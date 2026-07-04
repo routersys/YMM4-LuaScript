@@ -63,6 +63,18 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void ConditionalStatementEmitsTernary()
+        {
+            const string script =
+                "for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) " +
+                "local v=(r+g+b)/3 local o=0 if v>170 then o=255 elseif v>85 then o=128 end " +
+                "obj.setpixel(x,y,o,o,o,a) end end";
+            string hlsl = HlslKernelEmitter.Emit(Extract(script));
+            Assert.Contains(" ? (", hlsl);
+            Assert.Contains(" > ", hlsl);
+        }
+
+        [Fact]
         public void EmissionIsDeterministic()
         {
             var program = Extract(Grayscale);
