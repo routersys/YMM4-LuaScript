@@ -990,6 +990,22 @@ namespace LuaScript
             private double[] _regionScratch = [];
             private double[] _kernelScratch = [];
 
+            private static readonly DynValue[] s_byteNumbers = CreateByteNumbers();
+
+            private static DynValue[] CreateByteNumbers()
+            {
+                var values = new DynValue[256];
+                for (int i = 0; i < values.Length; i++)
+                    values[i] = DynValue.NewNumber(i).AsReadOnly();
+                return values;
+            }
+
+            private static DynValue ChannelValue(double value)
+            {
+                int b = (int)value;
+                return b == value && (uint)b < 256u ? s_byteNumbers[b] : DynValue.NewNumber(value);
+            }
+
             [LuaFunction("fill")]
             private DynValue Fill(CallbackArguments args)
             {
@@ -1031,7 +1047,7 @@ namespace LuaScript
                     _regionScratch = new double[count];
                 _activeContext.ReadRegion(x, y, w, h, _regionScratch);
                 for (int i = 0; i < count; i++)
-                    table.Set(i + 1, DynValue.NewNumber(_regionScratch[i]));
+                    table.Set(i + 1, ChannelValue(_regionScratch[i]));
                 return DynValue.NewTable(table);
             }
 
