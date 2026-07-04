@@ -466,10 +466,13 @@
 
         o obj.load(target, ...)
                 Reemplaza el búfer del objeto con contenido generado. Se admiten los
-                targets "figure", "text", "image" (archivo de imagen) y "movie"
-                (archivo de vídeo). Tras la carga, obj.w / obj.h, etc. se actualizan al
+                targets "figure", "text", "image" (archivo de imagen), "movie"
+                (archivo de vídeo), "scene" (escena del proyecto) y "brush"
+                (patrón de YMM4). Tras la carga, obj.w / obj.h, etc. se actualizan al
                 tamaño generado y pueden leerse con getpixel justo después de la carga.
                 Funciona en el motor MoonSharp y en el motor rápido (LuaJIT).
+                * "scene" y "brush" son extensiones exclusivas de YMM4 que no
+                  existen en AviUtl.
 
                 obj.load("figure", name, color, size [, line [, aspect]])
                         Genera una forma y reemplaza el búfer (centrada).
@@ -500,6 +503,27 @@
                         * Por seguridad se valida la cabecera inicial y solo se cargan
                           vídeos genuinos (MP4 / MOV / MKV / WebM / AVI / FLV / ASF).
                         Ejemplo: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+                obj.load("scene", nombreEscena [, tiempo])
+                        Dibuja otra escena del proyecto y reemplaza el búfer.
+                        nombreEscena : El nombre mostrado en la lista de escenas.
+                        tiempo       : Segundos. Por defecto obj.time.
+                        * No se puede indicar la escena a la que pertenece el objeto
+                          actual, ni cargar una escena desde dentro del dibujado de
+                          otra escena.
+                        * Los fotogramas que cargan una escena omiten la caché de
+                          dibujado y se vuelven a ejecutar cada vez.
+                        Ejemplo: obj.load("scene", "Subescena", obj.time)
+
+                obj.load("brush", nombrePatron [, ancho [, alto]])
+                        Genera una imagen rellenada con un patrón (pincel) de YMM4 y
+                        reemplaza el búfer. También pueden usarse patrones añadidos
+                        por plugins de pincel.
+                        nombrePatron : El nombre mostrado en la lista de patrones.
+                        ancho, alto  : Tamaño generado en píxeles. Por defecto los
+                                       obj.w / obj.h actuales.
+                        * El patrón se dibuja con sus parámetros por defecto.
+                        Ejemplo: obj.load("brush", "Rayas", 400, 300)
 
         o obj.setfont(fuente [, tamaño [, estilo [, color]]])
                 Establece la fuente usada por obj.load("text").

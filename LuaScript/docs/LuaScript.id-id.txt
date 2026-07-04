@@ -463,10 +463,13 @@
 
         o obj.load(target, ...)
                 Mengganti buffer objek dengan konten yang dihasilkan. Target "figure",
-                "text", "image" (berkas gambar) dan "movie" (berkas video) didukung.
+                "text", "image" (berkas gambar), "movie" (berkas video), "scene"
+                (adegan proyek) dan "brush" (pola YMM4) didukung.
                 Setelah dimuat, obj.w / obj.h, dll. diperbarui ke ukuran yang
                 dihasilkan dan dapat dibaca oleh getpixel tepat setelah pemuatan.
                 Berfungsi pada mesin MoonSharp maupun mesin cepat (LuaJIT).
+                * "scene" dan "brush" adalah ekstensi khusus YMM4 yang tidak ada
+                  di AviUtl.
 
                 obj.load("figure", name, color, size [, line [, aspect]])
                         Menghasilkan bentuk dan mengganti buffer (dipusatkan).
@@ -497,6 +500,27 @@
                         * Demi keamanan, header awal divalidasi dan hanya video asli
                           (MP4 / MOV / MKV / WebM / AVI / FLV / ASF) yang dimuat.
                         Contoh: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+                obj.load("scene", namaAdegan [, waktu])
+                        Menggambar adegan lain dalam proyek dan mengganti buffer.
+                        namaAdegan : Nama yang ditampilkan pada daftar adegan.
+                        waktu      : Detik. Default obj.time bila dihilangkan.
+                        * Adegan tempat objek saat ini berada tidak dapat dipilih,
+                          dan memuat adegan dari dalam penggambaran adegan juga
+                          ditolak.
+                        * Frame yang memuat adegan melewati cache render dan
+                          dijalankan ulang setiap kali.
+                        Contoh: obj.load("scene", "Sub Adegan", obj.time)
+
+                obj.load("brush", namaPola [, lebar [, tinggi]])
+                        Menghasilkan gambar yang diisi pola (kuas) YMM4 dan
+                        mengganti buffer. Pola yang ditambahkan oleh plugin kuas
+                        juga dapat digunakan.
+                        namaPola      : Nama yang ditampilkan pada daftar pola.
+                        lebar, tinggi : Ukuran keluaran dalam piksel. Default
+                                        obj.w / obj.h saat ini bila dihilangkan.
+                        * Pola digambar dengan parameter default.
+                        Contoh: obj.load("brush", "Garis-garis", 400, 300)
 
         o obj.setfont(font [, size [, style [, color]]])
                 Mengatur font yang digunakan oleh obj.load("text").

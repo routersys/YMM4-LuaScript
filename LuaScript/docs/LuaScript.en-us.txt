@@ -463,10 +463,13 @@
 
         o obj.load(target, ...)
                 Replaces the object buffer with generated content. The targets
-                "figure", "text", "image" (image file) and "movie" (video file)
-                are supported. After loading, obj.w / obj.h, etc. are updated to the
+                "figure", "text", "image" (image file), "movie" (video file),
+                "scene" (project scene) and "brush" (YMM4 pattern) are supported.
+                After loading, obj.w / obj.h, etc. are updated to the
                 generated size and can be read by getpixel right after the load.
                 Works on both the MoonSharp and the fast (LuaJIT) engine.
+                * "scene" and "brush" are YMM4-only extensions that do not exist
+                  in AviUtl.
 
                 obj.load("figure", name, color, size [, line [, aspect]])
                         Generates a shape and replaces the buffer (centered).
@@ -497,6 +500,26 @@
                         * For safety the leading header is validated and only genuine
                           videos (MP4 / MOV / MKV / WebM / AVI / FLV / ASF) are loaded.
                         Example: obj.load("movie", "C:\\mov\\clip.mp4", obj.time)
+
+                obj.load("scene", sceneName [, time])
+                        Renders another scene of the project and replaces the buffer.
+                        sceneName : The name shown in the scene list.
+                        time      : Seconds. Defaults to obj.time when omitted.
+                        * The scene the current object belongs to cannot be specified.
+                          Loading a scene from inside a scene render is also rejected.
+                        * Frames that load a scene bypass the render cache and are
+                          re-executed every time.
+                        Example: obj.load("scene", "Sub Scene", obj.time)
+
+                obj.load("brush", patternName [, width [, height]])
+                        Generates an image filled with a YMM4 pattern (brush) and
+                        replaces the buffer. Patterns added by brush plugins can
+                        also be used.
+                        patternName   : The name shown in the pattern list.
+                        width, height : Output size in pixels. Defaults to the
+                                        current obj.w / obj.h when omitted.
+                        * The pattern is drawn with its default parameters.
+                        Example: obj.load("brush", "Stripe", 400, 300)
 
         o obj.setfont(font [, size [, style [, color]]])
                 Sets the font used by obj.load("text").
