@@ -634,6 +634,53 @@
                   onto a transparent scene-sized area.
                 * The call is skipped in environments without a usable GPU.
 
+        o obj.fill(r, g, b [, a [, x, y, w, h]])  (YMM4 extension)
+                Fills the object image with a color, given as straight RGBA in
+                0-255 (same color model as obj.setpixel).
+                r, g, b   : Color components (0-255).
+                a         : Opacity (0-255). Default is 255.
+                x, y, w, h: Rectangle to fill. Defaults to the whole image; out of
+                            range is clipped.
+                Example: obj.fill(0, 0, 0, 0)                 -- clear to transparent
+                         obj.fill(255, 0, 0, 255, 10, 10, 20, 20)
+                Runs on both engines.
+
+        o obj.getpixelregion(x, y, w, h)  (YMM4 extension)
+                Reads a rectangular region of pixels into a straight RGBA array.
+                The layout is r, g, b, a per pixel and is 1-based (index
+                (row*w+col)*4+1..+4). Pixels outside the image are 0,0,0,0.
+                Returns: an array of length w*h*4.
+                Example: local t = obj.getpixelregion(0, 0, obj.w, obj.h)
+
+        o obj.putpixelregion(x, y, w, h, data)  (YMM4 extension)
+                Writes an array in the same layout as obj.getpixelregion back into a
+                rectangular region. Pixels outside the image are not written.
+                data : straight RGBA array of length w*h*4 (1-based).
+                Example: obj.putpixelregion(0, 0, obj.w, obj.h, t)
+
+        o obj.convolve(kernel, size [, divisor [, offset]])  (YMM4 extension)
+                Applies a size x size convolution to the object image. Useful for
+                blur, sharpen, edge detection and so on.
+                kernel  : size*size coefficients, row-major and 1-based.
+                size    : odd number (3, 5, 7 ...). Even or below 1 is ignored.
+                divisor : divides each pixel sum. Defaults to the kernel sum (1 when
+                          the sum is 0).
+                offset  : added to each component after the division. Default is 0.
+                Edge pixels are extended by the nearest pixel. Applies to r, g, b, a.
+                Example: obj.convolve({1,1,1, 1,1,1, 1,1,1}, 3)      -- box blur
+                         obj.convolve({0,-1,0, -1,5,-1, 0,-1,0}, 3)  -- sharpen
+                Runs on both engines.
+
+        o obj.resize(width, height [, filter])  (YMM4 extension)
+                Scales the object image to the given size. obj.w / obj.h and the
+                other dimensions are updated too.
+                width, height : integers >= 1.
+                filter        : "nearest" for nearest-neighbor, or linear when
+                                omitted.
+                Example: obj.resize(obj.w * 2, obj.h * 2)
+                Runs on both engines. The fast runtime leaves the image unchanged
+                when the result exceeds the maximum image size.
+
         o obj.getvalue(target)
                 Gets the current value of obj (same as obj.x, obj.track0, etc.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

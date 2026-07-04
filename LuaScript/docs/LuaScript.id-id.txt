@@ -637,6 +637,53 @@
                   area transparan seukuran adegan.
                 * Panggilan dilewati pada lingkungan tanpa GPU yang dapat digunakan.
 
+        o obj.fill(r, g, b [, a [, x, y, w, h]])  (ekstensi YMM4)
+                Mengisi gambar objek dengan warna, diberikan sebagai RGBA lurus dalam
+                0-255 (model warna sama dengan obj.setpixel).
+                r, g, b   : Komponen warna (0-255).
+                a         : Opasitas (0-255). Default 255.
+                x, y, w, h: Persegi panjang yang diisi. Default seluruh gambar; di
+                            luar jangkauan dipangkas.
+                Contoh: obj.fill(0, 0, 0, 0)                 -- bersihkan jadi transparan
+                        obj.fill(255, 0, 0, 255, 10, 10, 20, 20)
+                Berjalan di kedua mesin.
+
+        o obj.getpixelregion(x, y, w, h)  (ekstensi YMM4)
+                Membaca wilayah piksel persegi panjang ke dalam larik RGBA lurus.
+                Susunannya r, g, b, a per piksel dan berbasis 1 (indeks
+                (baris*w+kolom)*4+1..+4). Piksel di luar gambar bernilai 0,0,0,0.
+                Mengembalikan: larik sepanjang w*h*4.
+                Contoh: local t = obj.getpixelregion(0, 0, obj.w, obj.h)
+
+        o obj.putpixelregion(x, y, w, h, data)  (ekstensi YMM4)
+                Menulis larik dengan susunan sama seperti obj.getpixelregion kembali
+                ke wilayah persegi panjang. Piksel di luar gambar tidak ditulis.
+                data : larik RGBA lurus sepanjang w*h*4 (berbasis 1).
+                Contoh: obj.putpixelregion(0, 0, obj.w, obj.h, t)
+
+        o obj.convolve(kernel, ukuran [, pembagi [, offset]])  (ekstensi YMM4)
+                Menerapkan konvolusi ukuran x ukuran ke gambar objek. Berguna untuk
+                blur, penajaman, deteksi tepi, dan sebagainya.
+                kernel  : ukuran*ukuran koefisien, urut baris dan berbasis 1.
+                ukuran  : bilangan ganjil (3, 5, 7 ...). Genap atau di bawah 1 diabaikan.
+                pembagi : membagi jumlah tiap piksel. Default jumlah kernel (1 bila
+                          jumlahnya 0).
+                offset  : ditambahkan ke tiap komponen setelah pembagian. Default 0.
+                Piksel tepi diperluas dengan piksel terdekat. Berlaku untuk r, g, b, a.
+                Contoh: obj.convolve({1,1,1, 1,1,1, 1,1,1}, 3)      -- blur rata-rata
+                        obj.convolve({0,-1,0, -1,5,-1, 0,-1,0}, 3)  -- penajaman
+                Berjalan di kedua mesin.
+
+        o obj.resize(lebar, tinggi [, filter])  (ekstensi YMM4)
+                Menskala gambar objek ke ukuran yang diberikan. obj.w / obj.h dan
+                dimensi lainnya ikut diperbarui.
+                lebar, tinggi : bilangan bulat >= 1.
+                filter        : "nearest" untuk tetangga terdekat, atau linear bila
+                                dihilangkan.
+                Contoh: obj.resize(obj.w * 2, obj.h * 2)
+                Berjalan di kedua mesin. Runtime cepat membiarkan gambar tanpa
+                perubahan bila hasilnya melebihi ukuran gambar maksimum.
+
         o obj.getvalue(target)
                 Mengambil nilai saat ini dari obj (sama dengan obj.x, obj.track0, dll.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

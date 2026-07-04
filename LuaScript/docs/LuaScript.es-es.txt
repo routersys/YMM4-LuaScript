@@ -641,6 +641,54 @@
                   sobre un area transparente del tamano de la escena.
                 * La llamada se omite en entornos sin una GPU utilizable.
 
+        o obj.fill(r, g, b [, a [, x, y, w, h]])  (extension de YMM4)
+                Rellena la imagen del objeto con un color, dado como RGBA directo en
+                0-255 (mismo modelo de color que obj.setpixel).
+                r, g, b   : Componentes de color (0-255).
+                a         : Opacidad (0-255). Por defecto 255.
+                x, y, w, h: Rectangulo a rellenar. Por defecto toda la imagen; lo que
+                            queda fuera de rango se recorta.
+                Ejemplo: obj.fill(0, 0, 0, 0)                 -- borrar a transparente
+                         obj.fill(255, 0, 0, 255, 10, 10, 20, 20)
+                Funciona en ambos motores.
+
+        o obj.getpixelregion(x, y, w, h)  (extension de YMM4)
+                Lee una region rectangular de pixeles en un arreglo RGBA directo. La
+                disposicion es r, g, b, a por pixel y empieza en 1 (indice
+                (fila*w+col)*4+1..+4). Los pixeles fuera de la imagen son 0,0,0,0.
+                Devuelve: un arreglo de longitud w*h*4.
+                Ejemplo: local t = obj.getpixelregion(0, 0, obj.w, obj.h)
+
+        o obj.putpixelregion(x, y, w, h, datos)  (extension de YMM4)
+                Escribe un arreglo con la misma disposicion que obj.getpixelregion en
+                una region rectangular. Los pixeles fuera de la imagen no se escriben.
+                datos : arreglo RGBA directo de longitud w*h*4 (empieza en 1).
+                Ejemplo: obj.putpixelregion(0, 0, obj.w, obj.h, t)
+
+        o obj.convolve(kernel, tamano [, divisor [, desplazamiento]])  (extension de YMM4)
+                Aplica una convolucion de tamano x tamano a la imagen del objeto.
+                Util para desenfoque, enfoque, deteccion de bordes, etc.
+                kernel        : tamano*tamano coeficientes, por filas y empieza en 1.
+                tamano        : numero impar (3, 5, 7 ...). Par o menor que 1 se ignora.
+                divisor       : divide la suma de cada pixel. Por defecto la suma del
+                                kernel (1 cuando la suma es 0).
+                desplazamiento: se suma a cada componente tras la division. Por
+                                defecto 0.
+                Los pixeles de borde se extienden con el pixel mas cercano. Se aplica
+                a r, g, b, a.
+                Ejemplo: obj.convolve({1,1,1, 1,1,1, 1,1,1}, 3)      -- desenfoque
+                         obj.convolve({0,-1,0, -1,5,-1, 0,-1,0}, 3)  -- enfoque
+                Funciona en ambos motores.
+
+        o obj.resize(ancho, alto [, filtro])  (extension de YMM4)
+                Escala la imagen del objeto al tamano indicado. obj.w / obj.h y las
+                demas dimensiones tambien se actualizan.
+                ancho, alto : enteros >= 1.
+                filtro      : "nearest" para vecino mas cercano, o lineal si se omite.
+                Ejemplo: obj.resize(obj.w * 2, obj.h * 2)
+                Funciona en ambos motores. El runtime rapido deja la imagen sin
+                cambios cuando el resultado supera el tamano maximo de imagen.
+
         o obj.getvalue(target)
                 Obtiene el valor actual de obj (igual que obj.x, obj.track0, etc.).
                 target : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",

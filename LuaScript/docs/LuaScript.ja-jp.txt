@@ -616,6 +616,51 @@
                   シーンサイズ領域へオブジェクトを合成した仮想の画像です。
                 ※ GPUが使用できない環境では呼び出しはスキップされます。
 
+        ○obj.fill(r, g, b [, a [, x, y, w, h]])  ※YMM4独自拡張
+                オブジェクト画像を指定色で塗りつぶします。色は 0～255 のストレート
+                RGBA で指定します(obj.setpixel と同じ表色)。
+                r, g, b : 色成分(0～255)。
+                a       : 不透明度(0～255)。省略時は 255。
+                x, y, w, h : 塗りつぶす矩形。省略時は画像全体。範囲外は切り詰めます。
+                例：obj.fill(0, 0, 0, 0)                    -- 全体を透明で消去
+                    obj.fill(255, 0, 0, 255, 10, 10, 20, 20)
+                両エンジンで動きます。
+
+        ○obj.getpixelregion(x, y, w, h)  ※YMM4独自拡張
+                矩形領域の画素をストレート RGBA の配列で取得します。並びは画素ごと
+                に r, g, b, a の順で 1 始まりです(索引 (行*w+列)*4+1～+4)。範囲外の
+                画素は 0,0,0,0 になります。
+                戻り値 : 長さ w*h*4 の配列。
+                例：local t = obj.getpixelregion(0, 0, obj.w, obj.h)
+
+        ○obj.putpixelregion(x, y, w, h, データ)  ※YMM4独自拡張
+                obj.getpixelregion と同じ並びの配列を矩形領域へ書き戻します。画像の
+                範囲外へはみ出した画素は書き込みません。
+                データ : 長さ w*h*4 のストレート RGBA 配列(1 始まり)。
+                例：obj.putpixelregion(0, 0, obj.w, obj.h, t)
+
+        ○obj.convolve(カーネル, サイズ [, 除数 [, オフセット]])  ※YMM4独自拡張
+                オブジェクト画像へ サイズ×サイズ の畳み込みを適用します。ぼかし、
+                シャープ、輪郭抽出などに使えます。
+                カーネル   : サイズ*サイズ 個の係数配列(行優先, 1 始まり)。
+                サイズ     : 奇数(3, 5, 7 …)。偶数や 1 未満は無視します。
+                除数       : 各画素の合計をこの値で割ります。省略時はカーネルの
+                             合計(合計が 0 のときは 1)。
+                オフセット : 除算後に各成分へ加算します。省略時は 0。
+                端の画素は最も近い画素で補います。r, g, b, a すべてに適用します。
+                例：obj.convolve({1,1,1, 1,1,1, 1,1,1}, 3)         -- 平均ぼかし
+                    obj.convolve({0,-1,0, -1,5,-1, 0,-1,0}, 3)     -- シャープ
+                両エンジンで動きます。
+
+        ○obj.resize(幅, 高さ [, 補間])  ※YMM4独自拡張
+                オブジェクト画像を指定サイズへ拡大縮小します。obj.w / obj.h などの
+                寸法も更新されます。
+                幅, 高さ : 1 以上の整数。
+                補間     : "nearest"(最近傍)または省略で線形補間。
+                例：obj.resize(obj.w * 2, obj.h * 2)
+                両エンジンで動きます。高速ランタイムでは結果が最大画像サイズを
+                超える場合は変更しません。
+
         ○obj.getvalue(対象)
                 obj の現在値を取得します(obj.x や obj.track0 等と同値)。
                 対象   : "x","y","z","ox","oy","rx","ry","rz","zoom","aspect",
@@ -1016,8 +1061,10 @@
 
         ○描画・合成・読み込み
                 obj.draw / obj.drawpoly による描画合成、obj.copybuffer による
-                バッファ操作、obj.load("figure"/"text"/"image"/"movie") による生成・
-                読み込み、obj.setfont、obj.effect、obj.getvalue、obj.getaudio、obj.getinfo、obj.setoption /
+                バッファ操作、obj.fill / obj.getpixelregion / obj.putpixelregion /
+                obj.convolve / obj.resize による画像加工、obj.load("figure"/"text"/
+                "image"/"movie") による生成・読み込み、obj.setfont、obj.effect、
+                obj.getvalue、obj.getaudio、obj.getinfo、obj.setoption /
                 obj.getoption / obj.pixeloption に対応します。詳細は「obj テーブル -
                 関数」を参照してください。
 
