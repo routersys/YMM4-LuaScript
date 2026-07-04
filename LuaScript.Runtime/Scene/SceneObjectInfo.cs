@@ -9,5 +9,10 @@ namespace LuaScript
         double Zoom,
         double Rz,
         double Alpha,
-        int Layer);
+        int Layer,
+        int Length,
+        double Volume,
+        string Character,
+        string Text,
+        string Kind);
 }
