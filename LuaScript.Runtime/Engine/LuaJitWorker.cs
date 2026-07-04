@@ -79,6 +79,7 @@ namespace LuaScript.Engine
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
             Action<string, SceneValue> sceneSetValue,
+            Func<string, string, int, (int Count, int Rate, double[] Data)> loadAudio,
             PixelShaderInvoke? runPixelShader,
             out bool pixelsDirty,
             out bool bufferReplaced,
@@ -163,7 +164,7 @@ namespace LuaScript.Engine
                 }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, runPixelShader);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, loadAudio, runPixelShader);
                 }
                 _workEvent.Set();
             }
@@ -330,6 +331,7 @@ namespace LuaScript.Engine
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
             Action<string, SceneValue> sceneSetValue,
+            Func<string, string, int, (int Count, int Rate, double[] Data)> loadAudio,
             PixelShaderInvoke? runPixelShader)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
@@ -370,6 +372,9 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindSceneSet:
                     ResolveSceneSetCallback(view, sceneSetValue);
+                    break;
+                case NativeProtocol.CbKindGetAudio:
+                    ResolveGetAudioCallback(view, loadAudio);
                     break;
                 case NativeProtocol.CbKindPixelShaderStage:
                     ResolveShaderStageCallback(view);
@@ -568,6 +573,40 @@ namespace LuaScript.Engine
 
             try { setValue(name, value); }
             catch { }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private static readonly double[] s_noAudioData = [];
+
+        private void ResolveGetAudioCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, string, int, (int Count, int Rate, double[] Data)> loadAudio)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            int separator = Array.IndexOf(_callbackTag, (byte)0, 0, tagLen);
+            string file = Encoding.UTF8.GetString(_callbackTag, 0, separator >= 0 ? separator : tagLen);
+            string type = separator >= 0
+                ? Encoding.UTF8.GetString(_callbackTag, separator + 1, tagLen - separator - 1)
+                : "pcm";
+            int size = (int)view.ReadDouble(NativeProtocol.CallbackResultOffset);
+
+            int count = 0;
+            int rate = 0;
+            double[] data = s_noAudioData;
+            try { (count, rate, data) = loadAudio(file, type, size); }
+            catch
+            {
+                count = 0;
+                rate = 0;
+                data = s_noAudioData;
+            }
+
+            count = Math.Clamp(count, 0, Math.Min(data.Length, NativeProtocol.CallbackTagMax / 8));
+            if (count > 0)
+                view.WriteArray(NativeProtocol.CallbackTagOffset, data, 0, count);
+            view.Write(NativeProtocol.CallbackResultOffset, (double)count);
+            view.Write(NativeProtocol.CallbackResultOffset + 8, (double)rate);
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 

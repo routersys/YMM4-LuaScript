@@ -26,6 +26,7 @@ namespace LuaScript.Tests
         private Func<string, double, double, System.Collections.Generic.IReadOnlyList<System.Collections.Generic.KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> _loadBrush = (_, _, _, _) => ([], 0, 0);
         private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
+        private Func<string, string, int, (int Count, int Rate, double[] Data)> _loadAudio = (_, _, _) => (0, 0, []);
         private PixelShaderInvoke? _runPixelShader;
 
         public void Dispose() => _worker.Dispose();
@@ -74,6 +75,7 @@ namespace LuaScript.Tests
                 width, height, timeoutMs,
                 resolveObject, loadFigure, loadText, loadImage, loadMovie, _loadScene, _loadBrush, addEffect, addDraw, setAnchor,
                 _sceneGet, _sceneSet,
+                _loadAudio,
                 _runPixelShader,
                 out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
 
@@ -110,6 +112,7 @@ namespace LuaScript.Tests
                 },
                 w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, _loadScene, _loadBrush, NoAddEffect, NoAddDraw, NoSetAnchor,
                 _sceneGet, _sceneSet,
+                _loadAudio,
                 _runPixelShader,
                 out _, out _, out _, out _, out string? error);
 
@@ -1265,6 +1268,79 @@ namespace LuaScript.Tests
             Assert.Equal(42d, fields[NativeProtocol.X]);
             Assert.Equal(255d, fields[NativeProtocol.Y]);
             Assert.Equal(0d, fields[NativeProtocol.Z]);
+        }
+
+        [Fact]
+        public void GetAudio_RoundTripsThroughCallback()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            string? capturedFile = null;
+            string? capturedType = null;
+            int capturedSize = -1;
+            _loadAudio = (file, type, size) =>
+            {
+                capturedFile = file;
+                capturedType = type;
+                capturedSize = size;
+                return (4, 48000, [10d, -20d, 30.5d, 40d]);
+            };
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "local buf = {}\n" +
+                "local n, rate = obj.getaudio(buf, 'audiobuffer', 'pcm', 4)\n" +
+                "obj.x = n\n" +
+                "obj.y = rate\n" +
+                "obj.z = buf[1]\n" +
+                "obj.ox = buf[2]\n" +
+                "obj.oy = buf[3]\n" +
+                "obj.oz = buf[4]\n" +
+                "local n2, rate2, buf2 = obj.getaudio(nil, 'C:/test.wav', 'spectrum.l', 2)\n" +
+                "obj.sx = n2\n" +
+                "obj.sy = buf2[1]";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal("C:/test.wav", capturedFile);
+            Assert.Equal("spectrum.l", capturedType);
+            Assert.Equal(2, capturedSize);
+            Assert.Equal(4d, fields[NativeProtocol.X]);
+            Assert.Equal(48000d, fields[NativeProtocol.Y]);
+            Assert.Equal(10d, fields[NativeProtocol.Z]);
+            Assert.Equal(-20d, fields[NativeProtocol.Ox]);
+            Assert.Equal(30.5d, fields[NativeProtocol.Oy]);
+            Assert.Equal(40d, fields[NativeProtocol.Oz]);
+            Assert.Equal(4d, fields[NativeProtocol.Sx]);
+            Assert.Equal(10d, fields[NativeProtocol.Sy]);
+        }
+
+        [Fact]
+        public void GetAudio_FailureYieldsZeroCount()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            _loadAudio = (_, _, _) => throw new InvalidOperationException();
+
+            var pixels = new byte[16];
+            var fields = Fields(2, 2, 0d);
+            const string script =
+                "local n, rate, buf = obj.getaudio(nil, 'audiobuffer', 'pcm', 8)\n" +
+                "obj.x = n\n" +
+                "obj.y = rate\n" +
+                "obj.z = #buf\n" +
+                "local n2 = obj.getaudio({}, 7)\n" +
+                "obj.ox = n2";
+
+            bool ok = RunWorker(script, fields, NoStringParams, () => pixels, 2, 2, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor, out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0d, fields[NativeProtocol.X]);
+            Assert.Equal(0d, fields[NativeProtocol.Y]);
+            Assert.Equal(0d, fields[NativeProtocol.Z]);
+            Assert.Equal(0d, fields[NativeProtocol.Ox]);
         }
 
         [Fact]

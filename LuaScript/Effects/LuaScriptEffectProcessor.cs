@@ -143,6 +143,9 @@ namespace LuaScript
         private SceneImageRenderer? _sceneImageRenderer;
         private BrushImageRenderer? _brushImageRenderer;
         private bool _sceneImageLoaded;
+        private Func<string, string, int, (int Count, int Rate, double[] Data)>? _loadAudio;
+        private AudioSampleProvider? _audioProvider;
+        private bool _audioLoaded;
         private Action<string, IReadOnlyList<KeyValuePair<string, object>>>? _nativeAddEffect;
         private Action<DrawCommand>? _nativeAddDraw;
         private Action<string, int, bool, int, double[]>? _nativeSetAnchor;
@@ -189,6 +192,7 @@ namespace LuaScript
             _context.Compositor = _bufferCompositor;
             _context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
             _context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
+            _context.AudioLoader = _loadAudio ??= LoadAudio;
             return null;
         }
 
@@ -202,6 +206,7 @@ namespace LuaScript
                 context.Compositor = _bufferCompositor;
             context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
             context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
+            context.AudioLoader = _loadAudio ??= LoadAudio;
             return context;
         }
 
@@ -481,6 +486,11 @@ namespace LuaScript
             if (_sceneImageLoaded)
             {
                 _sceneImageLoaded = false;
+                _isFirst = true;
+            }
+            if (_audioLoaded)
+            {
+                _audioLoaded = false;
                 _isFirst = true;
             }
             _cachedKey = key;
@@ -1028,6 +1038,7 @@ namespace LuaScript
             _nativeLoadMovie ??= NativeLoadMovie;
             _loadSceneImage ??= LoadSceneImage;
             _loadBrushImage ??= LoadBrushImage;
+            _loadAudio ??= LoadAudio;
             _nativeAddEffect ??= (name, args) => _context.AddEffect(new AviUtlEffectRequest(name, args));
             _nativeAddDraw ??= command => _context.AddDraw(command);
             _nativeSetAnchor ??= ResolveNativeAnchor;
@@ -1052,6 +1063,7 @@ namespace LuaScript
                 _nativeSetAnchor,
                 _nativeSceneGet,
                 _nativeSceneSet,
+                _loadAudio,
                 _nativeRunPixelShader,
                 out bool dirty, out bool bufferReplaced,
                 out int resultW, out int resultH, out string? error);
@@ -1249,6 +1261,59 @@ namespace LuaScript
             }
         }
 
+        private static readonly (int Count, int Rate, double[] Data) s_noAudio = (0, 0, []);
+
+        private (int Count, int Rate, double[] Data) LoadAudio(string file, string type, int size)
+        {
+            var desc = _frameDesc;
+            if (desc is null)
+                return s_noAudio;
+
+            _audioProvider ??= new AudioSampleProvider();
+            (int Count, int Rate) result;
+            if (string.Equals(file, "audiobuffer", StringComparison.Ordinal))
+            {
+                var (audioItem, scene) = ResolveOwnAudioItem(desc);
+                result = _audioProvider.ReadItem(audioItem, scene, desc.ItemPosition.Time.TotalSeconds, desc.FPS, type, size);
+            }
+            else
+            {
+                result = _audioProvider.ReadFile(file, desc.ItemPosition.Time.TotalSeconds, type, size);
+            }
+
+            if (result.Count > 0)
+                _audioLoaded = true;
+            return (result.Count, result.Rate, _audioProvider.Data);
+        }
+
+        private (IAudioItem? Item, Scene? Scene) ResolveOwnAudioItem(EffectDescription desc)
+        {
+            var scenes = desc.Scenes;
+            if (scenes is null)
+                return (null, null);
+
+            foreach (var info in scenes)
+            {
+                if (info is not Scene scene || scene.ID != desc.SceneId)
+                    continue;
+
+                var items = scene.Timeline.Items;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    if (items[i] is not IVideoItem video)
+                        continue;
+                    var effects = video.VideoEffects;
+                    for (int k = 0; k < effects.Count; k++)
+                    {
+                        if (ReferenceEquals(effects[k], item))
+                            return (items[i] as IAudioItem, scene);
+                    }
+                }
+                return (null, scene);
+            }
+            return (null, null);
+        }
+
         private (byte[] buffer, int w, int h) NativeLoadMovie(string path, double time)
         {
             _nativeMovieDecoder ??= new MovieDecoder();
@@ -1298,6 +1363,7 @@ namespace LuaScript
                 _nativeImageDecoder?.Dispose();
                 _sceneImageRenderer?.Dispose();
                 _brushImageRenderer?.Dispose();
+                _audioProvider?.Dispose();
                 _pixelLoaderSemaphore.Dispose();
                 _pixelManager?.Dispose();
                 _pixelManager = null;
