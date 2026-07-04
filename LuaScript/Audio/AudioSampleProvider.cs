@@ -1,6 +1,7 @@
 using System.Reflection;
 using LuaScript.Compat;
 using YukkuriMovieMaker.Player.Audio;
+using YukkuriMovieMaker.Player.Audio.Effects;
 using YukkuriMovieMaker.Plugin;
 using YukkuriMovieMaker.Plugin.FileSource;
 using YukkuriMovieMaker.Project;
@@ -22,7 +23,10 @@ namespace LuaScript
         private IAudioFileSource? _fileSource;
         private string _fileSourcePath = string.Empty;
 
-        private AudioStreamBase? _itemSource;
+        private IAudioStream? _sceneSource;
+        private Scene? _sceneSourceScene;
+
+        private IAudioStream? _itemSource;
         private IAudioItem? _itemSourceItem;
         private Scene? _itemSourceScene;
         private string? _itemSourceFile;
@@ -67,6 +71,29 @@ namespace LuaScript
             }
         }
 
+        public (int Count, int Rate) ReadScene(Scene? scene, double time, string type, int size)
+        {
+            try
+            {
+                if (scene is null)
+                    return (0, 0);
+
+                if (_sceneSource is null || !ReferenceEquals(scene, _sceneSourceScene))
+                {
+                    _sceneSource?.Dispose();
+                    _sceneSource = null;
+                    scene.TryCreateAudioSource(out _sceneSource);
+                    _sceneSourceScene = scene;
+                }
+
+                return ReadStream(_sceneSource, time, type, size);
+            }
+            catch
+            {
+                return (0, 0);
+            }
+        }
+
         public (int Count, int Rate) ReadItem(IAudioItem? item, Scene? scene, double time, int fps, string type, int size)
         {
             try
@@ -87,36 +114,40 @@ namespace LuaScript
                 {
                     _itemSource?.Dispose();
                     _itemSource = null;
-                    _itemSource = CreateEffectedSource(item, scene, fps);
+                    _itemSource = CreateEffectedSource(item, scene, fps) ?? CreateRawItemSource(item, scene);
                     _itemSourceItem = item;
                     _itemSourceScene = scene;
                     _itemSourceFile = file;
                 }
 
-                var source = _itemSource;
-                if (source is null || source.Hz <= 0)
-                    return (0, 0);
-
-                int floats = EnsureReadBuffer(type, size);
-                if (floats <= 0)
-                    return (0, source.Hz);
-
-                source.Seek(TimeSpan.FromSeconds(Math.Max(0d, time)));
-                int total = 0;
-                while (total < floats)
-                {
-                    int read = source.Read(_readBuffer, total, floats - total);
-                    if (read <= 0)
-                        break;
-                    total += read;
-                }
-
-                return (_converter.Convert(type, _readBuffer, total / 2, size, _data), source.Hz);
+                return ReadStream(_itemSource, time, type, size);
             }
             catch
             {
                 return (0, 0);
             }
+        }
+
+        private (int Count, int Rate) ReadStream(IAudioStream? source, double time, string type, int size)
+        {
+            if (source is null || source.Hz <= 0)
+                return (0, 0);
+
+            int floats = EnsureReadBuffer(type, size);
+            if (floats <= 0)
+                return (0, source.Hz);
+
+            source.Seek(TimeSpan.FromSeconds(Math.Max(0d, time)));
+            int total = 0;
+            while (total < floats)
+            {
+                int read = source.Read(_readBuffer, total, floats - total);
+                if (read <= 0)
+                    break;
+                total += read;
+            }
+
+            return (_converter.Convert(type, _readBuffer, total / 2, size, _data), source.Hz);
         }
 
         private int EnsureReadBuffer(string type, int size)
@@ -130,14 +161,26 @@ namespace LuaScript
             return floats;
         }
 
-        private static AudioStreamBase? CreateEffectedSource(IAudioItem item, Scene scene, int fps)
+        private static IAudioStream? CreateRawItemSource(IAudioItem item, Scene scene)
+        {
+            try
+            {
+                return item.CreateAudioSource(scene);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static IAudioStream? CreateEffectedSource(IAudioItem item, Scene scene, int fps)
         {
             var ctor = ResolveEffectedSourceCtor();
             if (ctor is null)
                 return null;
             try
             {
-                return ctor.Invoke([item, scene, 0, fps, ResamplerMode.Linear, false, false, false]) as AudioStreamBase;
+                return ctor.Invoke([item, scene, 0, fps, ResamplerMode.Linear, false, false, false]) as IAudioStream;
             }
             catch
             {
@@ -175,6 +218,9 @@ namespace LuaScript
         {
             _fileSource?.Dispose();
             _fileSource = null;
+            _sceneSource?.Dispose();
+            _sceneSource = null;
+            _sceneSourceScene = null;
             _itemSource?.Dispose();
             _itemSource = null;
             _itemSourceItem = null;

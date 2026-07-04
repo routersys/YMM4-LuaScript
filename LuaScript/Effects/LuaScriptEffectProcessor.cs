@@ -1273,6 +1273,10 @@ namespace LuaScript
             (int Count, int Rate) result;
             if (string.Equals(file, "audiobuffer", StringComparison.Ordinal))
             {
+                result = _audioProvider.ReadScene(FindOwnScene(desc), desc.TimelinePosition.Time.TotalSeconds, type, size);
+            }
+            else if (string.Equals(file, "itembuffer", StringComparison.Ordinal))
+            {
                 var (audioItem, scene) = ResolveOwnAudioItem(desc);
                 result = _audioProvider.ReadItem(audioItem, scene, desc.ItemPosition.Time.TotalSeconds, desc.FPS, type, size);
             }
@@ -1286,32 +1290,38 @@ namespace LuaScript
             return (result.Count, result.Rate, _audioProvider.Data);
         }
 
-        private (IAudioItem? Item, Scene? Scene) ResolveOwnAudioItem(EffectDescription desc)
+        private static Scene? FindOwnScene(EffectDescription desc)
         {
             var scenes = desc.Scenes;
             if (scenes is null)
-                return (null, null);
-
+                return null;
             foreach (var info in scenes)
             {
-                if (info is not Scene scene || scene.ID != desc.SceneId)
-                    continue;
-
-                var items = scene.Timeline.Items;
-                for (int i = 0; i < items.Count; i++)
-                {
-                    if (items[i] is not IVideoItem video)
-                        continue;
-                    var effects = video.VideoEffects;
-                    for (int k = 0; k < effects.Count; k++)
-                    {
-                        if (ReferenceEquals(effects[k], item))
-                            return (items[i] as IAudioItem, scene);
-                    }
-                }
-                return (null, scene);
+                if (info is Scene scene && scene.ID == desc.SceneId)
+                    return scene;
             }
-            return (null, null);
+            return null;
+        }
+
+        private (IAudioItem? Item, Scene? Scene) ResolveOwnAudioItem(EffectDescription desc)
+        {
+            var scene = FindOwnScene(desc);
+            if (scene is null)
+                return (null, null);
+
+            var items = scene.Timeline.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is not IVideoItem video)
+                    continue;
+                var effects = video.VideoEffects;
+                for (int k = 0; k < effects.Count; k++)
+                {
+                    if (ReferenceEquals(effects[k], item))
+                        return (items[i] as IAudioItem, scene);
+                }
+            }
+            return (null, scene);
         }
 
         private (byte[] buffer, int w, int h) NativeLoadMovie(string path, double time)
