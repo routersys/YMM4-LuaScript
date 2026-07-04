@@ -47,6 +47,10 @@ namespace LuaScript.Engine.Shader
         private readonly ID3D11ShaderResourceView[] _boundViews = new ID3D11ShaderResourceView[MaxResources];
         private readonly ID3D11ShaderResourceView[] _nullViews = new ID3D11ShaderResourceView[MaxResources];
 
+        private byte[] _compositeBuffer = [];
+
+        public IBufferCompositor Compositor { get; set; } = SoftwareCompositor.Instance;
+
         private ID3D11Device? _device;
         private ID3D11DeviceContext? _context;
         private ID3D11VertexShader? _vertexShader;
@@ -203,12 +207,12 @@ namespace LuaScript.Engine.Shader
 
         private void CreateBlendStates(ID3D11Device device)
         {
-            _blendStates[(int)PixelShaderBlend.Copy] = null;
-            _blendStates[(int)PixelShaderBlend.Mask] = device.CreateBlendState(new BlendDescription(
+            _blendStates[(int)PixelShaderBlendMode.Copy] = null;
+            _blendStates[(int)PixelShaderBlendMode.Mask] = device.CreateBlendState(new BlendDescription(
                 Blend.Zero, Blend.One, Blend.Zero, Blend.SourceAlpha));
-            _blendStates[(int)PixelShaderBlend.Draw] = device.CreateBlendState(new BlendDescription(
+            _blendStates[(int)PixelShaderBlendMode.Draw] = device.CreateBlendState(new BlendDescription(
                 Blend.One, Blend.InverseSourceAlpha, Blend.One, Blend.InverseSourceAlpha));
-            _blendStates[(int)PixelShaderBlend.Add] = device.CreateBlendState(new BlendDescription(
+            _blendStates[(int)PixelShaderBlendMode.Add] = device.CreateBlendState(new BlendDescription(
                 Blend.One, Blend.One, Blend.One, Blend.One));
         }
 
@@ -291,15 +295,16 @@ namespace LuaScript.Engine.Shader
         {
             var context = _context!;
 
+            bool composite = blend.Mode == PixelShaderBlendMode.Composite;
             EnsureTarget(width, height);
-            if (blend != PixelShaderBlend.Copy)
+            if (!composite && blend.Mode != PixelShaderBlendMode.Copy)
                 UploadPixels(_targetTexture!, target, width, height);
 
             UploadConstants(constants);
             BindResources(resources);
 
             context.OMSetRenderTargets(_targetView!);
-            context.OMSetBlendState(_blendStates[(int)blend]);
+            context.OMSetBlendState(composite ? null : _blendStates[(int)blend.Mode]);
             context.RSSetViewport(0f, 0f, width, height);
             context.RSSetState(_rasterizer);
             context.IASetInputLayout(null);
@@ -313,7 +318,19 @@ namespace LuaScript.Engine.Shader
             context.PSSetShaderResources(0, _nullViews);
             context.UnsetRenderTargets();
 
-            ReadBack(target, width, height);
+            if (composite)
+            {
+                int length = width * height * 4;
+                if (_compositeBuffer.Length < length)
+                    _compositeBuffer = new byte[length];
+                ReadBack(_compositeBuffer, width, height);
+                Compositor.TryCompose(target, width, height, _compositeBuffer, width, height,
+                    new DrawCommand(width * 0.5, height * 0.5, 0d, 1d, 1d, 0d, null, 0d, blend.CompositeBlend));
+            }
+            else
+            {
+                ReadBack(target, width, height);
+            }
         }
 
         private void EnsureTarget(int width, int height)

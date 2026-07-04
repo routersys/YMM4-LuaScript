@@ -732,6 +732,8 @@ namespace LuaScript
 
             private static PixelShaderBlend ParseShaderBlend(DynValue value)
             {
+                if (value.Type == DataType.Number)
+                    return PixelShaderBlend.Composite(value.Number);
                 if (value.Type != DataType.String)
                     return PixelShaderBlend.Copy;
                 return value.String switch
@@ -740,7 +742,7 @@ namespace LuaScript
                     "mask" => PixelShaderBlend.Mask,
                     "draw" => PixelShaderBlend.Draw,
                     "add" => PixelShaderBlend.Add,
-                    _ => throw new ScriptRuntimeException($"obj.pixelshader: unknown blend '{value.String}'. Use copy, mask, draw or add."),
+                    _ => throw new ScriptRuntimeException($"obj.pixelshader: unknown blend '{value.String}'. Use copy, mask, draw, add or a blend number."),
                 };
             }
 
