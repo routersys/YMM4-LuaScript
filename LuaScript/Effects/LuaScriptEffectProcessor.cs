@@ -143,6 +143,7 @@ namespace LuaScript
         private Action<string, int, bool, int, double[]>? _nativeSetAnchor;
         private Func<string, SceneValue>? _nativeSceneGet;
         private Action<string, SceneValue>? _nativeSceneSet;
+        private PixelShaderInvoke? _nativeRunPixelShader;
 
         private bool _isFirst = true;
         private string _sourceScript = string.Empty;
@@ -961,6 +962,7 @@ namespace LuaScript
             _nativeSetAnchor ??= ResolveNativeAnchor;
             _nativeSceneGet ??= name => _context.GetSceneValue(name);
             _nativeSceneSet ??= (name, value) => _context.SetSceneValue(name, value);
+            _nativeRunPixelShader ??= NativeRunPixelShader;
 
             NativeFieldMap.ToFields(ctx, _nativeFields);
             _nativeUploaded = false;
@@ -977,6 +979,7 @@ namespace LuaScript
                 _nativeSetAnchor,
                 _nativeSceneGet,
                 _nativeSceneSet,
+                _nativeRunPixelShader,
                 out bool dirty, out bool bufferReplaced,
                 out int resultW, out int resultH, out string? error);
 
@@ -1025,6 +1028,39 @@ namespace LuaScript
 
             effectOutput = null;
             return false;
+        }
+
+        private PixelShaderRunStatus NativeRunPixelShader(
+            string name,
+            ReadOnlySpan<PixelShaderInput> resources,
+            ReadOnlySpan<float> constants,
+            PixelShaderBlend blend,
+            PixelShaderSampler sampler,
+            byte[] target,
+            int targetWidth,
+            int targetHeight,
+            out string? error)
+        {
+            error = null;
+            if (!_context.PixelShaders.TryGet(name, out string hlsl))
+            {
+                error = $"obj.pixelshader: shader '{name}' is not defined in this script.";
+                return PixelShaderRunStatus.CompileError;
+            }
+
+            var runner = _pixelShaderRunner;
+            if (runner is null)
+                return PixelShaderRunStatus.Unavailable;
+
+            var status = runner.TryRun(
+                hlsl,
+                AviUtlPixelShaderLibrary.EntryPointOf(name),
+                resources, constants, blend, sampler,
+                target, targetWidth, targetHeight,
+                out error);
+            if (status == PixelShaderRunStatus.CompileError)
+                error = $"obj.pixelshader: shader '{name}' failed to compile.\n{error}";
+            return status;
         }
 
         private void UploadNativeInputPixels(nint address, long capacity)

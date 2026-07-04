@@ -24,6 +24,7 @@ namespace LuaScript.Tests
 
         private Func<string, SceneValue> _sceneGet = _ => SceneValue.Nil;
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
+        private PixelShaderInvoke? _runPixelShader;
 
         public void Dispose() => _worker.Dispose();
 
@@ -71,6 +72,7 @@ namespace LuaScript.Tests
                 width, height, timeoutMs,
                 resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, addDraw, setAnchor,
                 _sceneGet, _sceneSet,
+                _runPixelShader,
                 out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
 
             resultPixels = null;
@@ -106,6 +108,7 @@ namespace LuaScript.Tests
                 },
                 w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 _sceneGet, _sceneSet,
+                _runPixelShader,
                 out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);

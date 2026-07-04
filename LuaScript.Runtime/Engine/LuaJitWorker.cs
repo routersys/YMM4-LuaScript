@@ -38,6 +38,14 @@ namespace LuaScript.Engine
         private byte[] _stringValueBytes = new byte[256];
         private byte[] _sceneValueBytes = new byte[256];
 
+        private static readonly byte[] s_shaderTransparentPixel = new byte[4];
+        private readonly PixelShaderInput[] _shaderInputs = new PixelShaderInput[NativeProtocol.ShaderResourcesMax];
+        private readonly byte[]?[] _shaderResourceData = new byte[NativeProtocol.ShaderResourcesMax][];
+        private readonly float[] _shaderConstants = new float[NativeProtocol.ShaderConstantsMax];
+        private byte[] _shaderTarget = [];
+
+        private long PixelRegionCapacity => _allocatedSize - _pixelOffset - NativeProtocol.ShaderRegionBytes;
+
         public LuaJitWorker(string nativeDir, string scriptPath)
         {
             _nativeDir = nativeDir;
@@ -68,6 +76,7 @@ namespace LuaScript.Engine
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
             Action<string, SceneValue> sceneSetValue,
+            PixelShaderInvoke? runPixelShader,
             out bool pixelsDirty,
             out bool bufferReplaced,
             out int resultWidth,
@@ -151,7 +160,7 @@ namespace LuaScript.Engine
                 }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor, sceneGetValue, sceneSetValue);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, addEffect, setAnchor, sceneGetValue, sceneSetValue, runPixelShader);
                 }
                 _workEvent.Set();
             }
@@ -177,7 +186,7 @@ namespace LuaScript.Engine
             bufferReplaced = resultWidth != width || resultHeight != height;
 
             pixelsDirty = view.ReadInt32(NativeProtocol.OffPixelsDirty) != 0;
-            if (pixelsDirty && (long)resultWidth * resultHeight * 4 > _allocatedSize - _pixelOffset)
+            if (pixelsDirty && (long)resultWidth * resultHeight * 4 > PixelRegionCapacity)
             {
                 error = "native worker reported a pixel buffer beyond capacity";
                 return false;
@@ -196,7 +205,39 @@ namespace LuaScript.Engine
             try
             {
                 long offset = _view.PointerOffset + _pixelOffset;
-                access((nint)(ptr + offset), (long)handle.ByteLength - offset);
+                access((nint)(ptr + offset), PixelRegionCapacity);
+            }
+            finally
+            {
+                handle.ReleasePointer();
+            }
+        }
+
+        private unsafe void ReadRegion(long offset, byte[] destination, int length)
+        {
+            var handle = _view!.SafeMemoryMappedViewHandle;
+            byte* ptr = null;
+            handle.AcquirePointer(ref ptr);
+            try
+            {
+                fixed (byte* dst = destination)
+                    Buffer.MemoryCopy(ptr + _view.PointerOffset + offset, dst, destination.Length, length);
+            }
+            finally
+            {
+                handle.ReleasePointer();
+            }
+        }
+
+        private unsafe void WriteRegion(long offset, byte[] source, int length)
+        {
+            var handle = _view!.SafeMemoryMappedViewHandle;
+            byte* ptr = null;
+            handle.AcquirePointer(ref ptr);
+            try
+            {
+                fixed (byte* src = source)
+                    Buffer.MemoryCopy(src, ptr + _view.PointerOffset + offset, (ulong)handle.ByteLength - (ulong)(_view.PointerOffset + offset), (ulong)length);
             }
             finally
             {
@@ -283,7 +324,8 @@ namespace LuaScript.Engine
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
-            Action<string, SceneValue> sceneSetValue)
+            Action<string, SceneValue> sceneSetValue,
+            PixelShaderInvoke? runPixelShader)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
             switch (kind)
@@ -315,7 +357,140 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindSceneSet:
                     ResolveSceneSetCallback(view, sceneSetValue);
                     break;
+                case NativeProtocol.CbKindPixelShaderStage:
+                    ResolveShaderStageCallback(view);
+                    break;
+                case NativeProtocol.CbKindPixelShaderRun:
+                    ResolveShaderRunCallback(view, runPixelShader);
+                    break;
             }
+        }
+
+        private void ResolveShaderStageCallback(MemoryMappedViewAccessor view)
+        {
+            long meta = NativeProtocol.ShaderMetaOffset(_allocatedSize);
+            int width = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageWidth * 8);
+            int height = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageHeight * 8);
+            int slot = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageKind * 8);
+            if ((uint)slot >= NativeProtocol.ShaderResourcesMax ||
+                !TryStageShaderInput(slot, width, height, NativeProtocol.ShaderImageOffset(_allocatedSize)))
+            {
+                view.Write(NativeProtocol.OffCallbackFound, 0);
+                return;
+            }
+            view.Write(NativeProtocol.OffCallbackFound, 1);
+        }
+
+        private bool TryStageShaderInput(int slot, int width, int height, long sourceOffset)
+        {
+            long length = (long)width * height * 4;
+            if (width <= 0 || height <= 0 || length > NativeProtocol.MaxPixelBufferSize)
+                return false;
+
+            ref byte[]? data = ref _shaderResourceData[slot];
+            if (data is null || data.Length < length)
+                data = new byte[length];
+            ReadRegion(sourceOffset, data, (int)length);
+            _shaderInputs[slot] = new PixelShaderInput(data, width, height);
+            return true;
+        }
+
+        private void ResolveShaderRunCallback(MemoryMappedViewAccessor view, PixelShaderInvoke? runPixelShader)
+        {
+            long meta = NativeProtocol.ShaderMetaOffset(_allocatedSize);
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            string name = ResolveTag(tagLen);
+
+            int resourceCount = Math.Clamp((int)view.ReadDouble(meta + NativeProtocol.ShaderMetaResourceCount * 8), 0, NativeProtocol.ShaderResourcesMax);
+            int blendMode = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaBlendMode * 8);
+            double compositeBlend = view.ReadDouble(meta + NativeProtocol.ShaderMetaCompositeBlend * 8);
+            int samplerValue = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaSampler * 8);
+            int constantCount = Math.Clamp((int)view.ReadDouble(meta + NativeProtocol.ShaderMetaConstantCount * 8), 0, NativeProtocol.ShaderConstantsMax);
+            int targetWidth = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageWidth * 8);
+            int targetHeight = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageHeight * 8);
+            int targetKind = (int)view.ReadDouble(meta + NativeProtocol.ShaderMetaImageKind * 8);
+
+            for (int i = 0; i < resourceCount; i++)
+            {
+                int kind = (int)view.ReadDouble(meta + (NativeProtocol.ShaderMetaResourceKinds + i) * 8);
+                switch (kind)
+                {
+                    case NativeProtocol.ShaderResourceStaged:
+                        break;
+                    case NativeProtocol.ShaderResourceRandom:
+                        _shaderInputs[i] = PixelShaderInput.Random;
+                        break;
+                    case NativeProtocol.ShaderResourceObject:
+                        if (!TryStageShaderInput(i, view.ReadInt32(NativeProtocol.OffWidth), view.ReadInt32(NativeProtocol.OffHeight), _pixelOffset))
+                            _shaderInputs[i] = new PixelShaderInput(s_shaderTransparentPixel, 1, 1);
+                        break;
+                    default:
+                        _shaderInputs[i] = new PixelShaderInput(s_shaderTransparentPixel, 1, 1);
+                        break;
+                }
+            }
+
+            if (constantCount > 0)
+                view.ReadArray(NativeProtocol.ShaderConstantsOffset(_allocatedSize), _shaderConstants, 0, constantCount);
+
+            var status = PixelShaderRunStatus.Unavailable;
+            string? error = null;
+            long targetLength = (long)targetWidth * targetHeight * 4;
+            if (runPixelShader is not null &&
+                targetWidth > 0 && targetHeight > 0 &&
+                targetLength <= NativeProtocol.MaxPixelBufferSize &&
+                (targetKind != NativeProtocol.ShaderTargetObject || targetLength <= PixelRegionCapacity))
+            {
+                int length = (int)targetLength;
+                if (_shaderTarget.Length < length)
+                    _shaderTarget = new byte[length];
+                long targetOffset = targetKind == NativeProtocol.ShaderTargetObject
+                    ? _pixelOffset
+                    : NativeProtocol.ShaderImageOffset(_allocatedSize);
+                ReadRegion(targetOffset, _shaderTarget, length);
+
+                var blend = blendMode switch
+                {
+                    (int)PixelShaderBlendMode.Mask => PixelShaderBlend.Mask,
+                    (int)PixelShaderBlendMode.Draw => PixelShaderBlend.Draw,
+                    (int)PixelShaderBlendMode.Add => PixelShaderBlend.Add,
+                    (int)PixelShaderBlendMode.Composite => PixelShaderBlend.Composite(compositeBlend),
+                    _ => PixelShaderBlend.Copy,
+                };
+                var sampler = (uint)samplerValue <= (uint)PixelShaderSampler.Dot
+                    ? (PixelShaderSampler)samplerValue
+                    : PixelShaderSampler.None;
+
+                try
+                {
+                    status = runPixelShader(
+                        name,
+                        _shaderInputs.AsSpan(0, resourceCount),
+                        _shaderConstants.AsSpan(0, constantCount),
+                        blend, sampler,
+                        _shaderTarget, targetWidth, targetHeight,
+                        out error);
+                }
+                catch
+                {
+                    status = PixelShaderRunStatus.Unavailable;
+                }
+
+                if (status == PixelShaderRunStatus.Success)
+                    WriteRegion(targetOffset, _shaderTarget, length);
+            }
+
+            if (status == PixelShaderRunStatus.CompileError)
+            {
+                var bytes = Encoding.UTF8.GetBytes(error ?? "obj.pixelshader: compile error");
+                int errorLength = Math.Min(bytes.Length, NativeProtocol.CallbackTagMax);
+                view.WriteArray(NativeProtocol.CallbackTagOffset, bytes, 0, errorLength);
+                view.Write(NativeProtocol.OffCallbackTagLen, errorLength);
+            }
+
+            view.Write(meta + NativeProtocol.ShaderMetaStatus * 8, (double)status);
+            view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
         private void ResolveSceneGetCallback(MemoryMappedViewAccessor view, Func<string, SceneValue> getValue)
@@ -496,7 +671,7 @@ namespace LuaScript.Engine
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
-            long capacity = view.Capacity - _pixelOffset;
+            long capacity = PixelRegionCapacity;
             if (pixelSize > capacity)
             {
                 result = (new byte[4], 1, 1);
@@ -531,7 +706,7 @@ namespace LuaScript.Engine
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
-            long capacity = view.Capacity - _pixelOffset;
+            long capacity = PixelRegionCapacity;
             if (pixelSize > capacity)
             {
                 result = (new byte[4], 1, 1);
@@ -557,7 +732,7 @@ namespace LuaScript.Engine
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
-            long capacity = view.Capacity - _pixelOffset;
+            long capacity = PixelRegionCapacity;
             if (pixelSize > capacity)
             {
                 result = (new byte[4], 1, 1);
@@ -584,7 +759,7 @@ namespace LuaScript.Engine
             catch { result = (new byte[4], 1, 1); }
 
             int pixelSize = result.w * result.h * 4;
-            long capacity = view.Capacity - _pixelOffset;
+            long capacity = PixelRegionCapacity;
             if (pixelSize > capacity)
             {
                 result = (new byte[4], 1, 1);
