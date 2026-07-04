@@ -72,6 +72,10 @@ namespace LuaScript
 
         public Func<ISceneObjectResolver>? ResolverProvider { get; set; }
 
+        public Func<string, double, (byte[] Buffer, int Width, int Height)>? SceneImageLoader { get; set; }
+
+        public Func<string, double, double, (byte[] Buffer, int Width, int Height)>? BrushImageLoader { get; set; }
+
         private readonly Dictionary<string, string> _stringParameters = new(StringComparer.Ordinal);
 
         public IReadOnlyDictionary<string, string> StringParameters => _stringParameters;
