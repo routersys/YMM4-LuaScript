@@ -987,6 +987,128 @@ namespace LuaScript
                 };
             }
 
+            private double[] _regionScratch = [];
+            private double[] _kernelScratch = [];
+
+            [LuaFunction("fill")]
+            private DynValue Fill(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null)
+                    return DynValue.Void;
+
+                var ctx = _activeContext;
+                double r = args.Count > 0 ? args[0].CastToNumber() ?? 0d : 0d;
+                double g = args.Count > 1 ? args[1].CastToNumber() ?? 0d : 0d;
+                double b = args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d;
+                double a = args.Count > 3 ? args[3].CastToNumber() ?? 255d : 255d;
+                int x = args.Count > 4 ? (int)(args[4].CastToNumber() ?? 0d) : 0;
+                int y = args.Count > 5 ? (int)(args[5].CastToNumber() ?? 0d) : 0;
+                int w = args.Count > 6 ? (int)(args[6].CastToNumber() ?? 0d) : ctx.ImageWidth;
+                int h = args.Count > 7 ? (int)(args[7].CastToNumber() ?? 0d) : ctx.ImageHeight;
+
+                ctx.FillBuffer(r, g, b, a, x, y, w, h);
+                return DynValue.Void;
+            }
+
+            [LuaFunction("getpixelregion")]
+            private DynValue GetPixelRegion(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || _script is null || args.Count < 4)
+                    return DynValue.Nil;
+
+                int x = (int)(args[0].CastToNumber() ?? 0d);
+                int y = (int)(args[1].CastToNumber() ?? 0d);
+                int w = (int)(args[2].CastToNumber() ?? 0d);
+                int h = (int)(args[3].CastToNumber() ?? 0d);
+                var table = new Table(_script);
+                if (w <= 0 || h <= 0)
+                    return DynValue.NewTable(table);
+
+                int count = w * h * 4;
+                if (_regionScratch.Length < count)
+                    _regionScratch = new double[count];
+                _activeContext.ReadRegion(x, y, w, h, _regionScratch);
+                for (int i = 0; i < count; i++)
+                    table.Set(i + 1, DynValue.NewNumber(_regionScratch[i]));
+                return DynValue.NewTable(table);
+            }
+
+            [LuaFunction("putpixelregion")]
+            private DynValue PutPixelRegion(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 5 || args[4].Type != DataType.Table)
+                    return DynValue.Void;
+
+                int x = (int)(args[0].CastToNumber() ?? 0d);
+                int y = (int)(args[1].CastToNumber() ?? 0d);
+                int w = (int)(args[2].CastToNumber() ?? 0d);
+                int h = (int)(args[3].CastToNumber() ?? 0d);
+                if (w <= 0 || h <= 0)
+                    return DynValue.Void;
+
+                int count = w * h * 4;
+                if (_regionScratch.Length < count)
+                    _regionScratch = new double[count];
+                var table = args[4].Table;
+                for (int i = 0; i < count; i++)
+                    _regionScratch[i] = table.Get(i + 1).CastToNumber() ?? 0d;
+                _activeContext.WriteRegion(x, y, w, h, _regionScratch);
+                return DynValue.Void;
+            }
+
+            [LuaFunction("convolve")]
+            private DynValue Convolve(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 2 || args[0].Type != DataType.Table)
+                    return DynValue.Void;
+
+                int size = (int)(args[1].CastToNumber() ?? 0d);
+                if (size < 1 || (size & 1) == 0)
+                    return DynValue.Void;
+
+                int taps = size * size;
+                var kernel = args[0].Table;
+                if (_kernelScratch.Length < taps)
+                    _kernelScratch = new double[taps];
+                double sum = 0d;
+                for (int i = 0; i < taps; i++)
+                {
+                    double v = kernel.Get(i + 1).CastToNumber() ?? 0d;
+                    _kernelScratch[i] = v;
+                    sum += v;
+                }
+
+                double divisor = args.Count > 2 ? args[2].CastToNumber() ?? sum : sum;
+                if (divisor == 0d)
+                    divisor = 1d;
+                double offset = args.Count > 3 ? args[3].CastToNumber() ?? 0d : 0d;
+
+                _activeContext.Convolve(_kernelScratch, size, divisor, offset);
+                return DynValue.Void;
+            }
+
+            [LuaFunction("resize")]
+            private DynValue Resize(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count < 2)
+                    return DynValue.Void;
+
+                int w = (int)(args[0].CastToNumber() ?? 0d);
+                int h = (int)(args[1].CastToNumber() ?? 0d);
+                if (w <= 0 || h <= 0)
+                    return DynValue.Void;
+
+                bool linear = !(args.Count > 2 && args[2].Type == DataType.String && args[2].String == "nearest");
+                _activeContext.Resize(w, h, linear);
+                RefreshObjDimensions();
+                return DynValue.Void;
+            }
+
             private double CurrentAntialias() =>
                 _options.TryGetValue("antialias", out var value) && value.Type == DataType.Number
                     ? value.Number
