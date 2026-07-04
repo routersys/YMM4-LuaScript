@@ -7,6 +7,7 @@ using LuaScript.Compat;
 using LuaScript.Diagnostics;
 using LuaScript.Engine;
 using LuaScript.Engine.Kernel;
+using LuaScript.Engine.Shader;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
@@ -156,6 +157,10 @@ namespace LuaScript
         private DrawDescription? _cachedOutputDesc;
         private ID2D1Image? _cachedEffectOutput;
 
+        private PixelShaderRunner? _pixelShaderRunner;
+        private AviUtlPixelShaderLibrary _pixelShaderLibrary = AviUtlPixelShaderLibrary.Empty;
+        private string? _pixelShaderSourceRef;
+
         private VideoEffectChain? _effectChain;
         private DrawCompositor? _drawCompositor;
         private FallbackCompositor? _bufferCompositor;
@@ -173,6 +178,7 @@ namespace LuaScript
                 new SynchronizedCompositor(new HardwareCompositor(_ownCtx), _pixelLoaderSemaphore),
                 SoftwareCompositor.Instance,
                 WarnBufferCompositorDegraded);
+            _pixelShaderRunner = new PixelShaderRunner();
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
             return null;
@@ -222,6 +228,17 @@ namespace LuaScript
             _sourceScript = source;
             _runnableCached = true;
             return _runnableScript;
+        }
+
+        private AviUtlPixelShaderLibrary GetPixelShaderLibrary(string source)
+        {
+            if (!ReferenceEquals(_pixelShaderSourceRef, source))
+            {
+                _pixelShaderLibrary = AviUtlPixelShaderLibrary.Parse(source);
+                _pixelShaderSourceRef = source;
+                _pixelShaderRunner?.Invalidate();
+            }
+            return _pixelShaderLibrary;
         }
 
         private static LuaScriptDiagnosticKind ClassifyDiagnostic(LuaScriptException exception) => exception switch
@@ -343,6 +360,8 @@ namespace LuaScript
             _pixelWidth = imgW;
             _pixelHeight = imgH;
             ctx.SetPixelLoader(_pixelLoader ??= LoadPendingInputPixels);
+            ctx.ShaderRunner = _pixelShaderRunner;
+            ctx.PixelShaders = GetPixelShaderLibrary(script);
 
             DrawDescription outDesc = inDesc;
             IReadOnlyList<LuaScriptDiagnostic> diagnostics = [];
@@ -1112,6 +1131,7 @@ namespace LuaScript
             {
                 _engine.Dispose();
                 _gpuKernel?.Dispose();
+                _pixelShaderRunner?.Dispose();
                 _nativeWorker?.Dispose();
                 _effectChain?.Dispose();
                 _drawCompositor?.Dispose();
