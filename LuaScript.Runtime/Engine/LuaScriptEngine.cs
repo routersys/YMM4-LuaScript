@@ -783,6 +783,47 @@ namespace LuaScript
                 return value.Type == DataType.Number ? value : DynValue.NewNumber(0d);
             }
 
+            private static readonly double[] s_noAudioData = [];
+
+            [LuaFunction("getaudio")]
+            private DynValue GetAudio(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || _script is null || args.Count < 2 || args[1].Type != DataType.String)
+                    return DynValue.NewTuple(DynValue.NewNumber(0d), DynValue.NewNumber(0d));
+
+                string file = args[1].String;
+                string type = args.Count > 2 && args[2].Type == DataType.String ? args[2].String : "pcm";
+                int size = args.Count > 3 ? (int)(args[3].CastToNumber() ?? 0d) : 0;
+
+                int count = 0;
+                int rate = 0;
+                double[] data = s_noAudioData;
+                var loader = _activeContext.AudioLoader;
+                if (loader is not null)
+                    (count, rate, data) = loader(file, type, size);
+                if (count > data.Length)
+                    count = data.Length;
+
+                var bufArg = args[0];
+                Table? table = bufArg.Type == DataType.Table ? bufArg.Table : null;
+                bool created = false;
+                if (table is null && bufArg.IsNil())
+                {
+                    table = new Table(_script);
+                    created = true;
+                }
+                if (table is not null)
+                {
+                    for (int i = 0; i < count; i++)
+                        table.Set(i + 1, DynValue.NewNumber(data[i]));
+                }
+
+                return created
+                    ? DynValue.NewTuple(DynValue.NewNumber(count), DynValue.NewNumber(rate), DynValue.NewTable(table!))
+                    : DynValue.NewTuple(DynValue.NewNumber(count), DynValue.NewNumber(rate));
+            }
+
             [LuaFunction("setoption")]
             private DynValue SetOption(CallbackArguments args)
             {
