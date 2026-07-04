@@ -178,7 +178,7 @@ namespace LuaScript
                 new SynchronizedCompositor(new HardwareCompositor(_ownCtx), _pixelLoaderSemaphore),
                 SoftwareCompositor.Instance,
                 WarnBufferCompositorDegraded);
-            _pixelShaderRunner = new PixelShaderRunner();
+            _pixelShaderRunner = new PixelShaderRunner { Compositor = _bufferCompositor };
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
             return null;
@@ -621,6 +621,7 @@ namespace LuaScript
             ctx.AnchorSource = item.Anchors;
             ctx.DrawStateOverride = null;
             ctx.ResetDrawTarget();
+            ctx.ResetFrameBuffer();
 
             ctx.ImageWidth = imgW;
             ctx.ImageHeight = imgH;
