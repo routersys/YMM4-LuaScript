@@ -669,8 +669,8 @@ namespace LuaScript
 
                 if (status == PixelShaderRunStatus.CompileError)
                     throw new ScriptRuntimeException($"obj.pixelshader: shader '{name}' failed to compile.\n{error}");
-                if (status == PixelShaderRunStatus.Success)
-                    ctx.NotifyShaderTargetWritten(target);
+                if (status == PixelShaderRunStatus.Success && ctx.NotifyShaderTargetWritten(target))
+                    RefreshObjDimensions();
                 return DynValue.Void;
             }
 
