@@ -114,7 +114,7 @@ end</code></pre>
 <code>anim.noise</code> が便利です。<code>obj.rand</code> は整数を返す AviUtl 互換の乱数です。
 </div>
 
-<h2>obj.load — 図形・テキスト・画像・動画の読み込み</h2>
+<h2>obj.load — 図形・テキスト・画像・動画・シーン・模様の読み込み</h2>
 
 <p>
 <code>obj.load(種類, ...)</code> は、対象の画像バッファを生成した内容で置き換えます。
@@ -127,7 +127,17 @@ end</code></pre>
 <tr><td><code>obj.load("text", str)</code></td><td>文字列を描画。フォントは <code>obj.setfont</code> の設定を使う</td></tr>
 <tr><td><code>obj.load("image", path)</code></td><td>画像ファイルを読み込む</td></tr>
 <tr><td><code>obj.load("movie", path [, time])</code></td><td>動画の指定時刻のフレームを読み込む（既定は現在時刻）</td></tr>
+<tr><td><code>obj.load("scene", name [, time])</code></td><td>プロジェクト内の別シーンを指定時刻で描画して読み込む（既定は現在時刻）</td></tr>
+<tr><td><code>obj.load("brush", name [, w, h])</code></td><td>YMM4 の模様（ブラシ）で塗り潰した画像を読み込む（既定サイズは現在の <code>obj.w</code> / <code>obj.h</code>）</td></tr>
 </table>
+
+<div class="note">
+<code>"scene"</code> と <code>"brush"</code> は AviUtl に存在しない YMM4 向けの独自拡張です。
+シーン名と模様名には、それぞれ YMM4 のシーン一覧と模様一覧に表示される名前を指定します。
+現在のオブジェクトが乗っているシーン自身は読み込めず、シーン描画の中からさらにシーンを読み込むこともできません。
+シーンを読み込んだフレームは描画キャッシュを使わず毎回再実行されます。
+模様はブラシプラグインで追加したものも使えますが、パラメータは既定値で描画されます。
+</div>
 
 <p><code>obj.load("figure", ...)</code> で指定できる図形名は次のとおりです。</p>
 
