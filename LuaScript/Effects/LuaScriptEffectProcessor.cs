@@ -553,16 +553,47 @@ namespace LuaScript
 
             foreach (var item in items)
             {
-                if (item is not VisualItem visual)
+                if (item is not IVideoItem video)
                     continue;
                 var tag = item.Remark;
                 if (string.IsNullOrEmpty(tag))
                     continue;
 
-                entries.Add(new SceneObjectResolver.Entry(tag, item.Frame, item.Length, item.Layer, visual));
+                var (character, text, kind, volume) = ExtractItemMetadata(item);
+                entries.Add(new SceneObjectResolver.Entry(tag, item.Frame, item.Length, item.Layer, video, volume, character, text, kind));
             }
 
             return new SceneObjectResolver([.. entries], desc.FPS);
+        }
+
+        private static (string Character, string Text, string Kind, Animation? Volume) ExtractItemMetadata(IItem item)
+        {
+            string character = string.Empty;
+            string text = string.Empty;
+            string kind = string.Empty;
+            Animation? volume = null;
+            try
+            {
+                kind = item.GetType().Name;
+                switch (item)
+                {
+                    case VoiceItem voice:
+                        character = voice.CharacterName ?? string.Empty;
+                        text = voice.Serif ?? string.Empty;
+                        volume = voice.Volume;
+                        break;
+                    case TextItem textItem:
+                        text = textItem.Text ?? string.Empty;
+                        break;
+                }
+            }
+            catch
+            {
+                character = string.Empty;
+                text = string.Empty;
+                volume = null;
+            }
+            return (character, text, kind, volume);
         }
 
         private static bool SceneValuesMatch(SceneValueQuery[] queries, SceneSharedValues values, long generation)
