@@ -343,10 +343,15 @@
                 * Jika beberapa item berbagi tag yang sama, item yang tampil
                   pada frame target dikembalikan dengan prioritas. Jika tidak
                   ada yang tampil, item pertama yang cocok dikembalikan.
+                * Item suara (suara sintesis, dll.) juga menjadi target. Untuk item
+                  suara, koordinat, skala, rotasi, dan opasitas adalah milik
+                  tampilan takarir (subtitle)-nya.
                 * Nilai yang dikembalikan adalah koordinat, rotasi, dan skala
                   milik item itu sendiri. Transformasi dari kontrol grup,
                   kontrol kamera, atau efek di atasnya TIDAK disertakan.
                 * Setiap nilai menggunakan sistem satuan yang sama dengan tabel obj.
+                * .character / .text / .volume / .kind / .length adalah ekstensi
+                  khusus YMM4 yang tidak ada di AviUtl. Bekerja pada kedua mesin.
                 tag     : Teks yang diatur pada catatan item target
                 frame   : Frame absolut pada lini masa yang diambil (opsional)
                 Kembali : Tabel informasi objek. Mengembalikan nil jika tidak ada
@@ -366,6 +371,12 @@
                           .rzr   : Sudut rotasi sumbu Z (radian)
                           .alpha : Opasitas (0.0 - 255.0, fade diterapkan)
                           .layer : Nomor layer tempat ditempatkan
+                          .length    : Panjang item (jumlah frame)
+                          .volume    : Nilai pengaturan volume saat ini (hanya item suara; selain itu 0)
+                          .character : Nama karakter (hanya item suara; selain itu string kosong)
+                          .text      : Dialog atau teks yang ditampilkan (hanya item suara dan teks;
+                                       selain itu string kosong)
+                          .kind      : Nama jenis item (mis. VoiceItem, TextItem, ImageItem)
                 Contoh:
                     local funnel = obj.getobject("funnel")
                     if funnel then
@@ -378,6 +389,11 @@
                     if src then
                         obj.x = src.x
                         obj.y = src.y
+                    end
+                Mewarnai ulang berdasarkan nama karakter (catatan target adalah "voice"):
+                    local v = obj.getobject("voice")
+                    if v and v.character == "Marisa" then
+                        obj.effect("Monokrom", "kekuatan", 100, "color", 0xffee55)
                     end
 
         o obj.getpixel(x, y)

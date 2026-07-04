@@ -343,10 +343,15 @@
                 * If multiple items share the same tag, the item visible at the
                   target frame is returned with priority. If none is visible,
                   the first matching item is returned.
+                * Voice items (synthesized voices, etc.) are also targeted. For a
+                  voice item, the coordinates, scale, rotation and opacity are
+                  those of its caption (subtitle) display.
                 * The returned values are the item's own coordinates, rotation
                   and scale. Transforms from group control, camera control or
                   upper effects are NOT included.
                 * Each value uses the same unit system as the obj table.
+                * .character / .text / .volume / .kind / .length are YMM4-specific
+                  extensions that do not exist in AviUtl. They work on both engines.
                 tag     : The string set in the target item's remark
                 frame   : The absolute timeline frame to sample (optional)
                 Return  : An object information table. Returns nil when no
@@ -366,6 +371,12 @@
                           .rzr   : Rotation angle around Z axis (radians)
                           .alpha : Opacity (0.0 - 255.0, fade applied)
                           .layer : Layer number where it is placed
+                          .length    : Item length (number of frames)
+                          .volume    : Current volume setting (voice items only; 0 otherwise)
+                          .character : Character name (voice items only; empty string otherwise)
+                          .text      : Dialogue or displayed text (voice and text items only;
+                                       empty string otherwise)
+                          .kind      : Item type name (e.g. VoiceItem, TextItem, ImageItem)
                 Example:
                     local funnel = obj.getobject("funnel")
                     if funnel then
@@ -378,6 +389,11 @@
                     if src then
                         obj.x = src.x
                         obj.y = src.y
+                    end
+                Recoloring by character name (target remark is "voice"):
+                    local v = obj.getobject("voice")
+                    if v and v.character == "Marisa" then
+                        obj.effect("Monochrome", "strength", 100, "color", 0xffee55)
                     end
 
         o obj.getpixel(x, y)

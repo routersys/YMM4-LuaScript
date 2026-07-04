@@ -346,10 +346,15 @@
                   con prioridad el elemento visible en el fotograma de destino.
                   Si ninguno es visible, se devuelve el primer elemento que
                   coincida.
+                * Los elementos de voz (voces sintetizadas, etc.) también son objetivo.
+                  Para un elemento de voz, las coordenadas, escala, rotación y
+                  opacidad corresponden a la visualización de su subtítulo.
                 * Los valores devueltos son las coordenadas, rotación y escala
                   propias del elemento. NO se incluyen las transformaciones por
                   control de grupo, control de cámara o efectos superiores.
                 * Cada valor usa el mismo sistema de unidades que la tabla obj.
+                * .character / .text / .volume / .kind / .length son extensiones
+                  propias de YMM4 que no existen en AviUtl. Funcionan en ambos motores.
                 tag     : El texto definido en la observación del elemento de destino
                 frame   : El fotograma absoluto de la línea de tiempo (opcional)
                 Retorno : Una tabla de información del objeto. Devuelve nil cuando
@@ -369,6 +374,12 @@
                           .rzr   : Ángulo de rotación en el eje Z (radianes)
                           .alpha : Opacidad (0.0 - 255.0, fundido aplicado)
                           .layer : Número de capa donde está colocado
+                          .length    : Duración del elemento (número de fotogramas)
+                          .volume    : Valor actual del volumen (solo elementos de voz; 0 en otro caso)
+                          .character : Nombre del personaje (solo elementos de voz; cadena vacía en otro caso)
+                          .text      : Diálogo o texto mostrado (solo elementos de voz y texto;
+                                       cadena vacía en otro caso)
+                          .kind      : Nombre del tipo de elemento (p. ej. VoiceItem, TextItem, ImageItem)
                 Ejemplo:
                     local funnel = obj.getobject("funnel")
                     if funnel then
@@ -381,6 +392,11 @@
                     if src then
                         obj.x = src.x
                         obj.y = src.y
+                    end
+                Recolorear según el nombre del personaje (la observación del destino es "voice"):
+                    local v = obj.getobject("voice")
+                    if v and v.character == "Marisa" then
+                        obj.effect("Monocromo", "intensidad", 100, "color", 0xffee55)
                     end
 
         o obj.getpixel(x, y)

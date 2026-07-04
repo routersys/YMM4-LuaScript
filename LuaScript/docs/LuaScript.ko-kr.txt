@@ -331,9 +331,13 @@
                 ※ 같은 태그를 가진 아이템이 여러 개인 경우, 대상 프레임에서
                   표시 중인 아이템을 우선하여 반환합니다. 표시 중인 것이 없으면
                   처음으로 일치한 아이템을 반환합니다.
+                ※ 음성 아이템(합성 음성 등)도 대상이 됩니다. 음성 아이템의
+                  좌표·확대율·회전·불투명도는 자막 표시 정보를 반환합니다.
                 ※ 취득되는 값은 아이템 자신의 좌표·회전·확대율입니다.
                   그룹 제어·카메라 제어·상위 이펙트에 의한 변형은 포함되지 않습니다.
                 ※ 각 값은 obj 테이블과 동일한 단위 체계입니다.
+                ※ .character / .text / .volume / .kind / .length 은 AviUtl 에 없는
+                  YMM4 전용 확장입니다. 두 엔진 모두에서 동작합니다.
                 tag     : 대상 아이템의 비고에 설정한 문자열
                 frame   : 취득할 타임라인의 절대 프레임 (생략 가능)
                 반환값  : 오브젝트 정보 테이블. 일치하는 아이템이 없으면 nil을 반환합니다.
@@ -352,6 +356,11 @@
                           .rzr   : Z축 회전 각도 (라디안)
                           .alpha : 불투명도 (0.0 ～ 255.0, 페이드 반영됨)
                           .layer : 배치 레이어 번호
+                          .length    : 아이템 길이 (프레임 수)
+                          .volume    : 음량 설정의 현재 값 (음성 아이템만. 그 외는 0)
+                          .character : 캐릭터 이름 (음성 아이템만. 그 외는 빈 문자열)
+                          .text      : 대사 또는 표시 텍스트 (음성·텍스트 아이템만. 그 외는 빈 문자열)
+                          .kind      : 아이템 종류 이름 (예: VoiceItem, TextItem, ImageItem)
                 예:
                     local funnel = obj.getobject("funnel")
                     if funnel then
@@ -364,6 +373,11 @@
                     if src then
                         obj.x = src.x
                         obj.y = src.y
+                    end
+                캐릭터 이름으로 색을 바꾸는 예 (대상의 비고가 "voice"인 경우):
+                    local v = obj.getobject("voice")
+                    if v and v.character == "마리사" then
+                        obj.effect("단색화", "강도", 100, "color", 0xffee55)
                     end
 
         ○ obj.getpixel(x, y)
