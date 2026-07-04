@@ -8,11 +8,26 @@ namespace LuaScript
     {
         private const int MaxDimension = 8192;
 
-        private readonly Dictionary<string, IBrushSource?> _sources = new(StringComparer.Ordinal);
+        private sealed class Entry(IBrushParameter parameter, IBrushSource source)
+        {
+            public IBrushParameter Parameter { get; } = parameter;
+            public IBrushSource Source { get; } = source;
+            public string[] AppliedKeys { get; set; } = [];
+        }
+
+        private readonly Dictionary<string, Entry?> _sources = new(StringComparer.Ordinal);
         private GraphicsDevicesAndContext? _ctx;
         private PixelBufferManager? _pixels;
 
-        public bool TryRender(TimelineItemSourceDescription desc, string name, int width, int height, out byte[] pixels, out int outWidth, out int outHeight)
+        public bool TryRender(
+            TimelineItemSourceDescription desc,
+            string name,
+            int width,
+            int height,
+            IReadOnlyList<KeyValuePair<string, object>> arguments,
+            out byte[] pixels,
+            out int outWidth,
+            out int outHeight)
         {
             pixels = [];
             outWidth = 0;
@@ -21,24 +36,42 @@ namespace LuaScript
             if (width <= 0 || height <= 0 || width > MaxDimension || height > MaxDimension)
                 return false;
 
-            if (!_sources.TryGetValue(name, out var source))
+            if (!_sources.TryGetValue(name, out var entry))
             {
-                source = CreateSource(name);
-                _sources[name] = source;
+                entry = CreateEntry(name);
+                _sources[name] = entry;
             }
-            if (source is null)
+            if (entry is null)
                 return false;
+
+            if (!KeysMatch(entry.AppliedKeys, arguments))
+            {
+                entry.Source.Dispose();
+                entry = CreateEntry(name);
+                _sources[name] = entry;
+                if (entry is null)
+                    return false;
+            }
 
             try
             {
-                source.Update(desc);
+                if (arguments.Count > 0)
+                {
+                    Ymm4PropertyBinder.ApplyArguments(entry.Parameter, arguments);
+                    if (entry.AppliedKeys.Length != arguments.Count)
+                        entry.AppliedKeys = new string[arguments.Count];
+                    for (int i = 0; i < arguments.Count; i++)
+                        entry.AppliedKeys[i] = arguments[i].Key;
+                }
+
+                entry.Source.Update(desc);
                 _pixels ??= new PixelBufferManager(_ctx!);
-                pixels = _pixels.LoadBrushPixels(source.Brush, width, height);
+                pixels = _pixels.LoadBrushPixels(entry.Source.Brush, width, height);
             }
             catch
             {
                 _sources.Remove(name);
-                source.Dispose();
+                entry.Source.Dispose();
                 pixels = [];
                 return false;
             }
@@ -48,22 +81,35 @@ namespace LuaScript
             return true;
         }
 
-        private IBrushSource? CreateSource(string name)
+        private static bool KeysMatch(string[] appliedKeys, IReadOnlyList<KeyValuePair<string, object>> arguments)
+        {
+            if (appliedKeys.Length != arguments.Count)
+                return false;
+            for (int i = 0; i < appliedKeys.Length; i++)
+            {
+                if (!string.Equals(appliedKeys[i], arguments[i].Key, StringComparison.Ordinal))
+                    return false;
+            }
+            return true;
+        }
+
+        private Entry? CreateEntry(string name)
         {
             foreach (var plugin in BrushFactory.Plugins)
             {
                 if (!string.Equals(plugin.Name, name, StringComparison.Ordinal))
                     continue;
                 _ctx ??= new GraphicsDevicesAndContext(devices);
-                return plugin.CreateBrushParameter().CreateBrush(_ctx);
+                var parameter = plugin.CreateBrushParameter();
+                return new Entry(parameter, parameter.CreateBrush(_ctx));
             }
             return null;
         }
 
         public void Dispose()
         {
-            foreach (var source in _sources.Values)
-                source?.Dispose();
+            foreach (var entry in _sources.Values)
+                entry?.Source.Dispose();
             _sources.Clear();
             _pixels?.Dispose();
             _ctx?.Dispose();

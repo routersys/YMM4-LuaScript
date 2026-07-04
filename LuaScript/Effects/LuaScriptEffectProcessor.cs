@@ -139,7 +139,7 @@ namespace LuaScript
         private Func<string, (byte[] buffer, int w, int h)>? _nativeLoadImage;
         private Func<string, double, (byte[] buffer, int w, int h)>? _nativeLoadMovie;
         private Func<string, double, (byte[] Buffer, int Width, int Height)>? _loadSceneImage;
-        private Func<string, double, double, (byte[] Buffer, int Width, int Height)>? _loadBrushImage;
+        private Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] Buffer, int Width, int Height)>? _loadBrushImage;
         private SceneImageRenderer? _sceneImageRenderer;
         private BrushImageRenderer? _brushImageRenderer;
         private bool _sceneImageLoaded;
@@ -1194,7 +1194,7 @@ namespace LuaScript
             }
         }
 
-        private (byte[] Buffer, int Width, int Height) LoadBrushImage(string name, double width, double height)
+        private (byte[] Buffer, int Width, int Height) LoadBrushImage(string name, double width, double height, IReadOnlyList<KeyValuePair<string, object>> arguments)
         {
             var desc = _frameDesc;
             var devices = _hostDevices;
@@ -1208,7 +1208,7 @@ namespace LuaScript
             try
             {
                 _brushImageRenderer ??= new BrushImageRenderer(devices);
-                if (!_brushImageRenderer.TryRender(desc, name, w, h, out var pixels, out int outWidth, out int outHeight))
+                if (!_brushImageRenderer.TryRender(desc, name, w, h, arguments, out var pixels, out int outWidth, out int outHeight))
                     return s_noLoadedImage;
                 return (pixels, outWidth, outHeight);
             }

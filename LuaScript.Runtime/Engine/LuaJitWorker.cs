@@ -72,7 +72,7 @@ namespace LuaScript.Engine
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Func<string, double, (byte[] buffer, int w, int h)> loadScene,
-            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush,
+            Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> loadBrush,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<DrawCommand> addDraw,
             Action<string, int, bool, int, double[]> setAnchor,
@@ -324,7 +324,7 @@ namespace LuaScript.Engine
             Func<string, (byte[] buffer, int w, int h)> loadImage,
             Func<string, double, (byte[] buffer, int w, int h)> loadMovie,
             Func<string, double, (byte[] buffer, int w, int h)> loadScene,
-            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush,
+            Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> loadBrush,
             Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect,
             Action<string, int, bool, int, double[]> setAnchor,
             Func<string, SceneValue> sceneGetValue,
@@ -354,6 +354,9 @@ namespace LuaScript.Engine
                     break;
                 case NativeProtocol.CbKindLoadBrush:
                     ResolveLoadBrushCallback(view, loadBrush);
+                    break;
+                case NativeProtocol.CbKindBrush:
+                    ResolveBrushCallback(view, loadBrush);
                     break;
                 case NativeProtocol.CbKindEffect:
                     ResolveEffectCallback(view, addEffect);
@@ -810,20 +813,50 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
+        private static readonly KeyValuePair<string, object>[] s_noBrushArguments = [];
+
         private void ResolveLoadBrushCallback(
             MemoryMappedViewAccessor view,
-            Func<string, double, double, (byte[] buffer, int w, int h)> loadBrush)
+            Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> loadBrush)
         {
             int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
             view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
             string name = Encoding.UTF8.GetString(_callbackTag, 0, tagLen);
 
+            WriteBrushResult(view, loadBrush, name, s_noBrushArguments);
+        }
+
+        private void ResolveBrushCallback(
+            MemoryMappedViewAccessor view,
+            Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> loadBrush)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+
+            var segments = Encoding.UTF8.GetString(_callbackTag, 0, tagLen).Split('\0');
+            if (segments.Length == 0)
+            {
+                view.Write(NativeProtocol.OffLoadResultWidth, 0);
+                view.Write(NativeProtocol.OffLoadResultHeight, 0);
+                view.Write(NativeProtocol.OffCallbackFound, 0);
+                return;
+            }
+
+            WriteBrushResult(view, loadBrush, segments[0], ParseNamedArguments(segments));
+        }
+
+        private void WriteBrushResult(
+            MemoryMappedViewAccessor view,
+            Func<string, double, double, IReadOnlyList<KeyValuePair<string, object>>, (byte[] buffer, int w, int h)> loadBrush,
+            string name,
+            IReadOnlyList<KeyValuePair<string, object>> arguments)
+        {
             long rOff = NativeProtocol.CallbackResultOffset;
             double width = view.ReadDouble(rOff + 0 * 8);
             double height = view.ReadDouble(rOff + 1 * 8);
 
             (byte[] buffer, int w, int h) result;
-            try { result = loadBrush(name, width, height); }
+            try { result = loadBrush(name, width, height, arguments); }
             catch { result = ([], 0, 0); }
 
             long pixelSize = (long)result.w * result.h * 4;
@@ -841,16 +874,11 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }
 
-        private void ResolveEffectCallback(MemoryMappedViewAccessor view, Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect)
+        private static IReadOnlyList<KeyValuePair<string, object>> ParseNamedArguments(string[] segments)
         {
-            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
-            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+            if (segments.Length < 3)
+                return s_noBrushArguments;
 
-            var segments = Encoding.UTF8.GetString(_callbackTag, 0, tagLen).Split('\0');
-            if (segments.Length == 0)
-                return;
-
-            string effectName = segments[0];
             var arguments = new List<KeyValuePair<string, object>>();
             for (int i = 1; i + 1 < segments.Length; i += 2)
             {
@@ -867,8 +895,19 @@ namespace LuaScript.Engine
                     value = raw;
                 arguments.Add(new KeyValuePair<string, object>(key, value));
             }
+            return arguments;
+        }
 
-            try { addEffect(effectName, arguments); }
+        private void ResolveEffectCallback(MemoryMappedViewAccessor view, Action<string, IReadOnlyList<KeyValuePair<string, object>>> addEffect)
+        {
+            int tagLen = Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _callbackTag, 0, tagLen);
+
+            var segments = Encoding.UTF8.GetString(_callbackTag, 0, tagLen).Split('\0');
+            if (segments.Length == 0)
+                return;
+
+            try { addEffect(segments[0], ParseNamedArguments(segments)); }
             catch { }
             view.Write(NativeProtocol.OffCallbackFound, 1);
         }

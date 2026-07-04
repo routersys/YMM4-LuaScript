@@ -557,7 +557,8 @@ namespace LuaScript
                         LoadBrush(
                             args[1].String,
                             args.Count > 2 ? args[2].CastToNumber() ?? 0d : 0d,
-                            args.Count > 3 ? args[3].CastToNumber() ?? 0d : 0d);
+                            args.Count > 3 ? args[3].CastToNumber() ?? 0d : 0d,
+                            s_noNamedArguments);
                         break;
                 }
                 return DynValue.Void;
@@ -873,9 +874,19 @@ namespace LuaScript
                 if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
                     return DynValue.Void;
 
-                string name = args[0].String;
+                _activeContext.AddEffect(new AviUtlEffectRequest(args[0].String, CollectNamedArguments(args, 1)));
+                return DynValue.Void;
+            }
+
+            private static readonly KeyValuePair<string, object>[] s_noNamedArguments = [];
+
+            private static IReadOnlyList<KeyValuePair<string, object>> CollectNamedArguments(CallbackArguments args, int start)
+            {
+                if (start + 1 >= args.Count)
+                    return s_noNamedArguments;
+
                 var arguments = new List<KeyValuePair<string, object>>();
-                for (int i = 1; i + 1 < args.Count; i += 2)
+                for (int i = start; i + 1 < args.Count; i += 2)
                 {
                     if (args[i].Type != DataType.String)
                         continue;
@@ -889,8 +900,27 @@ namespace LuaScript
                     };
                     arguments.Add(new KeyValuePair<string, object>(args[i].String, boxed));
                 }
+                return arguments;
+            }
 
-                _activeContext.AddEffect(new AviUtlEffectRequest(name, arguments));
+            [LuaFunction("brush")]
+            private DynValue Brush(CallbackArguments args)
+            {
+                _activeCancellation.ThrowIfCancellationRequested();
+                if (_activeContext is null || args.Count == 0 || args[0].Type != DataType.String)
+                    return DynValue.Void;
+
+                int start = 1;
+                double width = 0d;
+                double height = 0d;
+                if (args.Count > 2 && args[1].Type == DataType.Number && args[2].Type == DataType.Number)
+                {
+                    width = args[1].Number;
+                    height = args[2].Number;
+                    start = 3;
+                }
+
+                LoadBrush(args[0].String, width, height, CollectNamedArguments(args, start));
                 return DynValue.Void;
             }
 
@@ -971,7 +1001,7 @@ namespace LuaScript
                 RefreshObjDimensions();
             }
 
-            private void LoadBrush(string name, double width, double height)
+            private void LoadBrush(string name, double width, double height, IReadOnlyList<KeyValuePair<string, object>> arguments)
             {
                 var ctx = _activeContext!;
                 var loader = ctx.BrushImageLoader;
@@ -979,7 +1009,7 @@ namespace LuaScript
                     return;
                 double w = width > 0d ? width : ctx.ImageWidth;
                 double h = height > 0d ? height : ctx.ImageHeight;
-                var (buffer, bw, bh) = loader(name, w, h);
+                var (buffer, bw, bh) = loader(name, w, h, arguments);
                 if (bw <= 0 || bh <= 0)
                     return;
                 ctx.ReplaceBuffer(buffer, bw, bh);
