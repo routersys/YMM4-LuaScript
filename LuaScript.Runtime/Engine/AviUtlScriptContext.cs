@@ -196,15 +196,27 @@ namespace LuaScript
                     width = stored.Width;
                     height = stored.Height;
                     return true;
+                case 'f':
+                    GetFrameBuffer(out data, out width, out height);
+                    return true;
                 default:
                     return false;
             }
         }
 
-        internal void NotifyShaderTargetWritten(string id)
+        internal bool NotifyShaderTargetWritten(string id)
         {
-            if (BufferKind(id, out _) == 'o')
-                MarkPixelsDirty();
+            switch (BufferKind(id, out _))
+            {
+                case 'o':
+                    MarkPixelsDirty();
+                    return false;
+                case 'f':
+                    ReplaceBuffer(_frameBuffer, _frameBufferWidth, _frameBufferHeight);
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         internal bool CopyBuffer(string dst, string src)
@@ -239,9 +251,45 @@ namespace LuaScript
                         return true;
                     }
                     return false;
+                case 'f':
+                    GetFrameBuffer(out data, out width, out height);
+                    return true;
                 default:
                     return false;
             }
+        }
+
+        private byte[] _frameBuffer = [];
+        private int _frameBufferWidth;
+        private int _frameBufferHeight;
+        private bool _frameBufferValid;
+
+        internal void ResetFrameBuffer() => _frameBufferValid = false;
+
+        private void GetFrameBuffer(out byte[] data, out int width, out int height)
+        {
+            int w = Math.Max(1, SceneWidth);
+            int h = Math.Max(1, SceneHeight);
+            int length = w * h * 4;
+            if (_frameBuffer.Length < length)
+            {
+                _frameBuffer = new byte[length];
+                _frameBufferValid = false;
+            }
+            if (!_frameBufferValid || _frameBufferWidth != w || _frameBufferHeight != h)
+            {
+                Array.Clear(_frameBuffer, 0, length);
+                _frameBufferWidth = w;
+                _frameBufferHeight = h;
+                EnsurePixelBuffer();
+                if (_pixelBuffer is not null && !ReferenceEquals(_pixelBuffer, _frameBuffer))
+                    Compositor.TryCompose(_frameBuffer, w, h, _pixelBuffer, ImageWidth, ImageHeight,
+                        new DrawCommand(w * 0.5 + X, h * 0.5 + Y, 0d, Zoom, Alpha / 255d, Aspect, null, 1d, 0d));
+                _frameBufferValid = true;
+            }
+            data = _frameBuffer;
+            width = w;
+            height = h;
         }
 
         private bool TryWriteBuffer(string id, byte[] data, int width, int height)

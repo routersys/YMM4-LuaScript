@@ -156,7 +156,7 @@ namespace LuaScript.Tests
             using var engine = CreateEngine();
             var (ctx, runner) = NewContext(ShaderSource);
 
-            engine.Execute(ShaderSource + "\nobj.pixelshader(\"ps\", \"object\", {\"cache:none\", \"framebuffer\"})", ctx);
+            engine.Execute(ShaderSource + "\nobj.pixelshader(\"ps\", \"object\", {\"cache:none\", \"tempbuffer\"})", ctx);
 
             Assert.Equal(2, runner.Resources.Length);
             Assert.All(runner.Resources, static r =>
@@ -198,15 +198,37 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void PixelShader_FramebufferTarget_IsIgnored()
+        public void PixelShader_FramebufferResource_UsesSceneSize()
         {
             using var engine = CreateEngine();
             var (ctx, runner) = NewContext(ShaderSource);
+            ctx.SceneWidth = 8;
+            ctx.SceneHeight = 6;
+
+            engine.Execute(ShaderSource + "\nobj.pixelshader(\"ps\", \"object\", \"framebuffer\")", ctx);
+
+            Assert.Single(runner.Resources);
+            Assert.Equal(8, runner.Resources[0].Width);
+            Assert.Equal(6, runner.Resources[0].Height);
+        }
+
+        [Fact]
+        public void PixelShader_FramebufferTarget_ReplacesObjectBuffer()
+        {
+            using var engine = CreateEngine();
+            var (ctx, runner) = NewContext(ShaderSource);
+            ctx.SceneWidth = 8;
+            ctx.SceneHeight = 6;
 
             engine.Execute(ShaderSource + "\nobj.pixelshader(\"ps\", \"framebuffer\", \"object\")", ctx);
 
-            Assert.Equal(0, runner.CallCount);
-            Assert.False(ctx.IsPixelsDirty);
+            Assert.Equal(1, runner.CallCount);
+            Assert.Equal(8, runner.TargetWidth);
+            Assert.Equal(6, runner.TargetHeight);
+            Assert.True(ctx.IsPixelsDirty);
+            Assert.True(ctx.BufferReplaced);
+            Assert.Equal(8, ctx.ImageWidth);
+            Assert.Equal(6, ctx.ImageHeight);
         }
 
         [Fact]
