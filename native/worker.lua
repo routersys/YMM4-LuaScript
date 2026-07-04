@@ -674,7 +674,7 @@ function obj.setanchor(name, count, ...)
     if type(name) ~= "string" then return 0 end
     count = math.floor(count or 0)
     if count < 0 then count = 0 elseif count > 32 then count = 32 end
-    if name == "track" then return 0 end
+    if name == "track" and count == 0 then count = 1 end
 
     local connection, is3d = 0, false
     local optCount = select("#", ...)
