@@ -97,6 +97,7 @@ local CB_KIND_PIXELSHADER_STAGE = 13
 local CB_KIND_PIXELSHADER_RUN = 14
 local CB_KIND_LOADSCENE = 15
 local CB_KIND_LOADBRUSH = 16
+local CB_KIND_BRUSH = 17
 local MAX_PIXEL_BUFFER = 3840 * 2160 * 4
 local SHADER_META_DOUBLES = 20
 local SHADER_CONSTANTS_MAX = 1024
@@ -550,29 +551,10 @@ local function loadBrush(name, w, h)
     applyLoadResult()
 end
 
-function obj.load(kind, ...)
-    if kind == "figure" then
-        loadFigure(...)
-    elseif kind == "text" then
-        loadText(...)
-    elseif kind == "image" then
-        loadImage(...)
-    elseif kind == "movie" then
-        loadMovie(...)
-    elseif kind == "scene" then
-        loadScene(...)
-    elseif kind == "brush" then
-        loadBrush(...)
-    end
-end
-
-function obj.effect(name, ...)
-    if type(name) ~= "string" then return end
-    local args = { ... }
-    local n = select("#", ...)
+local function writeNamedArgs(name, args, first, n)
     local parts = { name }
     local pos = #name + 1
-    for i = 1, n - 1, 2 do
+    for i = first, n - 1, 2 do
         local k = tostring(args[i])
         local v = args[i + 1]
         local encoded
@@ -594,11 +576,57 @@ function obj.effect(name, ...)
     local len = #payload
     if len > CB_TAG_MAX then len = CB_TAG_MAX end
     ffi.copy(base + CB_TAG_OFFSET, payload, len)
+    return len
+end
+
+function obj.load(kind, ...)
+    if kind == "figure" then
+        loadFigure(...)
+    elseif kind == "text" then
+        loadText(...)
+    elseif kind == "image" then
+        loadImage(...)
+    elseif kind == "movie" then
+        loadMovie(...)
+    elseif kind == "scene" then
+        loadScene(...)
+    elseif kind == "brush" then
+        loadBrush(...)
+    end
+end
+
+function obj.effect(name, ...)
+    if type(name) ~= "string" then return end
+    local args = { ... }
+    local n = select("#", ...)
+    local len = writeNamedArgs(name, args, 1, n)
     i32[OFF_CB_TAGLEN] = len
     i32[OFF_CB_KIND] = CB_KIND_EFFECT
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+function obj.brush(name, ...)
+    if type(name) ~= "string" then return end
+    local args = { ... }
+    local n = select("#", ...)
+    local first = 1
+    local w, h
+    if n >= 2 and type(args[1]) == "number" and type(args[2]) == "number" then
+        w = args[1]
+        h = args[2]
+        first = 3
+    end
+    local len = writeNamedArgs(name, args, first, n)
+    i32[OFF_CB_TAGLEN] = len
+    i32[OFF_CB_KIND] = CB_KIND_BRUSH
+    cbResult[0] = w or width
+    cbResult[1] = h or height
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    applyLoadResult()
 end
 
 function obj.draw(ox, oy, oz, zoom, alpha, aspect)
