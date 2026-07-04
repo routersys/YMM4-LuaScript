@@ -1,10 +1,20 @@
+using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Project.Items;
 
 namespace LuaScript
 {
     internal sealed class SceneObjectResolver : ISceneObjectResolver
     {
-        internal readonly record struct Entry(string Tag, int Frame, int Length, int Layer, VisualItem Item);
+        internal readonly record struct Entry(
+            string Tag,
+            int Frame,
+            int Length,
+            int Layer,
+            IVideoItem Item,
+            Animation? Volume,
+            string Character,
+            string Text,
+            string Kind);
 
         private readonly Entry[] _entries;
         private readonly int _fps;
@@ -46,24 +56,34 @@ namespace LuaScript
 
         private SceneObjectInfo Evaluate(in Entry entry, int timelineFrame)
         {
-            var visual = entry.Item;
+            var video = entry.Item;
             int length = entry.Length;
             int local = Math.Clamp(timelineFrame - entry.Frame, 0, length);
 
-            double x = visual.X.GetValue(local, length, _fps);
-            double y = visual.Y.GetValue(local, length, _fps);
-            double z = visual.Z.GetValue(local, length, _fps);
-            double zoom = visual.Zoom.GetValue(local, length, _fps) / 100d;
-            double rz = visual.Rotation.GetValue(local, length, _fps);
+            double x = video.X.GetValue(local, length, _fps);
+            double y = video.Y.GetValue(local, length, _fps);
+            double z = video.Z.GetValue(local, length, _fps);
+            double zoom = video.Zoom.GetValue(local, length, _fps) / 100d;
+            double rz = video.Rotation.GetValue(local, length, _fps);
 
-            double opacity = visual.Opacity.GetValue(local, length, _fps) / 100d;
+            double opacity = video.Opacity.GetValue(local, length, _fps) / 100d;
             double timeSec = _fps > 0 ? local / (double)_fps : 0d;
             double durationSec = _fps > 0 ? length / (double)_fps : 0d;
-            double fadeIn = visual.FadeIn <= 0d ? 1d : Math.Min(1d, timeSec / visual.FadeIn);
-            double fadeOut = visual.FadeOut <= 0d ? 1d : Math.Min(1d, (durationSec - timeSec) / visual.FadeOut);
+            double fadeIn = video.FadeIn <= 0d ? 1d : Math.Min(1d, timeSec / video.FadeIn);
+            double fadeOut = video.FadeOut <= 0d ? 1d : Math.Min(1d, (durationSec - timeSec) / video.FadeOut);
             double alpha = opacity * Math.Min(fadeIn, fadeOut) * 255d;
 
-            return new SceneObjectInfo(entry.Tag, IsExist(entry, timelineFrame), x, y, z, zoom, rz, alpha, entry.Layer);
+            double volume = 0d;
+            if (entry.Volume is { } volumeAnimation)
+            {
+                try { volume = volumeAnimation.GetValue(local, length, _fps); }
+                catch { volume = 0d; }
+            }
+
+            return new SceneObjectInfo(
+                entry.Tag, IsExist(entry, timelineFrame),
+                x, y, z, zoom, rz, alpha, entry.Layer,
+                length, volume, entry.Character, entry.Text, entry.Kind);
         }
     }
 }
