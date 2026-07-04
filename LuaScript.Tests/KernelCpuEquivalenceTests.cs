@@ -23,6 +23,12 @@ namespace LuaScript.Tests
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,r%64,math.abs(g-128),math.sqrt(b*255),a) end end")]
         [InlineData("local x=99 local k=3 for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,x/obj.w*255+k,g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,math.fmod(r,64),math.fmod(g,7)*36,math.fmod(b-128,60)+128,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r>128 then r=255 end obj.setpixel(x,y,r,g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) local v=(r+g+b)/3 local o=0 if v>128 then o=255 else o=32 end obj.setpixel(x,y,o,o,o,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) local v=(r+g+b)/3 local o=0 if v>170 then o=255 elseif v>85 then o=128 elseif v>40 then o=64 end obj.setpixel(x,y,o,g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r>g then r=g end if b<64 and g>32 then b=g elseif b>192 then b=192 end obj.setpixel(x,y,r,g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) local v=0 if r>128 then local r=g*0.5 v=r+1 if v>100 then v=100 end else v=r end obj.setpixel(x,y,v,g,b,a) end end")]
+        [InlineData("local w=obj.w local h=obj.h for y=0,h-1 do for x=0,w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,x/w*255,y/h*255,b,a) end end")]
         public void CpuKernelMatchesMoonSharp(string script)
         {
             var fields = new Dictionary<string, double> { ["w"] = Width, ["h"] = Height };
@@ -46,6 +52,9 @@ namespace LuaScript.Tests
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,b) pd:set(i+2,g) pd:set(i+3,r) end end")]
         [InlineData("local pd=obj.getpixeldata() for y=0,obj.h-1 do for x=0,obj.w-1 do local i=(y*obj.w+x)*4 local r=pd:get(i+1) local a=pd:get(i+4) pd:set(i+1,r*a/255) pd:set(i+2,pd:get(i+2)*obj.track0/100) pd:set(i+3,math.min(255,pd:get(i+3)+50)) end end")]
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,r*3) pd:set(i+2,g-300) pd:set(i+3,b*2-255) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) pd:set(i+1,255-r) pd:set(i+2,255-g) pd:set(i+3,255-b) end end obj.putpixeldata(pd)")]
+        [InlineData("local data=obj.getpixeldata() local w=data.width local h=data.height for y=0,h-1 do for x=0,w-1 do local i=(y*w+x)*4 local r=data:get(i+1) local g=data:get(i+2) local b=data:get(i+3) data:set(i+1,g) data:set(i+2,b) data:set(i+3,r) end end obj.putpixeldata(data)")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) local g=pd:get(i+2) local b=pd:get(i+3) local v=(r+g+b)/3 local o=0 if v>128 then o=255 end pd:set(i+1,o) pd:set(i+2,o) pd:set(i+3,o) end end")]
         public void GetPixelDataKernelMatchesMoonSharp(string script)
         {
             var fields = new Dictionary<string, double> { ["w"] = Width, ["h"] = Height, ["track0"] = 73d };
@@ -60,6 +69,9 @@ namespace LuaScript.Tests
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local i=i+4 pd:set(i+1,0) pd:set(i+2,0) pd:set(i+3,0) end end")]
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for pd=0,pd.width-1 do local i=(y*2+pd)*4 pd:set(i+1,0) pd:set(i+2,0) pd:set(i+3,0) end end")]
         [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local pd=0 pd:set(i+1,0) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 local r=pd:get(i+1) if r>128 then pd:set(i+1,255) end pd:set(i+2,0) pd:set(i+3,0) end end")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 pd:set(i+1,0) pd:set(i+2,0) pd:set(i+3,0) end end obj.putpixeldata(other)")]
+        [InlineData("local pd=obj.getpixeldata() for y=0,pd.height-1 do for x=0,pd.width-1 do local i=(y*pd.width+x)*4 pd:set(i+1,0) pd:set(i+2,0) pd:set(i+3,0) end end obj.putpixeldata(pd) obj.putpixeldata(pd)")]
         public void GetPixelDataNonKernelScriptsAreRejected(string script)
         {
             Assert.Null(KernelExtractor.TryExtract(script));
@@ -92,8 +104,12 @@ namespace LuaScript.Tests
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) total=total+r obj.setpixel(x,y,r,g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x+1,y) obj.setpixel(x,y,r,g,b,a) end end")]
         [InlineData("for i=0,10 do end")]
-        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r>128 then r=255 end obj.setpixel(x,y,r,g,b,a) end end")]
         [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,obj.rand(0,255),g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r>128 then obj.setpixel(x,y,255,g,b,a) end end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r then r=255 end obj.setpixel(x,y,r,g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) if r>128 then local y=0 r=y end obj.setpixel(x,y,r,g,b,a) end end")]
+        [InlineData("for y=0,obj.h-1 do for x=0,obj.w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,r,g,b,a) end end obj.putpixeldata(pd)")]
+        [InlineData("local w=5 for y=0,obj.h-1 do for x=0,w-1 do local r,g,b,a=obj.getpixel(x,y) obj.setpixel(x,y,r,g,b,a) end end")]
         public void NonKernelScriptsAreRejected(string script)
         {
             Assert.Null(KernelExtractor.TryExtract(script));
@@ -177,6 +193,8 @@ namespace LuaScript.Tests
                 });
                 return DynValue.NewTable(pd);
             });
+
+            obj["putpixeldata"] = DynValue.NewCallback((_, _) => DynValue.Void);
 
             engine.Globals["obj"] = obj;
             engine.DoString(script);
