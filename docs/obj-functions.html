@@ -383,7 +383,7 @@ obj.convolve({ -1,-1,-1, -1,8,-1, -1,-1,-1 }, 3, 1, 0)  -- 輪郭抽出</code></
 </p>
 
 <p>
-<code>obj.fill</code>・<code>obj.convolve</code>・<code>obj.resize</code> は標準では CPU で実行します。呼び出しの直前（単独行でも同一行でも可）に <code>[fast]</code> を置くと処理を GPU へ委譲します。詳細は <a href="syntax.html">拡張構文</a> を参照してください。
+<code>obj.fill</code>・<code>obj.convolve</code>・<code>obj.resize</code> は、処理量がしきい値以上で GPU の結果が CPU と一致すると確認できたとき、自動で GPU へ委譲します。呼び出しの直前（単独行でも同一行でも可）に <code>[fast]</code> を置くと委譲の意図を明示できます（動作は変わりません）。詳細は <a href="syntax.html">拡張構文</a> を参照してください。
 </p>
 
 <h3>アンカーポイント</h3>

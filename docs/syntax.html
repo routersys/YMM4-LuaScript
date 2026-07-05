@@ -252,17 +252,17 @@ end</code></pre>
 <h2>[fast] 高速化マーカー</h2>
 
 <p>
-<code>obj.fill</code> <code>obj.convolve</code> <code>obj.resize</code> の直前に <code>[fast]</code> を置くと、その処理を GPU へ委譲します。標準ではこれらは CPU で実行します。<strong>YMM4 独自拡張</strong>です。
+<code>obj.fill</code> <code>obj.convolve</code> <code>obj.resize</code> は、処理量がしきい値以上で GPU の結果が CPU と一致すると確認できたとき、自動で GPU へ委譲します。<code>[fast]</code> は委譲の意図を明示する補助マーカーで、置いても動作は変わりません。<strong>YMM4 独自拡張</strong>です。
 </p>
 
 <table>
 <tr><th>書き方</th><th>意味</th></tr>
-<tr><td><code>[fast]</code> の次の行に <code>obj.convolve(k, 5)</code></td><td>畳み込みを GPU で実行する</td></tr>
-<tr><td><code>obj.convolve(k, 5)</code></td><td>畳み込みを CPU で実行する</td></tr>
+<tr><td><code>[fast]</code> の次の行に <code>obj.convolve(k, 5)</code></td><td>GPU への委譲を明示する（動作は下と同じ）</td></tr>
+<tr><td><code>obj.convolve(k, 5)</code></td><td>自動で GPU / CPU を判定する</td></tr>
 </table>
 
 <p>
-マーカーは単独の行に置いても、同じ行に続けて書いても構いません。トラックバーで負荷を変えられるようにしておくと、重い設定のときだけ GPU の恩恵を受けられます。
+マーカーは単独の行に置いても、同じ行に続けて書いても構いません。処理が小さいときや GPU が使えないときは自動で CPU 実行になります。
 </p>
 
 <pre><code>--track@size:Size,1,15,3,2
