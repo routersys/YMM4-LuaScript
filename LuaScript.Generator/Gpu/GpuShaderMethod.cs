@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace LuaScript.Generator
 {
     internal sealed record GpuShaderMethod(
@@ -7,7 +5,7 @@ namespace LuaScript.Generator
         bool IsStatic,
         string ReturnType,
         string MethodName,
-        ImmutableArray<GpuShaderParameter> Parameters,
+        EquatableArray<GpuShaderParameter> Parameters,
         string FileName,
         string EntryPoint,
         GpuShaderInvocation Invocation);

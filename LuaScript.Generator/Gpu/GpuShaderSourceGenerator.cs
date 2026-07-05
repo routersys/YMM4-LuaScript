@@ -25,7 +25,8 @@ namespace LuaScript.Generator
             var files = context.AdditionalTextsProvider
                 .Where(static file => file.Path.EndsWith(".hlsl", StringComparison.OrdinalIgnoreCase))
                 .Select(static (file, token) => new GpuShaderFile(Normalize(file.Path), file.GetText(token)?.ToString() ?? string.Empty))
-                .Collect();
+                .Collect()
+                .Select(static (items, _) => new EquatableArray<GpuShaderFile>([.. items]));
 
             context.RegisterSourceOutput(classes.Combine(files), static (context, source) =>
             {
@@ -101,7 +102,7 @@ namespace LuaScript.Generator
                     method.IsStatic,
                     method.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                     method.Name,
-                    [.. parameters],
+                    new EquatableArray<GpuShaderParameter>([.. parameters]),
                     Normalize(fileName),
                     entryPoint,
                     invocation));
@@ -109,9 +110,9 @@ namespace LuaScript.Generator
 
             return new GpuShaderClass(
                 type.ContainingNamespace.IsGlobalNamespace ? string.Empty : type.ContainingNamespace.ToDisplayString(),
-                [.. chain],
-                [.. methods],
-                [.. errors]);
+                new EquatableArray<GpuShaderTypePart>([.. chain]),
+                new EquatableArray<GpuShaderMethod>([.. methods]),
+                new EquatableArray<string>([.. errors]));
         }
 
         private static string? Validate(IMethodSymbol method, string fileName, string entryPoint, out GpuShaderInvocation invocation)
@@ -149,7 +150,7 @@ namespace LuaScript.Generator
             return "signature is invalid";
         }
 
-        private static GpuShaderResolution Resolve(GpuShaderClass model, ImmutableArray<GpuShaderFile> files)
+        private static GpuShaderResolution Resolve(GpuShaderClass model, EquatableArray<GpuShaderFile> files)
         {
             var methods = ImmutableArray.CreateBuilder<GpuShaderMethodSource>();
             var errors = ImmutableArray.CreateBuilder<string>();
@@ -267,7 +268,7 @@ namespace LuaScript.Generator
                 EmitMethod(builder, indent, sources[i]);
             }
 
-            for (int i = model.TypeChain.Length - 1; i >= 0; i--)
+            for (int i = model.TypeChain.Count - 1; i >= 0; i--)
             {
                 indent--;
                 AppendIndent(builder, indent);
@@ -302,7 +303,7 @@ namespace LuaScript.Generator
             builder.Append(' ');
             builder.Append(method.MethodName);
             builder.Append('(');
-            for (int i = 0; i < method.Parameters.Length; i++)
+            for (int i = 0; i < method.Parameters.Count; i++)
             {
                 if (i > 0)
                     builder.Append(", ");
