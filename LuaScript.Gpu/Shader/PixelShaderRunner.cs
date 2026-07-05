@@ -212,6 +212,12 @@ namespace LuaScript.Engine.Shader
                 return _driverType == DriverType.Hardware;
             if (_hardwareUnavailable)
                 return false;
+            if (_recreateBudget <= 0)
+            {
+                _hardwareUnavailable = true;
+                return false;
+            }
+            _recreateBudget--;
             if (!TryCreateDevice(DriverType.Hardware, out var device, out var context))
             {
                 _hardwareUnavailable = true;
