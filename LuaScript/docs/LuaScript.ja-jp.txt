@@ -982,9 +982,12 @@
                 <1..<5> は上限を含みません。左辺は 1 度だけ評価します。
 
         ○[fast]（高速化マーカー）  ※YMM4独自拡張
-                obj.fill / obj.convolve / obj.resize の直前に [fast] を置くと、その
-                処理を GPU へ委譲します。標準ではこれらは CPU で実行します。
-                例：[fast] obj.convolve(kernel, 5)
+                obj.fill / obj.convolve / obj.resize の呼び出しの直前に [fast] を
+                置くと、その処理を GPU へ委譲します。標準ではこれらは CPU で実行
+                します。マーカーは単独の行に置いても、同じ行に続けて書いても
+                構いません。
+                例：[fast]
+                    obj.convolve(kernel, 5)
                 ※ [fast] を付けた対象が上記 3 関数以外のときはエラーを表示します。
                 ※ 従来エンジンと高速ランタイムの両方で動作します。
 

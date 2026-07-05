@@ -1035,9 +1035,11 @@
                 <1..<5> excluye el límite superior. El lado izquierdo se evalúa una sola vez.
 
         o [fast] (marcador de aceleración)  * extensión de YMM4
-                Colocar [fast] justo antes de obj.fill / obj.convolve / obj.resize
-                delega esa operación a la GPU. De forma predeterminada se ejecutan en la CPU.
-                Ejemplo: [fast] obj.convolve(kernel, 5)
+                Colocar [fast] justo antes de una llamada a obj.fill / obj.convolve /
+                obj.resize delega esa operación a la GPU. De forma predeterminada se
+                ejecutan en la CPU. El marcador puede ir en su propia línea o en la misma.
+                Ejemplo: [fast]
+                         obj.convolve(kernel, 5)
                 * Se muestra un error cuando [fast] precede a algo distinto de esas tres funciones.
                 * Funciona tanto en el motor MoonSharp como en el nativo.
 

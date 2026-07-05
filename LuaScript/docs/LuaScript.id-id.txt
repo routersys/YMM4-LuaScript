@@ -1025,9 +1025,12 @@
                 <1..<5> tidak menyertakan batas atas. Sisi kiri dievaluasi sekali.
 
         o [fast] (penanda akselerasi)  * ekstensi YMM4
-                Menempatkan [fast] tepat sebelum obj.fill / obj.convolve / obj.resize
-                mendelegasikan operasi tersebut ke GPU. Secara default operasi ini berjalan di CPU.
-                Contoh: [fast] obj.convolve(kernel, 5)
+                Menempatkan [fast] tepat sebelum panggilan obj.fill / obj.convolve /
+                obj.resize mendelegasikan operasi tersebut ke GPU. Secara default
+                operasi ini berjalan di CPU. Penanda boleh di baris tersendiri atau
+                di baris yang sama.
+                Contoh: [fast]
+                        obj.convolve(kernel, 5)
                 * Kesalahan ditampilkan jika [fast] mendahului selain ketiga fungsi tersebut.
                 * Berfungsi pada mesin MoonSharp maupun native.
 

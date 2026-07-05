@@ -257,11 +257,21 @@ end</code></pre>
 
 <table>
 <tr><th>書き方</th><th>意味</th></tr>
-<tr><td><code>[fast] obj.convolve(k, 5)</code></td><td>畳み込みを GPU で実行する</td></tr>
+<tr><td><code>[fast]</code> の次の行に <code>obj.convolve(k, 5)</code></td><td>畳み込みを GPU で実行する</td></tr>
 <tr><td><code>obj.convolve(k, 5)</code></td><td>畳み込みを CPU で実行する</td></tr>
 </table>
 
-<pre><code>[fast] obj.resize(obj.w * 2, obj.h * 2)</code></pre>
+<p>
+マーカーは単独の行に置いても、同じ行に続けて書いても構いません。トラックバーで負荷を変えられるようにしておくと、重い設定のときだけ GPU の恩恵を受けられます。
+</p>
+
+<pre><code>--track@size:Size,1,15,3,2
+local n = math.floor(obj.track0)
+if n % 2 == 0 then n = n + 1 end
+local k = {}
+for i = 1, n * n do k[i] = 1 end
+[fast]
+obj.convolve(k, n)</code></pre>
 
 <div class="note">
 文の先頭でのみマーカーとして働くため、<code>t[fast]</code> のような添字アクセスは変換しません。<code>[fast]</code> を付けた対象が上記 3 関数以外のときはエラーを表示します。従来エンジンと高速ランタイムの両方で動作します。
