@@ -1926,6 +1926,7 @@ namespace LuaScript.Tests
             Assert.True(ok, error);
             Assert.True(dirty);
             Assert.Equal(1, processor.FillCalls);
+            Assert.True(processor.LastFillForce);
             Assert.Equal(0x41, pixels[0]);
             Assert.Equal(0x41, pixels[^1]);
         }
@@ -1952,6 +1953,7 @@ namespace LuaScript.Tests
             Assert.Equal(45d, processor.Divisor);
             Assert.Equal(6d, processor.Offset);
             Assert.Equal(new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, processor.Kernel);
+            Assert.True(processor.LastConvolveForce);
             Assert.Equal(0x42, pixels[0]);
             Assert.Equal(0x42, pixels[^1]);
         }
@@ -1985,6 +1987,7 @@ namespace LuaScript.Tests
             Assert.NotNull(result);
             Assert.Equal(0x43, result![0]);
             Assert.Equal(0x43, result[^1]);
+            Assert.True(processor.LastResizeForce);
         }
 
         [Fact]
@@ -2005,6 +2008,7 @@ namespace LuaScript.Tests
             Assert.True(ok, error);
             Assert.True(dirty);
             Assert.Equal(1, processor.FillCalls);
+            Assert.False(processor.LastFillForce);
             Assert.Equal(0x41, pixels[0]);
             Assert.Equal(0x41, pixels[^1]);
         }
@@ -2031,6 +2035,7 @@ namespace LuaScript.Tests
             Assert.Equal(45d, processor.Divisor);
             Assert.Equal(6d, processor.Offset);
             Assert.Equal(new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, processor.Kernel);
+            Assert.False(processor.LastConvolveForce);
         }
 
         [Fact]
@@ -2053,6 +2058,7 @@ namespace LuaScript.Tests
             Assert.Equal(1, processor.ResizeCalls);
             Assert.Equal(512, rw);
             Assert.Equal(512, rh);
+            Assert.False(processor.LastResizeForce);
         }
 
         [Fact]
@@ -2110,6 +2116,66 @@ namespace LuaScript.Tests
 
             Assert.True(ok, error);
             Assert.Equal(0, processor.ResizeCalls);
+        }
+
+        [Fact]
+        public void PixelProcess_ForcedFastFill_BelowThresholdUsesHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 64, h = 64;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { FillResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "__fast_fill(10, 20, 30, 40)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1, processor.FillCalls);
+            Assert.True(processor.LastFillForce);
+        }
+
+        [Fact]
+        public void PixelProcess_ForcedFastConvolve_BelowThresholdUsesHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 8, h = 8;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ConvolveResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "__fast_convolve({1, 1, 1, 1, 1, 1, 1, 1, 1}, 3)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1, processor.ConvolveCalls);
+            Assert.True(processor.LastConvolveForce);
+        }
+
+        [Fact]
+        public void PixelProcess_ForcedFastResize_BelowThresholdUsesHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ResizeResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "__fast_resize(4, 4, 'nearest')",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(1, processor.ResizeCalls);
+            Assert.True(processor.LastResizeForce);
         }
 
         [Fact]
@@ -2363,35 +2429,41 @@ namespace LuaScript.Tests
             public int TargetWidth { get; private set; }
             public int TargetHeight { get; private set; }
             public bool Linear { get; private set; }
+            public bool LastFillForce { get; private set; }
+            public bool LastConvolveForce { get; private set; }
+            public bool LastResizeForce { get; private set; }
 
-            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight, bool force = false)
             {
                 FillCalls++;
+                LastFillForce = force;
                 if (!FillResult)
                     return false;
                 Array.Fill(target, (byte)0x41, 0, width * height * 4);
                 return true;
             }
 
-            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset, bool force = false)
             {
                 ConvolveCalls++;
                 Size = size;
                 Divisor = divisor;
                 Offset = offset;
                 Kernel = kernel.AsSpan(0, size * size).ToArray();
+                LastConvolveForce = force;
                 if (!ConvolveResult)
                     return false;
                 Array.Fill(target, (byte)0x42, 0, width * height * 4);
                 return true;
             }
 
-            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target, bool force = false)
             {
                 ResizeCalls++;
                 TargetWidth = targetWidth;
                 TargetHeight = targetHeight;
                 Linear = linear;
+                LastResizeForce = force;
                 target = null;
                 if (!ResizeResult)
                     return false;

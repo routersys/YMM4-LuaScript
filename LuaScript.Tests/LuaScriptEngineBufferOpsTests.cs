@@ -57,22 +57,28 @@ namespace LuaScript.Tests
             public int FillCalls;
             public int ConvolveCalls;
             public int ResizeCalls;
+            public bool LastFillForce;
+            public bool LastConvolveForce;
+            public bool LastResizeForce;
 
-            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight, bool force = false)
             {
                 FillCalls++;
+                LastFillForce = force;
                 return false;
             }
 
-            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset, bool force = false)
             {
                 ConvolveCalls++;
+                LastConvolveForce = force;
                 return false;
             }
 
-            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target, bool force = false)
             {
                 ResizeCalls++;
+                LastResizeForce = force;
                 target = null;
                 return false;
             }
@@ -93,6 +99,27 @@ namespace LuaScript.Tests
             Assert.Equal(1, processor.ResizeCalls);
             Assert.Equal(4, ctx.ImageWidth);
             Assert.Equal(4, ctx.ImageHeight);
+            Assert.False(processor.LastFillForce);
+            Assert.False(processor.LastConvolveForce);
+            Assert.False(processor.LastResizeForce);
+        }
+
+        [Fact]
+        public void FastMarker_ForcesPixelProcessorRegardlessOfSize()
+        {
+            using var engine = CreateEngine();
+            var ctx = NewContext(new byte[2 * 2 * 4], 2, 2);
+            var processor = new RecordingProcessor();
+            ctx.PixelProcessor = processor;
+
+            engine.Execute("__fast_fill(200, 100, 50, 255) __fast_convolve({1,1,1,1,1,1,1,1,1}, 3) __fast_resize(4, 4)", ctx);
+
+            Assert.Equal(1, processor.FillCalls);
+            Assert.Equal(1, processor.ConvolveCalls);
+            Assert.Equal(1, processor.ResizeCalls);
+            Assert.True(processor.LastFillForce);
+            Assert.True(processor.LastConvolveForce);
+            Assert.True(processor.LastResizeForce);
         }
 
         [Fact]
