@@ -28,6 +28,7 @@ namespace LuaScript.Tests
         private Action<string, SceneValue> _sceneSet = (_, _) => { };
         private Func<string, string, int, (int Count, int Rate, double[] Data)> _loadAudio = (_, _, _) => (0, 0, []);
         private PixelShaderInvoke? _runPixelShader;
+        private IPixelBufferProcessor? _pixelProcessor;
 
         public void Dispose() => _worker.Dispose();
 
@@ -77,6 +78,7 @@ namespace LuaScript.Tests
                 _sceneGet, _sceneSet,
                 _loadAudio,
                 _runPixelShader,
+                _pixelProcessor,
                 out pixelsDirty, out bufferReplaced, out resultWidth, out resultHeight, out error);
 
             resultPixels = null;
@@ -114,6 +116,7 @@ namespace LuaScript.Tests
                 _sceneGet, _sceneSet,
                 _loadAudio,
                 _runPixelShader,
+                null,
                 out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
@@ -1906,6 +1909,85 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void PixelProcess_Fill_UsesHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 1024, h = 1024;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { FillResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.fill(10, 20, 30, 40, 0, 0, 1024, 1024)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(1, processor.FillCalls);
+            Assert.Equal(0x41, pixels[0]);
+            Assert.Equal(0x41, pixels[^1]);
+        }
+
+        [Fact]
+        public void PixelProcess_Convolve_PassesKernelToHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 200, h = 200;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ConvolveResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.convolve({1, 2, 3, 4, 5, 6, 7, 8, 9}, 3, 45, 6)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.Equal(1, processor.ConvolveCalls);
+            Assert.Equal(3, processor.Size);
+            Assert.Equal(45d, processor.Divisor);
+            Assert.Equal(6d, processor.Offset);
+            Assert.Equal(new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, processor.Kernel);
+            Assert.Equal(0x42, pixels[0]);
+            Assert.Equal(0x42, pixels[^1]);
+        }
+
+        [Fact]
+        public void PixelProcess_Resize_ReplacesBufferWithHostResult()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ResizeResult = true };
+            _pixelProcessor = processor;
+            var fields = Fields(w, h, 0d);
+
+            bool ok = RunWorker(
+                "obj.resize(512, 512, 'nearest') obj.x = obj.w obj.y = obj.h",
+                fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out bool dirty, out bool replaced, out byte[]? result, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(dirty);
+            Assert.True(replaced);
+            Assert.Equal(512, rw);
+            Assert.Equal(512, rh);
+            Assert.Equal(512d, processor.TargetWidth);
+            Assert.Equal(512d, processor.TargetHeight);
+            Assert.False(processor.Linear);
+            Assert.Equal(512d, fields[NativeProtocol.X]);
+            Assert.Equal(512d, fields[NativeProtocol.Y]);
+            Assert.NotNull(result);
+            Assert.Equal(0x43, result![0]);
+            Assert.Equal(0x43, result[^1]);
+        }
+
+        [Fact]
         public void Fill_WritesPremultipliedColor()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
@@ -2115,6 +2197,57 @@ namespace LuaScript.Tests
             Assert.Equal(8d, fields[NativeProtocol.X]);
             Assert.Equal(2d, fields[NativeProtocol.Y]);
             Assert.Equal(Math.Sqrt(8d * 8d + 2d * 2d), fields[NativeProtocol.Z]);
+        }
+
+        private sealed class RecordingPixelProcessor : IPixelBufferProcessor
+        {
+            public bool FillResult { get; init; }
+            public bool ConvolveResult { get; init; }
+            public bool ResizeResult { get; init; }
+            public int FillCalls { get; private set; }
+            public int ConvolveCalls { get; private set; }
+            public int Size { get; private set; }
+            public double Divisor { get; private set; }
+            public double Offset { get; private set; }
+            public double[] Kernel { get; private set; } = [];
+            public int TargetWidth { get; private set; }
+            public int TargetHeight { get; private set; }
+            public bool Linear { get; private set; }
+
+            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+            {
+                FillCalls++;
+                if (!FillResult)
+                    return false;
+                Array.Fill(target, (byte)0x41, 0, width * height * 4);
+                return true;
+            }
+
+            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+            {
+                ConvolveCalls++;
+                Size = size;
+                Divisor = divisor;
+                Offset = offset;
+                Kernel = kernel.AsSpan(0, size * size).ToArray();
+                if (!ConvolveResult)
+                    return false;
+                Array.Fill(target, (byte)0x42, 0, width * height * 4);
+                return true;
+            }
+
+            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+            {
+                TargetWidth = targetWidth;
+                TargetHeight = targetHeight;
+                Linear = linear;
+                target = null;
+                if (!ResizeResult)
+                    return false;
+                target = new byte[targetWidth * targetHeight * 4];
+                Array.Fill(target, (byte)0x43);
+                return true;
+            }
         }
     }
 }

@@ -44,6 +44,8 @@ namespace LuaScript.Engine
         private readonly byte[]?[] _shaderResourceData = new byte[NativeProtocol.ShaderResourcesMax][];
         private readonly float[] _shaderConstants = new float[NativeProtocol.ShaderConstantsMax];
         private byte[] _shaderTarget = [];
+        private byte[] _pixelProcessTarget = [];
+        private double[] _pixelProcessKernel = [];
 
         private long PixelRegionCapacity => _allocatedSize - _pixelOffset - NativeProtocol.ShaderRegionBytes;
 
@@ -81,6 +83,7 @@ namespace LuaScript.Engine
             Action<string, SceneValue> sceneSetValue,
             Func<string, string, int, (int Count, int Rate, double[] Data)> loadAudio,
             PixelShaderInvoke? runPixelShader,
+            IPixelBufferProcessor? pixelProcessor,
             out bool pixelsDirty,
             out bool bufferReplaced,
             out int resultWidth,
@@ -124,6 +127,7 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffScriptVersion, _scriptVersion);
             view.Write(NativeProtocol.OffPixelsDirty, 0);
             view.Write(NativeProtocol.OffErrorLen, 0);
+            view.Write(NativeProtocol.OffCallbackFound, pixelProcessor is null ? -1 : 1);
             view.Write(NativeProtocol.OffStatus, NativeProtocol.StatusIdle);
             view.Write(NativeProtocol.OffCommand, NativeProtocol.CmdRun);
 
@@ -164,7 +168,7 @@ namespace LuaScript.Engine
                 }
                 else
                 {
-                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, loadAudio, runPixelShader);
+                    DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, loadAudio, runPixelShader, pixelProcessor);
                 }
                 _workEvent.Set();
             }
@@ -332,7 +336,8 @@ namespace LuaScript.Engine
             Func<string, SceneValue> sceneGetValue,
             Action<string, SceneValue> sceneSetValue,
             Func<string, string, int, (int Count, int Rate, double[] Data)> loadAudio,
-            PixelShaderInvoke? runPixelShader)
+            PixelShaderInvoke? runPixelShader,
+            IPixelBufferProcessor? pixelProcessor)
         {
             int kind = view.ReadInt32(NativeProtocol.OffCallbackKind);
             switch (kind)
@@ -382,7 +387,98 @@ namespace LuaScript.Engine
                 case NativeProtocol.CbKindPixelShaderRun:
                     ResolveShaderRunCallback(view, runPixelShader);
                     break;
+                case NativeProtocol.CbKindPixelProcess:
+                    ResolvePixelProcessCallback(view, pixelProcessor);
+                    break;
             }
+        }
+
+        private void ResolvePixelProcessCallback(MemoryMappedViewAccessor view, IPixelBufferProcessor? pixelProcessor)
+        {
+            bool processed = false;
+            if (pixelProcessor is not null)
+            {
+                int width = view.ReadInt32(NativeProtocol.OffWidth);
+                int height = view.ReadInt32(NativeProtocol.OffHeight);
+                long length = (long)width * height * 4;
+                if (width > 0 && height > 0 && length <= PixelRegionCapacity && length <= int.MaxValue)
+                {
+                    int pixelLength = (int)length;
+                    if (_pixelProcessTarget.Length < pixelLength)
+                        _pixelProcessTarget = new byte[pixelLength];
+
+                    int operation = (int)view.ReadDouble(NativeProtocol.CallbackResultOffset);
+                    processed = operation switch
+                    {
+                        NativeProtocol.PixelProcessFill => TryProcessFill(view, pixelProcessor, width, height, pixelLength),
+                        NativeProtocol.PixelProcessConvolve => TryProcessConvolve(view, pixelProcessor, width, height, pixelLength),
+                        NativeProtocol.PixelProcessResize => TryProcessResize(view, pixelProcessor, pixelLength),
+                        _ => false,
+                    };
+                }
+            }
+
+            view.Write(NativeProtocol.OffCallbackFound, processed ? 1 : pixelProcessor is null ? -1 : 0);
+        }
+
+        private bool TryProcessFill(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength)
+        {
+            long offset = NativeProtocol.CallbackResultOffset;
+            double r = view.ReadDouble(offset + 1 * 8);
+            double g = view.ReadDouble(offset + 2 * 8);
+            double b = view.ReadDouble(offset + 3 * 8);
+            double a = view.ReadDouble(offset + 4 * 8);
+            int x = (int)view.ReadDouble(offset + 5 * 8);
+            int y = (int)view.ReadDouble(offset + 6 * 8);
+            int fillWidth = (int)view.ReadDouble(offset + 7 * 8);
+            int fillHeight = (int)view.ReadDouble(offset + 8 * 8);
+            if (x != 0 || y != 0 || fillWidth != width || fillHeight != height)
+                ReadRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
+            if (!pixelProcessor.TryFill(_pixelProcessTarget, width, height, r, g, b, a, x, y, fillWidth, fillHeight))
+                return false;
+            WriteRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
+            return true;
+        }
+
+        private bool TryProcessConvolve(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength)
+        {
+            long offset = NativeProtocol.CallbackResultOffset;
+            int size = (int)view.ReadDouble(offset + 1 * 8);
+            double divisor = view.ReadDouble(offset + 2 * 8);
+            double kernelOffset = view.ReadDouble(offset + 3 * 8);
+            if (size < 1 || (size & 1) == 0)
+                return false;
+            int taps = size * size;
+            if (taps <= 0 || taps * 8 > Math.Clamp(view.ReadInt32(NativeProtocol.OffCallbackTagLen), 0, NativeProtocol.CallbackTagMax))
+                return false;
+            if (_pixelProcessKernel.Length < taps)
+                _pixelProcessKernel = new double[taps];
+            ReadRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
+            view.ReadArray(NativeProtocol.CallbackTagOffset, _pixelProcessKernel, 0, taps);
+            if (!pixelProcessor.TryConvolve(_pixelProcessTarget, width, height, _pixelProcessKernel, size, divisor, kernelOffset))
+                return false;
+            WriteRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
+            return true;
+        }
+
+        private bool TryProcessResize(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int sourceLength)
+        {
+            long offset = NativeProtocol.CallbackResultOffset;
+            int targetWidth = (int)view.ReadDouble(offset + 1 * 8);
+            int targetHeight = (int)view.ReadDouble(offset + 2 * 8);
+            bool linear = view.ReadDouble(offset + 3 * 8) != 0d;
+            long length = (long)targetWidth * targetHeight * 4;
+            int sourceWidth = view.ReadInt32(NativeProtocol.OffWidth);
+            int sourceHeight = view.ReadInt32(NativeProtocol.OffHeight);
+            if (targetWidth <= 0 || targetHeight <= 0 || length > PixelRegionCapacity || length > int.MaxValue)
+                return false;
+            ReadRegion(_pixelOffset, _pixelProcessTarget, sourceLength);
+            if (!pixelProcessor.TryResize(_pixelProcessTarget, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out var target) || target is null)
+                return false;
+            WriteRegion(_pixelOffset, target, (int)length);
+            view.Write(NativeProtocol.OffWidth, targetWidth);
+            view.Write(NativeProtocol.OffHeight, targetHeight);
+            return true;
         }
 
         private void ResolveShaderStageCallback(MemoryMappedViewAccessor view)

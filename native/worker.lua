@@ -99,6 +99,14 @@ local CB_KIND_LOADSCENE = 15
 local CB_KIND_LOADBRUSH = 16
 local CB_KIND_BRUSH = 17
 local CB_KIND_GETAUDIO = 18
+local CB_KIND_PIXELPROCESS = 19
+local PIXEL_PROCESS_FILL = 0
+local PIXEL_PROCESS_CONVOLVE = 1
+local PIXEL_PROCESS_RESIZE = 2
+local PIXEL_PROCESS_FILL_FULL_THRESHOLD = 1048576
+local PIXEL_PROCESS_FILL_PARTIAL_THRESHOLD = 1048576
+local PIXEL_PROCESS_RESIZE_THRESHOLD = 262144
+local PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD = 262144
 local MAX_PIXEL_BUFFER = 3840 * 2160 * 4
 local SHADER_META_DOUBLES = 20
 local SHADER_CONSTANTS_MAX = 1024
@@ -134,6 +142,7 @@ local drawTarget = "frame"
 local pdData, pdCapacity, pdValid, pdDirty = nil, 0, false, false
 local convSrcData, convSrcCap = nil, 0
 local resizeSrcData, resizeSrcCap = nil, 0
+local pixelProcessAvailable = true
 
 local function ensurePixels()
     if pixelsValid then return end
@@ -149,6 +158,19 @@ local function flushDraws()
     i32[OFF_STATUS] = STATUS_CALLBACK
     k32.SetEvent(doneEvent)
     k32.WaitForSingleObject(workEvent, INFINITE)
+end
+
+local function tryPixelProcess(kind)
+    if not pixelProcessAvailable then return false end
+    cbResult[0] = kind
+    i32[OFF_CB_FOUND] = 0
+    i32[OFF_CB_KIND] = CB_KIND_PIXELPROCESS
+    i32[OFF_STATUS] = STATUS_CALLBACK
+    k32.SetEvent(doneEvent)
+    k32.WaitForSingleObject(workEvent, INFINITE)
+    local found = i32[OFF_CB_FOUND]
+    if found < 0 then pixelProcessAvailable = false end
+    return found == 1
 end
 
 local function ringSlot(kind)
@@ -853,6 +875,29 @@ function obj.fill(r, g, b, a, x, y, w, h)
     local x1 = clamp(x + w, 0, width)
     local y1 = clamp(y + h, 0, height)
     if x1 <= x0 or y1 <= y0 then return end
+    local imageArea = width * height
+    local fillArea = (x1 - x0) * (y1 - y0)
+    local fullFill = x0 == 0 and y0 == 0 and x1 == width and y1 == height
+    local usePixelProcess = false
+    if fullFill then
+        usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_FULL_THRESHOLD
+    else
+        usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_PARTIAL_THRESHOLD and fillArea * 4 >= imageArea * 3
+    end
+    cbResult[1] = r
+    cbResult[2] = g
+    cbResult[3] = b
+    cbResult[4] = a
+    cbResult[5] = x0
+    cbResult[6] = y0
+    cbResult[7] = x1 - x0
+    cbResult[8] = y1 - y0
+    if usePixelProcess and tryPixelProcess(PIXEL_PROCESS_FILL) then
+        dirty = true
+        pdValid = false
+        pdDirty = false
+        return
+    end
     local aK = clamp(a, 0, 255) / 255
     local pb = math.floor(clamp(b * aK, 0, 255))
     local pg = math.floor(clamp(g * aK, 0, 255))
@@ -946,6 +991,21 @@ function obj.convolve(kernel, size, divisor, offset)
     local inv = divisor or sum
     if inv == 0 then inv = 1 end
     offset = offset or 0
+    if taps * 8 <= CB_TAG_MAX and width * height * taps >= PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD then
+        cbResult[1] = size
+        cbResult[2] = inv
+        cbResult[3] = offset
+        for i = 1, taps do
+            cbTagD[i - 1] = k[i]
+        end
+        i32[OFF_CB_TAGLEN] = taps * 8
+        if tryPixelProcess(PIXEL_PROCESS_CONVOLVE) then
+            dirty = true
+            pdValid = false
+            pdDirty = false
+            return
+        end
+    end
     local total = width * height * 4
     if not convSrcData or convSrcCap < total then
         convSrcData = ffi.new("double[?]", total)
@@ -1007,6 +1067,24 @@ function obj.resize(newW, newH, mode)
     ensurePixels()
     flushPixelData()
     local cw, ch = width, height
+    local linear = mode ~= "nearest"
+    cbResult[1] = newW
+    cbResult[2] = newH
+    cbResult[3] = linear and 1 or 0
+    if newW * newH >= PIXEL_PROCESS_RESIZE_THRESHOLD and tryPixelProcess(PIXEL_PROCESS_RESIZE) then
+        width = newW; height = newH
+        i32[OFF_WIDTH] = newW; i32[OFF_HEIGHT] = newH
+        dirty = true
+        pixelsValid = true
+        pdValid = false
+        pdDirty = false
+        obj.w = newW; obj.h = newH
+        obj.hw = newW / 2; obj.hh = newH / 2
+        obj.cx = newW / 2; obj.cy = newH / 2
+        obj.cz = 0
+        obj.diagonal = math.sqrt(newW * newW + newH * newH)
+        return
+    end
     local srcCount = cw * ch * 4
     if not resizeSrcData or resizeSrcCap < srcCount then
         resizeSrcData = ffi.new("uint8_t[?]", srcCount)
@@ -1014,7 +1092,6 @@ function obj.resize(newW, newH, mode)
     end
     ffi.copy(resizeSrcData, pixels, srcCount)
     local src = resizeSrcData
-    local linear = mode ~= "nearest"
     for y = 0, newH - 1 do
         for x = 0, newW - 1 do
             local o = pixels + (y * newW + x) * 4
@@ -1477,6 +1554,7 @@ while true do
     pixelsValid = false
     pdValid = false
     pdDirty = false
+    pixelProcessAvailable = i32[OFF_CB_FOUND] > 0
     frameBufferValid = false
     ringD[0] = 0
     local version = i32[OFF_SCRIPT_VERSION]

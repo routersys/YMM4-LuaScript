@@ -67,6 +67,11 @@ namespace LuaScript.Engine
         public const int CbKindLoadBrush = 16;
         public const int CbKindBrush = 17;
         public const int CbKindGetAudio = 18;
+        public const int CbKindPixelProcess = 19;
+
+        public const int PixelProcessFill = 0;
+        public const int PixelProcessConvolve = 1;
+        public const int PixelProcessResize = 2;
 
         public const int DrawRingCapacity = 4096;
         public const int DrawEntryDoubles = 24;

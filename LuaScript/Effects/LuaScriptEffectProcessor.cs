@@ -1079,6 +1079,7 @@ namespace LuaScript
                 _nativeSceneSet,
                 _loadAudio,
                 _nativeRunPixelShader,
+                _pixelProcessor,
                 out bool dirty, out bool bufferReplaced,
                 out int resultW, out int resultH, out string? error);
 
