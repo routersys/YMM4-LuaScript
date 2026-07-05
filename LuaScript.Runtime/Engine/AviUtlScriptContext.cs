@@ -169,6 +169,8 @@ namespace LuaScript
 
         internal IPixelShaderRunner? ShaderRunner { get; set; }
 
+        internal IPixelBufferProcessor? PixelProcessor { get; set; }
+
         internal AviUtlPixelShaderLibrary PixelShaders { get; set; } = AviUtlPixelShaderLibrary.Empty;
 
         internal bool TryGetShaderResource(string id, out byte[] data, out int width, out int height) =>
@@ -524,6 +526,12 @@ namespace LuaScript
             if (x1 <= x0 || y1 <= y0)
                 return;
 
+            if (PixelProcessor?.TryFill(_pixelBuffer, cw, ch, r, g, b, a, x0, y0, x1 - x0, y1 - y0) == true)
+            {
+                _isPixelsDirty = true;
+                return;
+            }
+
             _isPixelsDirty = true;
             double aK = Math.Clamp(a, 0d, 255d) / 255d;
             byte pb = (byte)Math.Clamp(b * aK, 0d, 255d);
@@ -641,6 +649,12 @@ namespace LuaScript
 
             int cw = ImageWidth;
             int ch = ImageHeight;
+            if (PixelProcessor?.TryConvolve(_pixelBuffer, cw, ch, kernel, size, divisor, offset) == true)
+            {
+                _isPixelsDirty = true;
+                return;
+            }
+
             int count = cw * ch * 4;
             if (_convolveSource is null || _convolveSource.Length < count)
                 _convolveSource = new double[count];
@@ -719,6 +733,12 @@ namespace LuaScript
             newHeight = Math.Max(1, newHeight);
             int cw = ImageWidth;
             int ch = ImageHeight;
+
+            if (PixelProcessor?.TryResize(_pixelBuffer, cw, ch, newWidth, newHeight, linear, out var processed) == true && processed is not null)
+            {
+                ReplaceBuffer(processed, newWidth, newHeight);
+                return;
+            }
 
             int srcCount = cw * ch * 4;
             if (_resizeSource is null || _resizeSource.Length < srcCount)
