@@ -1037,9 +1037,11 @@
         o [fast] (marcador de aceleración)  * extensión de YMM4
                 obj.fill / obj.convolve / obj.resize se delegan automáticamente a la
                 GPU cuando la carga supera un umbral y el resultado de la GPU se
-                verifica como idéntico al de la CPU. [fast] es un marcador auxiliar
-                que declara la intención de forma explícita; añadirlo no cambia el
-                comportamiento. El marcador puede ir en su propia línea o en la misma.
+                verifica como idéntico al de la CPU. [fast] ignora ese umbral de
+                carga y fuerza la delegación a la GPU. Cuando no hay GPU disponible
+                o el resultado de la GPU no coincide con el de la CPU, [fast]
+                sigue recayendo automáticamente en la CPU. El marcador puede ir
+                en su propia línea o en la misma.
                 Ejemplo: [fast]
                          obj.convolve(kernel, 5)
                 * Se muestra un error cuando [fast] precede a algo distinto de esas tres funciones.

@@ -930,8 +930,9 @@
 
         ○ [fast]（加速标记）  ※YMM4专有扩展
                 当处理量达到阈值且 GPU 结果经验证与 CPU 一致时，obj.fill /
-                obj.convolve / obj.resize 会自动委托给 GPU。[fast] 是显式表明
-                委托意图的辅助标记，加上它不会改变行为。标记可以单独占一行，
+                obj.convolve / obj.resize 会自动委托给 GPU。加上 [fast] 会
+                无视处理量阈值，强制委托给 GPU。若环境没有 GPU，或 GPU 结果
+                与 CPU 不一致，[fast] 仍会自动回退到 CPU。标记可以单独占一行，
                 也可以写在同一行。
                 例：[fast]
                     obj.convolve(kernel, 5)
