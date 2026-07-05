@@ -1919,7 +1919,7 @@ namespace LuaScript.Tests
             _pixelProcessor = processor;
 
             bool ok = RunWorker(
-                "obj.fill(10, 20, 30, 40, 0, 0, 1024, 1024)",
+                "__fast_fill(10, 20, 30, 40, 0, 0, 1024, 1024)",
                 Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
 
@@ -1941,7 +1941,7 @@ namespace LuaScript.Tests
             _pixelProcessor = processor;
 
             bool ok = RunWorker(
-                "obj.convolve({1, 2, 3, 4, 5, 6, 7, 8, 9}, 3, 45, 6)",
+                "__fast_convolve({1, 2, 3, 4, 5, 6, 7, 8, 9}, 3, 45, 6)",
                 Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out _, out _, out _, out _, out string? error);
 
@@ -1968,7 +1968,7 @@ namespace LuaScript.Tests
             var fields = Fields(w, h, 0d);
 
             bool ok = RunWorker(
-                "obj.resize(512, 512, 'nearest') obj.x = obj.w obj.y = obj.h",
+                "__fast_resize(512, 512, 'nearest') obj.x = obj.w obj.y = obj.h",
                 fields, NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out bool dirty, out bool replaced, out byte[]? result, out int rw, out int rh, out string? error);
 
@@ -1985,6 +1985,63 @@ namespace LuaScript.Tests
             Assert.NotNull(result);
             Assert.Equal(0x43, result![0]);
             Assert.Equal(0x43, result[^1]);
+        }
+
+        [Fact]
+        public void PixelProcess_DefaultFill_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 1024, h = 1024;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { FillResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.fill(10, 20, 30, 40, 0, 0, 1024, 1024)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, processor.FillCalls);
+        }
+
+        [Fact]
+        public void PixelProcess_DefaultConvolve_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 200, h = 200;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ConvolveResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.convolve({1, 2, 3, 4, 5, 6, 7, 8, 9}, 3, 45, 6)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, processor.ConvolveCalls);
+        }
+
+        [Fact]
+        public void PixelProcess_DefaultResize_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ResizeResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.resize(512, 512, 'nearest')",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, processor.ResizeCalls);
         }
 
         [Fact]
@@ -2206,6 +2263,7 @@ namespace LuaScript.Tests
             public bool ResizeResult { get; init; }
             public int FillCalls { get; private set; }
             public int ConvolveCalls { get; private set; }
+            public int ResizeCalls { get; private set; }
             public int Size { get; private set; }
             public double Divisor { get; private set; }
             public double Offset { get; private set; }
@@ -2238,6 +2296,7 @@ namespace LuaScript.Tests
 
             public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
             {
+                ResizeCalls++;
                 TargetWidth = targetWidth;
                 TargetHeight = targetHeight;
                 Linear = linear;

@@ -578,5 +578,70 @@ namespace LuaScript.Tests
         {
             Assert.Equal("for i = 0, 10 do end", Rewrite("for i in <0..10> do end"));
         }
+
+        [Theory]
+        [InlineData("[fast] obj.fill(0, 0, 0, 255)", " __fast_fill(0, 0, 0, 255)")]
+        [InlineData("[fast] obj.convolve(k, 3)", " __fast_convolve(k, 3)")]
+        [InlineData("[fast] obj.resize(100, 100)", " __fast_resize(100, 100)")]
+        [InlineData("[ fast ] obj.resize(100, 100)", " __fast_resize(100, 100)")]
+        [InlineData("[fast]obj.fill()", "__fast_fill()")]
+        [InlineData("    [fast] obj.fill()", "     __fast_fill()")]
+        public void Fast_RewritesAcceleratedPrimitive(string source, string expected)
+        {
+            Assert.Equal(expected, Rewrite(source));
+        }
+
+        [Fact]
+        public void Fast_RewritesInsideBlock()
+        {
+            Assert.Equal(
+                "for i = 1, 3 do  __fast_fill(i, i, i, 255) end",
+                Rewrite("for i in <1..3> do [fast] obj.fill(i, i, i, 255) end"));
+        }
+
+        [Theory]
+        [InlineData("x = t[fast]")]
+        [InlineData("x = obj.data[fast]")]
+        [InlineData("x = f()[fast]")]
+        [InlineData("t = { [fast] = 1 }")]
+        [InlineData("x = \"[fast] obj.fill()\"")]
+        [InlineData("-- [fast] obj.fill()")]
+        public void Fast_DoesNotTouchNonMarkerBrackets(string source)
+        {
+            Assert.Equal(source, Rewrite(source));
+        }
+
+        [Fact]
+        public void Fast_OnUnsupportedTargetStripsMarkerAndReportsDiagnostic()
+        {
+            var (code, _, diagnostics) = LuaSyntaxExtensions.RewriteWithMap("[fast] obj.draw(0)");
+            Assert.Equal(" obj.draw(0)", code);
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Equal(1, diagnostic.Line);
+            Assert.Contains("fast", diagnostic.Message);
+        }
+
+        [Fact]
+        public void Fast_OnNonObjTargetReportsDiagnostic()
+        {
+            var (code, _, diagnostics) = LuaSyntaxExtensions.RewriteWithMap("[fast] local x = 1");
+            Assert.Equal(" local x = 1", code);
+            Assert.Single(diagnostics);
+        }
+
+        [Fact]
+        public void Fast_SupportedTargetEmitsNoDiagnostic()
+        {
+            var (_, _, diagnostics) = LuaSyntaxExtensions.RewriteWithMap("[fast] obj.fill(0, 0, 0, 255)");
+            Assert.Empty(diagnostics);
+        }
+
+        [Fact]
+        public void Fast_ReportsDiagnosticLineWithinBlock()
+        {
+            var (_, _, diagnostics) = LuaSyntaxExtensions.RewriteWithMap("obj.x = 1\n[fast] obj.draw(0)");
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Equal(2, diagnostic.Line);
+        }
     }
 }
