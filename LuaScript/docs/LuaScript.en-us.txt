@@ -1013,6 +1013,13 @@
                 x in <1..5> tests 1 <= x and x <= 5.
                 <1..<5> excludes the upper bound. The left side is evaluated once.
 
+        o [fast] (acceleration marker)  * YMM4 extension
+                Placing [fast] right before obj.fill / obj.convolve / obj.resize
+                delegates that operation to the GPU. By default these run on the CPU.
+                Example: [fast] obj.convolve(kernel, 5)
+                * An error is shown when [fast] precedes anything other than those three functions.
+                * Works in both the MoonSharp and native engines.
+
 
 - Script Examples -
 

@@ -929,6 +929,13 @@
                 x in <1..5> 判斷 1 <= x and x <= 5。
                 <1..<5> 不包含上限。左側只求值一次。
 
+        ○ [fast]（加速標記）  ※YMM4專有擴充
+                在 obj.fill / obj.convolve / obj.resize 前面加上 [fast]，即可將該
+                處理委派給 GPU。預設情況下這些處理在 CPU 上執行。
+                例：[fast] obj.convolve(kernel, 5)
+                ※ 若 [fast] 修飾的目標不是上述 3 個函式，則顯示錯誤。
+                ※ 在傳統引擎與高速執行環境上皆可運行。
+
 
 - 腳本範例 -
 
