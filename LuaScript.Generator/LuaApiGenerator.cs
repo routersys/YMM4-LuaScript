@@ -5,68 +5,6 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace LuaScript.Generator
 {
-    internal enum LuaParameterKind
-    {
-        ExecutionContext,
-        Arguments,
-        DynValue,
-        Double,
-        Int,
-        Bool,
-    }
-
-    internal enum LuaReturnKind
-    {
-        DynValue,
-        Double,
-        Void,
-    }
-
-    internal sealed record LuaParameterModel(string Name, LuaParameterKind Kind, string DefaultLiteral);
-
-    internal sealed record LuaFunctionModel(
-        string LuaName,
-        string MethodName,
-        LuaReturnKind ReturnKind,
-        EquatableArray<LuaParameterModel> Parameters);
-
-    internal sealed record LuaConstantModel(string LuaName, string MemberName);
-
-    internal enum LuaUpdateKind
-    {
-        Direct,
-        OptionalValue,
-        OptionalReference,
-    }
-
-    internal enum LuaValueKind
-    {
-        Number,
-        Boolean,
-        String,
-        Other,
-    }
-
-    internal sealed record LuaUpdateModel(string LuaName, string MethodName, LuaUpdateKind Kind, LuaValueKind ValueKind);
-
-    internal sealed record LuaCatalogEntry(
-        string Table,
-        string Name,
-        bool IsFunction,
-        EquatableArray<string> Parameters);
-
-    internal sealed record LuaTypePart(string Name, bool IsStatic);
-
-    internal sealed record LuaTableModel(
-        string Namespace,
-        EquatableArray<LuaTypePart> TypeChain,
-        string TableName,
-        string ContextType,
-        EquatableArray<LuaFunctionModel> Functions,
-        EquatableArray<LuaConstantModel> Constants,
-        EquatableArray<LuaUpdateModel> Updates,
-        EquatableArray<LuaCatalogEntry> Entries);
-
     [Generator]
     public sealed class LuaApiGenerator : IIncrementalGenerator
     {
