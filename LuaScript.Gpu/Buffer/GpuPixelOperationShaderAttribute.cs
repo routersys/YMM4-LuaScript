@@ -2,11 +2,13 @@ using System;
 
 namespace LuaScript.Engine.Processing
 {
-    [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-    internal sealed class GpuPixelOperationShaderAttribute(string apiName, string fileName) : Attribute
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    internal sealed class GpuPixelOperationShaderAttribute(string methodName, string fileName, string entryPoint) : Attribute
     {
-        public string ApiName { get; } = apiName;
+        public string MethodName { get; } = methodName;
 
         public string FileName { get; } = fileName;
+
+        public string EntryPoint { get; } = entryPoint;
     }
 }

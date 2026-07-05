@@ -42,6 +42,7 @@ namespace LuaScript.Engine.Shader
 
         private readonly Lock _locker = new();
         private readonly Dictionary<(string Hlsl, string Entry), CompiledShader> _shaders = [];
+        private readonly Dictionary<byte[], ID3D11PixelShader> _precompiled = new(ReferenceEqualityComparer.Instance);
         private readonly InputSlot[] _inputs = new InputSlot[MaxResources];
         private readonly ID3D11ShaderResourceView[] _boundViews = new ID3D11ShaderResourceView[MaxResources];
         private readonly ID3D11ShaderResourceView[] _nullViews = new ID3D11ShaderResourceView[MaxResources];
@@ -88,48 +89,15 @@ namespace LuaScript.Engine.Shader
             int targetHeight,
             out string? error)
         {
-            return TryRunCore(hlsl, entryPoint, resources, constants, blend, sampler, target, targetWidth, targetHeight, false, out error);
-        }
-
-        public PixelShaderRunStatus TryRunHardware(
-            string hlsl,
-            string entryPoint,
-            ReadOnlySpan<PixelShaderInput> resources,
-            ReadOnlySpan<float> constants,
-            PixelShaderBlend blend,
-            PixelShaderSampler sampler,
-            byte[] target,
-            int targetWidth,
-            int targetHeight,
-            out string? error)
-        {
-            return TryRunCore(hlsl, entryPoint, resources, constants, blend, sampler, target, targetWidth, targetHeight, true, out error);
-        }
-
-        private PixelShaderRunStatus TryRunCore(
-            string hlsl,
-            string entryPoint,
-            ReadOnlySpan<PixelShaderInput> resources,
-            ReadOnlySpan<float> constants,
-            PixelShaderBlend blend,
-            PixelShaderSampler sampler,
-            byte[] target,
-            int targetWidth,
-            int targetHeight,
-            bool hardwareOnly,
-            out string? error)
-        {
             error = null;
             lock (_locker)
             {
-                if (_disposed || _unavailable)
-                    return PixelShaderRunStatus.Unavailable;
-                if (targetWidth <= 0 || targetHeight <= 0 || (long)target.Length < (long)targetWidth * targetHeight * 4)
+                if (!CanRun(target, targetWidth, targetHeight))
                     return PixelShaderRunStatus.Unavailable;
 
                 try
                 {
-                    if (hardwareOnly ? !EnsureHardwareDevice() : !EnsureDevice())
+                    if (!EnsureDevice())
                         return PixelShaderRunStatus.Unavailable;
 
                     var compiled = GetOrCompile(hlsl, entryPoint);
@@ -148,6 +116,46 @@ namespace LuaScript.Engine.Shader
                     return PixelShaderRunStatus.Unavailable;
                 }
             }
+        }
+
+        public PixelShaderRunStatus TryRunHardware(
+            byte[] bytecode,
+            ReadOnlySpan<PixelShaderInput> resources,
+            ReadOnlySpan<float> constants,
+            PixelShaderBlend blend,
+            PixelShaderSampler sampler,
+            byte[] target,
+            int targetWidth,
+            int targetHeight,
+            out string? error)
+        {
+            error = null;
+            lock (_locker)
+            {
+                if (!CanRun(target, targetWidth, targetHeight))
+                    return PixelShaderRunStatus.Unavailable;
+
+                try
+                {
+                    if (!EnsureHardwareDevice())
+                        return PixelShaderRunStatus.Unavailable;
+
+                    Execute(GetOrCreate(bytecode), resources, constants, blend, sampler, target, targetWidth, targetHeight);
+                    return PixelShaderRunStatus.Success;
+                }
+                catch (Exception ex)
+                {
+                    HandleFailure(ex);
+                    return PixelShaderRunStatus.Unavailable;
+                }
+            }
+        }
+
+        private bool CanRun(byte[] target, int targetWidth, int targetHeight)
+        {
+            return !_disposed && !_unavailable &&
+                targetWidth > 0 && targetHeight > 0 &&
+                (long)target.Length >= (long)targetWidth * targetHeight * 4;
         }
 
         public void Invalidate()
@@ -332,6 +340,16 @@ namespace LuaScript.Engine.Shader
 
             _shaders[key] = compiled;
             return compiled;
+        }
+
+        private ID3D11PixelShader GetOrCreate(byte[] bytecode)
+        {
+            if (_precompiled.TryGetValue(bytecode, out var cached))
+                return cached;
+
+            var shader = _device!.CreatePixelShader(bytecode);
+            _precompiled[bytecode] = shader;
+            return shader;
         }
 
         private static byte[] CompileOrThrow(string source, string entryPoint, string profile)
@@ -596,6 +614,9 @@ namespace LuaScript.Engine.Shader
             foreach (var compiled in _shaders.Values)
                 compiled.Shader?.Dispose();
             _shaders.Clear();
+            foreach (var shader in _precompiled.Values)
+                shader.Dispose();
+            _precompiled.Clear();
         }
 
         private void ReleaseDeviceObjects()
