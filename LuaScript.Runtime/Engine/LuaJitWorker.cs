@@ -134,10 +134,11 @@ namespace LuaScript.Engine
             _workEvent!.Set();
 
             var stopwatch = Stopwatch.StartNew();
+            long budget = timeoutMs;
             int status;
             while (true)
             {
-                long remaining = timeoutMs - stopwatch.ElapsedMilliseconds;
+                long remaining = budget - stopwatch.ElapsedMilliseconds;
                 if (remaining <= 0 || !_doneEvent!.WaitOne((int)remaining))
                 {
                     KillWorker();
@@ -149,6 +150,7 @@ namespace LuaScript.Engine
                 if (status != NativeProtocol.StatusCallback)
                     break;
 
+                long callbackStart = stopwatch.ElapsedMilliseconds;
                 int callbackKind = view.ReadInt32(NativeProtocol.OffCallbackKind);
                 if (callbackKind == NativeProtocol.CbKindRequestPixels)
                 {
@@ -170,6 +172,7 @@ namespace LuaScript.Engine
                 {
                     DispatchCallback(view, resolveObject, loadFigure, loadText, loadImage, loadMovie, loadScene, loadBrush, addEffect, setAnchor, sceneGetValue, sceneSetValue, loadAudio, runPixelShader, pixelProcessor);
                 }
+                budget += stopwatch.ElapsedMilliseconds - callbackStart;
                 _workEvent.Set();
             }
 

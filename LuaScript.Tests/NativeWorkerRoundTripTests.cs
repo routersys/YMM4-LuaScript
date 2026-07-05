@@ -2045,6 +2045,30 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void HostCallbackTime_DoesNotConsumeScriptTimeout()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            var decoded = new byte[4];
+            Func<string, (byte[], int, int)> slowLoadImage = _ =>
+            {
+                System.Threading.Thread.Sleep(1500);
+                return (decoded, 1, 1);
+            };
+
+            var pixels = new byte[2 * 2 * 4];
+            var fields = Fields(2, 2, 0d);
+
+            bool ok = RunWorker(
+                "obj.load('image', 'C:/sample.png') obj.x = 5",
+                fields, NoStringParams, () => pixels, 2, 2, 1000, NoResolver, NoLoadFigure, NoLoadText, slowLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(5d, fields[NativeProtocol.X]);
+        }
+
+        [Fact]
         public void Fill_WritesPremultipliedColor()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
