@@ -15,13 +15,13 @@ namespace LuaScript.Engine.Processing
         private readonly float[] _constants = new float[1024];
         private readonly List<ConvolveValidation> _validations = [];
 
-        public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+        public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset, bool force = false)
         {
             if (!IsTextureSupported(target, width, height) || !IsSupported(kernel, size, divisor, offset))
                 return false;
 
             long work = (long)width * height * size * size;
-            if (work < ConvolveWorkThreshold || !EnsureValidated(target, width, height, kernel, size, divisor, offset))
+            if (!force && work < ConvolveWorkThreshold || !EnsureValidated(target, width, height, kernel, size, divisor, offset))
                 return false;
 
             SetConstants(width, height, kernel, size, divisor, offset);

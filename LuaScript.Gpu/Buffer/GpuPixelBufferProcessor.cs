@@ -9,22 +9,22 @@ namespace LuaScript.Engine.Processing
         private readonly GpuConvolveOperation _convolve = new(runner);
         private readonly GpuResizeOperation _resize = new(runner);
 
-        public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+        public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight, bool force = false)
         {
             lock (_gate)
-                return _fill.TryFill(target, width, height, r, g, b, a, x, y, fillWidth, fillHeight);
+                return _fill.TryFill(target, width, height, r, g, b, a, x, y, fillWidth, fillHeight, force);
         }
 
-        public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+        public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset, bool force = false)
         {
             lock (_gate)
-                return _convolve.TryConvolve(target, width, height, kernel, size, divisor, offset);
+                return _convolve.TryConvolve(target, width, height, kernel, size, divisor, offset, force);
         }
 
-        public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+        public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target, bool force = false)
         {
             lock (_gate)
-                return _resize.TryResize(source, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out target);
+                return _resize.TryResize(source, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out target, force);
         }
     }
 }

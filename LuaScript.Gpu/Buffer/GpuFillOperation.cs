@@ -16,7 +16,7 @@ namespace LuaScript.Engine.Processing
         private bool? _fullValidated;
         private bool? _partialValidated;
 
-        public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+        public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight, bool force = false)
         {
             if (!IsTextureSupported(target, width, height) || !AreFinite(r, g, b, a))
                 return false;
@@ -25,14 +25,14 @@ namespace LuaScript.Engine.Processing
             bool full = x == 0 && y == 0 && fillWidth == width && fillHeight == height;
             if (full)
             {
-                if (pixels < FillFullThreshold || !EnsureFullValidated())
+                if (!force && pixels < FillFullThreshold || !EnsureFullValidated())
                     return false;
                 SetConstants(r, g, b, a);
                 return RunFillFull(_constants.AsSpan(0, 4), target, width, height);
             }
 
             long area = (long)fillWidth * fillHeight;
-            if (pixels < FillPartialThreshold || area * 4L < pixels * 3L || !EnsurePartialValidated())
+            if (!force && (pixels < FillPartialThreshold || area * 4L < pixels * 3L) || !EnsurePartialValidated())
                 return false;
 
             SetConstants(r, g, b, a);

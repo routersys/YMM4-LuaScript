@@ -16,14 +16,14 @@ namespace LuaScript.Engine.Processing
         private bool? _nearestValidated;
         private bool? _linearValidated;
 
-        public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+        public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target, bool force = false)
         {
             target = null;
             if (!IsTextureSupported(source, sourceWidth, sourceHeight) || !IsTextureSizeSupported(targetWidth, targetHeight))
                 return false;
 
             long pixels = (long)targetWidth * targetHeight;
-            if (pixels < ResizeThreshold || !(linear ? EnsureLinearValidated(source, sourceWidth, sourceHeight) : EnsureNearestValidated(source, sourceWidth, sourceHeight)))
+            if (!force && pixels < ResizeThreshold || !(linear ? EnsureLinearValidated(source, sourceWidth, sourceHeight) : EnsureNearestValidated(source, sourceWidth, sourceHeight)))
                 return false;
 
             return RunShader(source, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out target);
