@@ -9,13 +9,14 @@ float get_value(uint index)
 {
     uint row = index >> 2;
     uint column = index & 3u;
+    float4 value = values[row];
     if (column == 0u)
-        return values[row].x;
+        return value.x;
     if (column == 1u)
-        return values[row].y;
+        return value.y;
     if (column == 2u)
-        return values[row].z;
-    return values[row].w;
+        return value.z;
+    return value.w;
 }
 
 float convolve_channel(float value)
@@ -31,15 +32,15 @@ float4 convolve(float4 pos : SV_Position) : SV_Target
     float divisor = get_value(2u);
     float offset = get_value(3u) / 255.0;
     int kernelSize = (int)get_value(4u);
-    int half = (int)get_value(5u);
+    int radius = (int)get_value(5u);
     float4 sum = 0.0;
 
     for (int ky = 0; ky < kernelSize; ky++)
     {
-        int sy = clamp((int)p.y + ky - half, 0, height - 1);
+        int sy = clamp((int)p.y + ky - radius, 0, height - 1);
         for (int kx = 0; kx < kernelSize; kx++)
         {
-            int sx = clamp((int)p.x + kx - half, 0, width - 1);
+            int sx = clamp((int)p.x + kx - radius, 0, width - 1);
             float kv = get_value((uint)(8 + ky * kernelSize + kx));
             float4 sourceValue = source[uint2((uint)sx, (uint)sy)];
             float3 rgb = sourceValue.a <= 0.0 ? 0.0 : saturate(sourceValue.rgb / sourceValue.a);
