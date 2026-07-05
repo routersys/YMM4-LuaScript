@@ -8,8 +8,6 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace LuaScript.Generator
 {
-    internal sealed record LuaSyntaxRuleModel(string TypeName, int Order);
-
     [Generator]
     public sealed class LuaSyntaxRuleGenerator : IIncrementalGenerator
     {
