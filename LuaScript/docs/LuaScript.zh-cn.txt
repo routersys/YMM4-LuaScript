@@ -929,9 +929,10 @@
                 <1..<5> 不包含上限。左侧只求值一次。
 
         ○ [fast]（加速标记）  ※YMM4专有扩展
-                在 obj.fill / obj.convolve / obj.resize 的调用前面加上 [fast]，即可
-                将该处理委托给 GPU。默认情况下这些处理在 CPU 上执行。标记可以单独
-                占一行，也可以写在同一行。
+                当处理量达到阈值且 GPU 结果经验证与 CPU 一致时，obj.fill /
+                obj.convolve / obj.resize 会自动委托给 GPU。[fast] 是显式表明
+                委托意图的辅助标记，加上它不会改变行为。标记可以单独占一行，
+                也可以写在同一行。
                 例：[fast]
                     obj.convolve(kernel, 5)
                 ※ 若 [fast] 修饰的目标不是上述 3 个函数，则显示错误。

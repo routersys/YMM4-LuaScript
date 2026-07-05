@@ -1014,9 +1014,11 @@
                 <1..<5> excludes the upper bound. The left side is evaluated once.
 
         o [fast] (acceleration marker)  * YMM4 extension
-                Placing [fast] right before a call to obj.fill / obj.convolve /
-                obj.resize delegates that operation to the GPU. By default these run
-                on the CPU. The marker may be on its own line or on the same line.
+                obj.fill / obj.convolve / obj.resize are delegated to the GPU
+                automatically when the workload exceeds a threshold and the GPU
+                result is verified to match the CPU. [fast] is an auxiliary marker
+                that states the intent explicitly; adding it does not change the
+                behavior. The marker may be on its own line or on the same line.
                 Example: [fast]
                          obj.convolve(kernel, 5)
                 * An error is shown when [fast] precedes anything other than those three functions.
