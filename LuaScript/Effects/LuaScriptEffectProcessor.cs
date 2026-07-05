@@ -7,6 +7,7 @@ using LuaScript.Compat;
 using LuaScript.Diagnostics;
 using LuaScript.Engine;
 using LuaScript.Engine.Kernel;
+using LuaScript.Engine.Processing;
 using LuaScript.Engine.Shader;
 using Vortice;
 using Vortice.DCommon;
@@ -167,6 +168,7 @@ namespace LuaScript
         private ID2D1Image? _cachedEffectOutput;
 
         private PixelShaderRunner? _pixelShaderRunner;
+        private GpuPixelBufferProcessor? _pixelProcessor;
         private AviUtlPixelShaderLibrary _pixelShaderLibrary = AviUtlPixelShaderLibrary.Empty;
         private string? _pixelShaderSourceRef;
 
@@ -188,8 +190,10 @@ namespace LuaScript
                 SoftwareCompositor.Instance,
                 WarnBufferCompositorDegraded);
             _pixelShaderRunner = new PixelShaderRunner { Compositor = _bufferCompositor, Logger = WriteGpuLog };
+            _pixelProcessor = new GpuPixelBufferProcessor(_pixelShaderRunner);
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
+            _context.PixelProcessor = _pixelProcessor;
             _context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
             _context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
             _context.AudioLoader = _loadAudio ??= LoadAudio;
@@ -212,6 +216,8 @@ namespace LuaScript
             var context = new AviUtlScriptContext { ResolverProvider = GetFrameResolver };
             if (_bufferCompositor is not null)
                 context.Compositor = _bufferCompositor;
+            if (_pixelProcessor is not null)
+                context.PixelProcessor = _pixelProcessor;
             context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
             context.BrushImageLoader = _loadBrushImage ??= LoadBrushImage;
             context.AudioLoader = _loadAudio ??= LoadAudio;
