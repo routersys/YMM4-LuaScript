@@ -181,7 +181,15 @@ namespace LuaScript
                 script.AttachDebugger(_debugger);
                 _globalRegistrar = new AviUtlGlobalRegistrar(CurrentTimeRatio);
                 _globalRegistrar.RegisterLuaMembers(script.Globals);
+                RegisterFastPrimitives(script);
                 _script = script;
+            }
+
+            private void RegisterFastPrimitives(Script script)
+            {
+                script.Globals.Set("__fast_fill", DynValue.NewCallback((_, args) => FillCore(args, true)));
+                script.Globals.Set("__fast_convolve", DynValue.NewCallback((_, args) => ConvolveCore(args, true)));
+                script.Globals.Set("__fast_resize", DynValue.NewCallback((_, args) => ResizeCore(args, true)));
             }
 
             private void EnsureScriptIntegrity()
@@ -1007,7 +1015,9 @@ namespace LuaScript
             }
 
             [LuaFunction("fill")]
-            private DynValue Fill(CallbackArguments args)
+            private DynValue Fill(CallbackArguments args) => FillCore(args, false);
+
+            private DynValue FillCore(CallbackArguments args, bool accelerate)
             {
                 _activeCancellation.ThrowIfCancellationRequested();
                 if (_activeContext is null)
@@ -1023,7 +1033,7 @@ namespace LuaScript
                 int w = args.Count > 6 ? (int)(args[6].CastToNumber() ?? 0d) : ctx.ImageWidth;
                 int h = args.Count > 7 ? (int)(args[7].CastToNumber() ?? 0d) : ctx.ImageHeight;
 
-                ctx.FillBuffer(r, g, b, a, x, y, w, h);
+                ctx.FillBuffer(r, g, b, a, x, y, w, h, accelerate);
                 return DynValue.Void;
             }
 
@@ -1076,7 +1086,9 @@ namespace LuaScript
             }
 
             [LuaFunction("convolve")]
-            private DynValue Convolve(CallbackArguments args)
+            private DynValue Convolve(CallbackArguments args) => ConvolveCore(args, false);
+
+            private DynValue ConvolveCore(CallbackArguments args, bool accelerate)
             {
                 _activeCancellation.ThrowIfCancellationRequested();
                 if (_activeContext is null || args.Count < 2 || args[0].Type != DataType.Table)
@@ -1103,12 +1115,14 @@ namespace LuaScript
                     divisor = 1d;
                 double offset = args.Count > 3 ? args[3].CastToNumber() ?? 0d : 0d;
 
-                _activeContext.Convolve(_kernelScratch, size, divisor, offset);
+                _activeContext.Convolve(_kernelScratch, size, divisor, offset, accelerate);
                 return DynValue.Void;
             }
 
             [LuaFunction("resize")]
-            private DynValue Resize(CallbackArguments args)
+            private DynValue Resize(CallbackArguments args) => ResizeCore(args, false);
+
+            private DynValue ResizeCore(CallbackArguments args, bool accelerate)
             {
                 _activeCancellation.ThrowIfCancellationRequested();
                 if (_activeContext is null || args.Count < 2)
@@ -1120,7 +1134,7 @@ namespace LuaScript
                     return DynValue.Void;
 
                 bool linear = !(args.Count > 2 && args[2].Type == DataType.String && args[2].String == "nearest");
-                _activeContext.Resize(w, h, linear);
+                _activeContext.Resize(w, h, linear, accelerate);
                 RefreshObjDimensions();
                 return DynValue.Void;
             }
