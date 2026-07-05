@@ -1988,7 +1988,7 @@ namespace LuaScript.Tests
         }
 
         [Fact]
-        public void PixelProcess_DefaultFill_SkipsHostProcessor()
+        public void PixelProcess_DefaultFill_UsesHostProcessor()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
@@ -2000,14 +2000,17 @@ namespace LuaScript.Tests
             bool ok = RunWorker(
                 "obj.fill(10, 20, 30, 40, 0, 0, 1024, 1024)",
                 Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
-                out _, out _, out _, out _, out _, out string? error);
+                out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
-            Assert.Equal(0, processor.FillCalls);
+            Assert.True(dirty);
+            Assert.Equal(1, processor.FillCalls);
+            Assert.Equal(0x41, pixels[0]);
+            Assert.Equal(0x41, pixels[^1]);
         }
 
         [Fact]
-        public void PixelProcess_DefaultConvolve_SkipsHostProcessor()
+        public void PixelProcess_DefaultConvolve_UsesHostProcessor()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
@@ -2019,14 +2022,19 @@ namespace LuaScript.Tests
             bool ok = RunWorker(
                 "obj.convolve({1, 2, 3, 4, 5, 6, 7, 8, 9}, 3, 45, 6)",
                 Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
-                out _, out _, out _, out _, out _, out string? error);
+                out bool dirty, out _, out _, out _, out _, out string? error);
 
             Assert.True(ok, error);
-            Assert.Equal(0, processor.ConvolveCalls);
+            Assert.True(dirty);
+            Assert.Equal(1, processor.ConvolveCalls);
+            Assert.Equal(3, processor.Size);
+            Assert.Equal(45d, processor.Divisor);
+            Assert.Equal(6d, processor.Offset);
+            Assert.Equal(new double[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, processor.Kernel);
         }
 
         [Fact]
-        public void PixelProcess_DefaultResize_SkipsHostProcessor()
+        public void PixelProcess_DefaultResize_UsesHostProcessor()
         {
             Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
 
@@ -2037,6 +2045,66 @@ namespace LuaScript.Tests
 
             bool ok = RunWorker(
                 "obj.resize(512, 512, 'nearest')",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out bool replaced, out _, out int rw, out int rh, out string? error);
+
+            Assert.True(ok, error);
+            Assert.True(replaced);
+            Assert.Equal(1, processor.ResizeCalls);
+            Assert.Equal(512, rw);
+            Assert.Equal(512, rh);
+        }
+
+        [Fact]
+        public void PixelProcess_BelowThresholdFill_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 64, h = 64;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { FillResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.fill(10, 20, 30, 40)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, processor.FillCalls);
+        }
+
+        [Fact]
+        public void PixelProcess_BelowThresholdConvolve_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 8, h = 8;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ConvolveResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.convolve({1, 1, 1, 1, 1, 1, 1, 1, 1}, 3)",
+                Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
+                out _, out _, out _, out _, out _, out string? error);
+
+            Assert.True(ok, error);
+            Assert.Equal(0, processor.ConvolveCalls);
+        }
+
+        [Fact]
+        public void PixelProcess_BelowThresholdResize_SkipsHostProcessor()
+        {
+            Assert.True(LuaJitWorker.IsAvailable(NativeDir), "native/luajit.exe must be present");
+
+            const int w = 2, h = 2;
+            var pixels = new byte[w * h * 4];
+            var processor = new RecordingPixelProcessor { ResizeResult = true };
+            _pixelProcessor = processor;
+
+            bool ok = RunWorker(
+                "obj.resize(4, 4, 'nearest')",
                 Fields(w, h, 0d), NoStringParams, () => pixels, w, h, 5000, NoResolver, NoLoadFigure, NoLoadText, NoLoadImage, NoLoadMovie, NoAddEffect, NoAddDraw, NoSetAnchor,
                 out _, out _, out _, out _, out _, out string? error);
 
