@@ -591,6 +591,25 @@ namespace LuaScript.Tests
             Assert.Equal(expected, Rewrite(source));
         }
 
+        [Theory]
+        [InlineData("[fast]\nobj.fill(0, 0, 0, 255)", "\n__fast_fill(0, 0, 0, 255)")]
+        [InlineData("[fast]\nobj.convolve(k, 3)", "\n__fast_convolve(k, 3)")]
+        [InlineData("[fast]\nobj.resize(64, 64)", "\n__fast_resize(64, 64)")]
+        [InlineData("obj.x = 1\n[fast]\nobj.resize(64, 64)", "obj.x = 1\n\n__fast_resize(64, 64)")]
+        public void Fast_MarkerOnOwnLine_RewritesNextStatement(string source, string expected)
+        {
+            Assert.Equal(expected, Rewrite(source));
+        }
+
+        [Fact]
+        public void Fast_MarkerOnOwnLine_ReportsDiagnosticOnMarkerLine()
+        {
+            var (code, _, diagnostics) = LuaSyntaxExtensions.RewriteWithMap("obj.x = 1\n[fast]\nobj.draw(0)");
+            Assert.Equal("obj.x = 1\n\nobj.draw(0)", code);
+            var diagnostic = Assert.Single(diagnostics);
+            Assert.Equal(2, diagnostic.Line);
+        }
+
         [Fact]
         public void Fast_RewritesInsideBlock()
         {

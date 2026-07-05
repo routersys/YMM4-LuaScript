@@ -3,7 +3,7 @@ namespace LuaScript.Compat.Syntax.Rules
     [LuaSyntaxRule(2)]
     internal sealed class LuaFastRule : ILuaSyntaxRule
     {
-        private const string Message = "[fast] は obj.fill / obj.convolve / obj.resize にのみ適用できます。";
+        private const string Message = "[fast]: only obj.fill, obj.convolve and obj.resize can be accelerated.";
 
         public bool TryApply(LuaRewriteContext context)
         {
@@ -25,16 +25,16 @@ namespace LuaScript.Compat.Syntax.Rules
             if (targetIndex < 0 || context.Input[targetIndex].Kind != LuaSyntaxTokenKind.Name)
                 return false;
 
-            EmitBetween(context, closeIndex + 1, targetIndex);
-
             if (TryResolveTarget(context, targetIndex, out int funcIndex, out string function))
             {
+                EmitBetween(context, closeIndex + 1, targetIndex);
                 context.Index = funcIndex + 1;
                 context.EmitRaw("__fast_" + function);
                 return true;
             }
 
             context.AddDiagnostic(Message);
+            EmitBetween(context, closeIndex + 1, targetIndex);
             context.Index = targetIndex;
             return true;
         }
