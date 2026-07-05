@@ -45,7 +45,17 @@ namespace LuaScript.Generator
             if (arguments.Length > 0 && arguments[0].Value is int value)
                 order = value;
 
-            return new LuaSyntaxRuleModel(symbol.ToDisplayString(), order);
+            bool isCatalog = false;
+            string keyword = string.Empty;
+            foreach (var argument in context.Attributes[0].NamedArguments)
+            {
+                if (argument.Key == "IsCatalog" && argument.Value.Value is bool catalogValue)
+                    isCatalog = catalogValue;
+                else if (argument.Key == "Keyword" && argument.Value.Value is string keywordValue)
+                    keyword = keywordValue;
+            }
+
+            return new LuaSyntaxRuleModel(symbol.ToDisplayString(), order, isCatalog ? keyword : string.Empty);
         }
 
         private static string Emit(ImmutableArray<LuaSyntaxRuleModel> models)
@@ -66,6 +76,24 @@ namespace LuaScript.Generator
             foreach (var model in ordered)
                 builder.AppendLine($"            new global::{model.TypeName}(),");
             builder.AppendLine("        };");
+
+            var keywords = ordered
+                .Where(static m => m.CatalogKeyword.Length > 0)
+                .Select(static m => m.CatalogKeyword)
+                .Distinct()
+                .ToArray();
+            if (keywords.Length == 0)
+            {
+                builder.AppendLine("        internal static readonly string[] CatalogKeywords = global::System.Array.Empty<string>();");
+            }
+            else
+            {
+                builder.AppendLine("        internal static readonly string[] CatalogKeywords = new string[]");
+                builder.AppendLine("        {");
+                foreach (var keyword in keywords)
+                    builder.AppendLine($"            \"{keyword}\",");
+                builder.AppendLine("        };");
+            }
             builder.AppendLine("    }");
             builder.AppendLine("}");
             return builder.ToString();

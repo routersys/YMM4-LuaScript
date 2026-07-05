@@ -6,5 +6,9 @@ namespace LuaScript.Compat.Syntax
     internal sealed class LuaSyntaxRuleAttribute(int order) : Attribute
     {
         public int Order { get; } = order;
+
+        public bool IsCatalog { get; set; }
+
+        public string Keyword { get; set; } = "";
     }
 }

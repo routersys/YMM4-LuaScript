@@ -1,8 +1,9 @@
 namespace LuaScript.Compat.Syntax.Rules
 {
-    [LuaSyntaxRule(2)]
+    [LuaSyntaxRule(2, IsCatalog = true, Keyword = MarkerKeyword)]
     internal sealed class LuaFastRule : ILuaSyntaxRule
     {
+        private const string MarkerKeyword = "fast";
         private const string Message = "[fast]: only obj.fill, obj.convolve and obj.resize can be accelerated.";
 
         public bool TryApply(LuaRewriteContext context)
@@ -14,7 +15,7 @@ namespace LuaScript.Compat.Syntax.Rules
                 return false;
 
             int nameIndex = context.NextSignificant(context.Index + 1);
-            if (nameIndex < 0 || !context.Input[nameIndex].IsName("fast"))
+            if (nameIndex < 0 || !context.Input[nameIndex].IsName(MarkerKeyword))
                 return false;
 
             int closeIndex = context.NextSignificant(nameIndex + 1);
