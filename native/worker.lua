@@ -864,7 +864,7 @@ function obj.copybuffer(dst, src)
     end
 end
 
-function obj.fill(r, g, b, a, x, y, w, h)
+local function fillImpl(accel, r, g, b, a, x, y, w, h)
     ensurePixels()
     flushPixelData()
     r = r or 0; g = g or 0; b = b or 0; a = a or 255
@@ -892,7 +892,7 @@ function obj.fill(r, g, b, a, x, y, w, h)
     cbResult[6] = y0
     cbResult[7] = x1 - x0
     cbResult[8] = y1 - y0
-    if usePixelProcess and tryPixelProcess(PIXEL_PROCESS_FILL) then
+    if accel and usePixelProcess and tryPixelProcess(PIXEL_PROCESS_FILL) then
         dirty = true
         pdValid = false
         pdDirty = false
@@ -912,6 +912,9 @@ function obj.fill(r, g, b, a, x, y, w, h)
     dirty = true
     pdValid = false
 end
+
+function obj.fill(r, g, b, a, x, y, w, h) fillImpl(false, r, g, b, a, x, y, w, h) end
+function __fast_fill(r, g, b, a, x, y, w, h) fillImpl(true, r, g, b, a, x, y, w, h) end
 
 function obj.getpixelregion(x, y, w, h)
     x = math.floor(x or 0); y = math.floor(y or 0)
@@ -974,7 +977,7 @@ function obj.putpixelregion(x, y, w, h, data)
     pdValid = false
 end
 
-function obj.convolve(kernel, size, divisor, offset)
+local function convolveImpl(accel, kernel, size, divisor, offset)
     if type(kernel) ~= "table" then return end
     size = math.floor(size or 0)
     if size < 1 or size % 2 == 0 then return end
@@ -991,7 +994,7 @@ function obj.convolve(kernel, size, divisor, offset)
     local inv = divisor or sum
     if inv == 0 then inv = 1 end
     offset = offset or 0
-    if taps * 8 <= CB_TAG_MAX and width * height * taps >= PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD then
+    if accel and taps * 8 <= CB_TAG_MAX and width * height * taps >= PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD then
         cbResult[1] = size
         cbResult[2] = inv
         cbResult[3] = offset
@@ -1058,7 +1061,10 @@ function obj.convolve(kernel, size, divisor, offset)
     pdValid = false
 end
 
-function obj.resize(newW, newH, mode)
+function obj.convolve(kernel, size, divisor, offset) convolveImpl(false, kernel, size, divisor, offset) end
+function __fast_convolve(kernel, size, divisor, offset) convolveImpl(true, kernel, size, divisor, offset) end
+
+local function resizeImpl(accel, newW, newH, mode)
     newW = math.floor(newW or 0); newH = math.floor(newH or 0)
     if newW < 1 then newW = 1 end
     if newH < 1 then newH = 1 end
@@ -1071,7 +1077,7 @@ function obj.resize(newW, newH, mode)
     cbResult[1] = newW
     cbResult[2] = newH
     cbResult[3] = linear and 1 or 0
-    if newW * newH >= PIXEL_PROCESS_RESIZE_THRESHOLD and tryPixelProcess(PIXEL_PROCESS_RESIZE) then
+    if accel and newW * newH >= PIXEL_PROCESS_RESIZE_THRESHOLD and tryPixelProcess(PIXEL_PROCESS_RESIZE) then
         width = newW; height = newH
         i32[OFF_WIDTH] = newW; i32[OFF_HEIGHT] = newH
         dirty = true
@@ -1135,6 +1141,9 @@ function obj.resize(newW, newH, mode)
     obj.cz = 0
     obj.diagonal = math.sqrt(newW * newW + newH * newH)
 end
+
+function obj.resize(newW, newH, mode) resizeImpl(false, newW, newH, mode) end
+function __fast_resize(newW, newH, mode) resizeImpl(true, newW, newH, mode) end
 
 local SCENE_VALUE_MAX = 4095
 local SCENE_NIL = {}
@@ -1458,6 +1467,7 @@ sandbox = {
     obj = obj, scene = scene, ymm4 = ymm4,
     anim = anim, bit32 = bit32, rawlen = rawlen,
     RGB = RGB, HSV = HSV, OR = OR, AND = AND, XOR = XOR, SHIFT = SHIFT,
+    __fast_fill = __fast_fill, __fast_convolve = __fast_convolve, __fast_resize = __fast_resize,
     debug_print = debug_print,
     math = math, string = string, table = table,
     type = type, tostring = tostring, tonumber = tonumber, select = select,
