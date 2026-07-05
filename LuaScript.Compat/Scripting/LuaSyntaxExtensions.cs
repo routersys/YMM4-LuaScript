@@ -6,10 +6,10 @@ namespace LuaScript.Compat
     {
         public static string Rewrite(string source) => RewriteWithMap(source).Code;
 
-        public static (string Code, int[] ChangedLines) RewriteWithMap(string source)
+        public static (string Code, int[] ChangedLines, LuaRewriteDiagnostic[] Diagnostics) RewriteWithMap(string source)
         {
             if (string.IsNullOrEmpty(source))
-                return (source, []);
+                return (source, [], []);
 
             var tokens = LuaSyntaxLexer.Tokenize(source);
             var context = new LuaRewriteContext(tokens);
@@ -42,7 +42,8 @@ namespace LuaScript.Compat
                 }
             }
 
-            return context.Changed ? (context.Serialize(), context.ChangedLines) : (source, []);
+            var diagnostics = context.Diagnostics;
+            return context.Changed ? (context.Serialize(), context.ChangedLines, diagnostics) : (source, [], diagnostics);
         }
     }
 }

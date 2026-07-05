@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using LuaScript.Compat.Syntax;
 
 namespace LuaScript.Compat
 {
@@ -15,10 +16,10 @@ namespace LuaScript.Compat
 
         public static string Transform(string source) => TransformWithMap(source).Code;
 
-        public static (string Code, int[] LineMap, int[] ChangedLines) TransformWithMap(string source)
+        public static (string Code, int[] LineMap, int[] ChangedLines, LuaRewriteDiagnostic[] Diagnostics) TransformWithMap(string source)
         {
             if (string.IsNullOrEmpty(source))
-                return (source, [], []);
+                return (source, [], [], []);
 
             var lines = ScriptParserHelper.SplitLines(source);
             bool hasSection = ScriptParserHelper.TryFindSection(lines, out int sectionStart, out int sectionEnd);
@@ -29,8 +30,8 @@ namespace LuaScript.Compat
 
             if (!hasSection && prelude.Count == 0)
             {
-                var (code, changed) = LuaSyntaxExtensions.RewriteWithMap(source);
-                return (code, [], changed);
+                var (code, changed, preludeless) = LuaSyntaxExtensions.RewriteWithMap(source);
+                return (code, [], changed, preludeless);
             }
 
             var builder = new StringBuilder(source.Length + 64);
@@ -48,8 +49,8 @@ namespace LuaScript.Compat
                 lineMap[row++] = i;
             }
 
-            var (rewritten, changedLines) = LuaSyntaxExtensions.RewriteWithMap(builder.ToString());
-            return (rewritten, lineMap, changedLines);
+            var (rewritten, changedLines, diagnostics) = LuaSyntaxExtensions.RewriteWithMap(builder.ToString());
+            return (rewritten, lineMap, changedLines, diagnostics);
         }
 
         private static void AppendDeclarations(string line, List<string> prelude)

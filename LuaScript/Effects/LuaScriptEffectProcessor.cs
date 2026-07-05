@@ -159,6 +159,7 @@ namespace LuaScript
         private string _runnableScript = string.Empty;
         private int[] _runnableLineMap = [];
         private int[] _runnableChangedLines = [];
+        private LuaScriptDiagnostic[] _runnableRewriteDiagnostics = [];
         private bool _runnableCached;
         private ID2D1Image? _cachedInput;
         private RenderKey _cachedKey;
@@ -250,13 +251,25 @@ namespace LuaScript
             if (_runnableCached && ReferenceEquals(source, _sourceScript))
                 return _runnableScript;
 
-            var (code, lineMap, changedLines) = AviUtlScript.TransformWithMap(source);
+            var (code, lineMap, changedLines, rewriteDiagnostics) = AviUtlScript.TransformWithMap(source);
             _runnableScript = code;
             _runnableLineMap = lineMap;
             _runnableChangedLines = changedLines;
             _sourceScript = source;
             _runnableCached = true;
+            _runnableRewriteDiagnostics = BuildRewriteDiagnostics(rewriteDiagnostics);
             return _runnableScript;
+        }
+
+        private LuaScriptDiagnostic[] BuildRewriteDiagnostics(LuaScript.Compat.Syntax.LuaRewriteDiagnostic[] source)
+        {
+            if (source.Length == 0)
+                return [];
+
+            var diagnostics = new LuaScriptDiagnostic[source.Length];
+            for (int i = 0; i < source.Length; i++)
+                diagnostics[i] = new LuaScriptDiagnostic(LuaScriptDiagnosticKind.Compile, MapRunnableLine(source[i].Line), 0, 0, source[i].Message);
+            return diagnostics;
         }
 
         private AviUtlPixelShaderLibrary GetPixelShaderLibrary(string source)
@@ -494,7 +507,9 @@ namespace LuaScript
                 _pixelLoaderSemaphore.Release();
             }
 
-            LuaScriptDiagnostics.Instance.Report(script, diagnostics);
+            LuaScriptDiagnostics.Instance.Report(script, _runnableRewriteDiagnostics.Length == 0
+                ? diagnostics
+                : [.. _runnableRewriteDiagnostics, .. diagnostics]);
 
             _isFirst = false;
             if (_sceneImageLoaded)

@@ -137,35 +137,35 @@ namespace LuaScript.Tests
         [Fact]
         public void ChangedLines_EmptyWhenNoRewrite()
         {
-            var (_, _, changed) = AviUtlScript.TransformWithMap("obj.x = 1\nobj.y = 2");
+            var (_, _, changed, _) = AviUtlScript.TransformWithMap("obj.x = 1\nobj.y = 2");
             Assert.Empty(changed);
         }
 
         [Fact]
         public void ChangedLines_ReportRewrittenLineInRunnableSpace()
         {
-            var (_, _, changed) = AviUtlScript.TransformWithMap("obj.x = 1\nobj.y = obj.x != 0\nobj.z = 3");
+            var (_, _, changed, _) = AviUtlScript.TransformWithMap("obj.x = 1\nobj.y = obj.x != 0\nobj.z = 3");
             Assert.Equal(new[] { 2 }, changed);
         }
 
         [Fact]
         public void ChangedLines_AreSortedAndCoverEveryRewrittenLine()
         {
-            var (_, _, changed) = AviUtlScript.TransformWithMap("a = x != 0\nb = y\nc = z ?? 5\nw++");
+            var (_, _, changed, _) = AviUtlScript.TransformWithMap("a = x != 0\nb = y\nc = z ?? 5\nw++");
             Assert.Equal(new[] { 1, 3, 4 }, changed);
         }
 
         [Fact]
         public void ChangedLines_DeduplicateMultipleRewritesOnOneLine()
         {
-            var (_, _, changed) = AviUtlScript.TransformWithMap("a = x != 0 and y != 1 and z != 2");
+            var (_, _, changed, _) = AviUtlScript.TransformWithMap("a = x != 0 and y != 1 and z != 2");
             Assert.Equal(new[] { 1 }, changed);
         }
 
         [Fact]
         public void ChangedLines_TrackRunnableLineAfterHoistedPrelude()
         {
-            var (_, _, changed) = AviUtlScript.TransformWithMap("--dialog:V,local v=3;\nresult = v != 0");
+            var (_, _, changed, _) = AviUtlScript.TransformWithMap("--dialog:V,local v=3;\nresult = v != 0");
             Assert.NotEmpty(changed);
             for (int i = 1; i < changed.Length; i++)
                 Assert.True(changed[i] > changed[i - 1]);

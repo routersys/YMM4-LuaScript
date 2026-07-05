@@ -8,6 +8,7 @@ namespace LuaScript.Compat.Syntax
         private readonly List<LuaSyntaxToken> _input;
         private readonly List<LuaSyntaxToken> _output;
         private List<int>? _changedLines;
+        private List<LuaRewriteDiagnostic>? _diagnostics;
         private int _line = 1;
         private int _lastChangedLine;
         private int _temporaries;
@@ -27,6 +28,14 @@ namespace LuaScript.Compat.Syntax
         public bool Changed { get; private set; }
 
         public int[] ChangedLines => _changedLines is null ? [] : _changedLines.ToArray();
+
+        public LuaRewriteDiagnostic[] Diagnostics => _diagnostics is null ? [] : _diagnostics.ToArray();
+
+        public void AddDiagnostic(string message)
+        {
+            (_diagnostics ??= new List<LuaRewriteDiagnostic>()).Add(new LuaRewriteDiagnostic(_line, message));
+            MarkChanged();
+        }
 
         public bool AtEnd => Index >= _input.Count;
 
