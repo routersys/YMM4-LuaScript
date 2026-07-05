@@ -1036,6 +1036,9 @@
                         obj.convolve(kernel, 5)
                 * Kesalahan ditampilkan jika [fast] mendahului selain ketiga fungsi tersebut.
                 * Berfungsi pada mesin MoonSharp maupun native.
+                * Untuk beban kerja kecil, biaya bolak-balik pendelegasian ke GPU
+                  bisa melebihi eksekusi CPU biasa, sehingga [fast] justru bisa
+                  membuat lebih lambat, bukan lebih cepat.
 
 
 - Contoh Skrip -

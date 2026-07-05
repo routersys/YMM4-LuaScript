@@ -1046,6 +1046,9 @@
                          obj.convolve(kernel, 5)
                 * Se muestra un error cuando [fast] precede a algo distinto de esas tres funciones.
                 * Funciona tanto en el motor MoonSharp como en el nativo.
+                * En cargas pequeñas, el costo de ida y vuelta de delegar a la GPU
+                  puede superar al de ejecutar en CPU, por lo que [fast] puede
+                  hacer las cosas más lentas en vez de más rápidas.
 
 
 - Ejemplos de script -

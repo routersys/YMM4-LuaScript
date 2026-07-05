@@ -383,7 +383,7 @@ obj.convolve({ -1,-1,-1, -1,8,-1, -1,-1,-1 }, 3, 1, 0)  -- 輪郭抽出</code></
 </p>
 
 <p>
-<code>obj.fill</code>・<code>obj.convolve</code>・<code>obj.resize</code> は、処理量がしきい値以上で GPU の結果が CPU と一致すると確認できたとき、自動で GPU へ委譲します。呼び出しの直前（単独行でも同一行でも可）に <code>[fast]</code> を置くと、このしきい値を無視して強制的に GPU へ委譲します。GPU が使えない環境や GPU の結果が CPU と一致しない環境では、<code>[fast]</code> を付けても CPU へ自動的に戻ります。詳細は <a href="syntax.html">拡張構文</a> を参照してください。
+<code>obj.fill</code>・<code>obj.convolve</code>・<code>obj.resize</code> は、処理量がしきい値以上で GPU の結果が CPU と一致すると確認できたとき、自動で GPU へ委譲します。呼び出しの直前（単独行でも同一行でも可）に <code>[fast]</code> を置くと、このしきい値を無視して強制的に GPU へ委譲します。GPU が使えない環境や GPU の結果が CPU と一致しない環境では、<code>[fast]</code> を付けても CPU へ自動的に戻ります。処理量が小さいときは、GPU への委譲自体の往復コストが CPU 実行を上回ることがあり、<code>[fast]</code> を付けるとかえって遅くなる場合があります。詳細は <a href="syntax.html">拡張構文</a> を参照してください。
 </p>
 
 <h3>アンカーポイント</h3>
