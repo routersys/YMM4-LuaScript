@@ -382,6 +382,10 @@ obj.convolve({ -1,-1,-1, -1,8,-1, -1,-1,-1 }, 3, 1, 0)  -- 輪郭抽出</code></
 <code>obj.resize(w, h [, filter])</code> は作業画像を指定サイズへ拡大縮小し、<code>obj.w</code>・<code>obj.h</code>・<code>obj.cx</code> などの寸法も更新します。<code>filter</code> は <code>"nearest"</code>（最近傍）か、省略で線形補間です。高速ランタイムでは結果が最大画像サイズを超える場合は変更しません。
 </p>
 
+<p>
+<code>obj.fill</code>・<code>obj.convolve</code>・<code>obj.resize</code> は標準では CPU で実行します。呼び出しの直前に <code>[fast]</code> を置くと処理を GPU へ委譲します。詳細は <a href="syntax.html">拡張構文</a> を参照してください。
+</p>
+
 <h3>アンカーポイント</h3>
 
 <p>
