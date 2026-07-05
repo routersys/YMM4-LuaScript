@@ -16,6 +16,8 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\LuaScript.Runtime\LuaScript.Runtime.csproj" />
+		<ProjectReference Include="..\LuaScript.Generator\LuaScript.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<AdditionalFiles Include="Shaders\*.hlsl" />
 	</ItemGroup>
 
 	<ItemGroup>
