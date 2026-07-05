@@ -52,6 +52,49 @@ namespace LuaScript.Tests
             return buffer;
         }
 
+        private sealed class RecordingProcessor : IPixelBufferProcessor
+        {
+            public int FillCalls;
+            public int ConvolveCalls;
+            public int ResizeCalls;
+
+            public bool TryFill(byte[] target, int width, int height, double r, double g, double b, double a, int x, int y, int fillWidth, int fillHeight)
+            {
+                FillCalls++;
+                return false;
+            }
+
+            public bool TryConvolve(byte[] target, int width, int height, double[] kernel, int size, double divisor, double offset)
+            {
+                ConvolveCalls++;
+                return false;
+            }
+
+            public bool TryResize(byte[] source, int sourceWidth, int sourceHeight, int targetWidth, int targetHeight, bool linear, out byte[]? target)
+            {
+                ResizeCalls++;
+                target = null;
+                return false;
+            }
+        }
+
+        [Fact]
+        public void BufferOps_ConsultPixelProcessorAndFallBackToCpu()
+        {
+            using var engine = CreateEngine();
+            var ctx = NewContext(new byte[2 * 2 * 4], 2, 2);
+            var processor = new RecordingProcessor();
+            ctx.PixelProcessor = processor;
+
+            engine.Execute("obj.fill(200, 100, 50, 255) obj.convolve({1,1,1,1,1,1,1,1,1}, 3) obj.resize(4, 4)", ctx);
+
+            Assert.Equal(1, processor.FillCalls);
+            Assert.Equal(1, processor.ConvolveCalls);
+            Assert.Equal(1, processor.ResizeCalls);
+            Assert.Equal(4, ctx.ImageWidth);
+            Assert.Equal(4, ctx.ImageHeight);
+        }
+
         [Fact]
         public void Fill_WholeBuffer_WritesPremultipliedColor()
         {

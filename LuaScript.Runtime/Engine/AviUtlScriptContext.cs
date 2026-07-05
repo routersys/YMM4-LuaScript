@@ -511,7 +511,7 @@ namespace LuaScript
         private byte[]? _resizeSource;
         private byte[]? _resizeBuffer;
 
-        public unsafe void FillBuffer(double r, double g, double b, double a, int x, int y, int w, int h, bool accelerate = false)
+        public unsafe void FillBuffer(double r, double g, double b, double a, int x, int y, int w, int h)
         {
             EnsurePixelBuffer();
             if (_pixelBuffer is null)
@@ -526,7 +526,7 @@ namespace LuaScript
             if (x1 <= x0 || y1 <= y0)
                 return;
 
-            if (accelerate && PixelProcessor?.TryFill(_pixelBuffer, cw, ch, r, g, b, a, x0, y0, x1 - x0, y1 - y0) == true)
+            if (PixelProcessor?.TryFill(_pixelBuffer, cw, ch, r, g, b, a, x0, y0, x1 - x0, y1 - y0) == true)
             {
                 _isPixelsDirty = true;
                 return;
@@ -621,7 +621,7 @@ namespace LuaScript
             }
         }
 
-        public unsafe void Convolve(double[] kernel, int size, double divisor, double offset, bool accelerate = false)
+        public unsafe void Convolve(double[] kernel, int size, double divisor, double offset)
         {
             EnsurePixelBuffer();
             if (_pixelBuffer is null)
@@ -629,7 +629,7 @@ namespace LuaScript
 
             int cw = ImageWidth;
             int ch = ImageHeight;
-            if (accelerate && PixelProcessor?.TryConvolve(_pixelBuffer, cw, ch, kernel, size, divisor, offset) == true)
+            if (PixelProcessor?.TryConvolve(_pixelBuffer, cw, ch, kernel, size, divisor, offset) == true)
             {
                 _isPixelsDirty = true;
                 return;
@@ -639,7 +639,7 @@ namespace LuaScript
             PixelBufferSoftwareProcessor.Convolve(_pixelBuffer, cw, ch, kernel, size, divisor, offset, ref _convolveSource);
         }
 
-        public unsafe void Resize(int newWidth, int newHeight, bool linear, bool accelerate = false)
+        public unsafe void Resize(int newWidth, int newHeight, bool linear)
         {
             EnsurePixelBuffer();
             if (_pixelBuffer is null)
@@ -650,7 +650,7 @@ namespace LuaScript
             int cw = ImageWidth;
             int ch = ImageHeight;
 
-            if (accelerate && PixelProcessor?.TryResize(_pixelBuffer, cw, ch, newWidth, newHeight, linear, out var processed) == true && processed is not null)
+            if (PixelProcessor?.TryResize(_pixelBuffer, cw, ch, newWidth, newHeight, linear, out var processed) == true && processed is not null)
             {
                 ReplaceBuffer(processed, newWidth, newHeight);
                 return;
