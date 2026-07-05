@@ -60,6 +60,7 @@ namespace LuaScript.Api
             }
 
             var candidates = Keywords
+                .Concat(LuaScript.Compat.Syntax.LuaSyntaxRuleRegistry.CatalogKeywords)
                 .Concat(globals)
                 .Concat(tableMembers.Keys)
                 .Concat(tableMembers.Values.SelectMany(x => x))

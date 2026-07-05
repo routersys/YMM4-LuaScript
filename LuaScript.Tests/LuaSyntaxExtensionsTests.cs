@@ -611,6 +611,12 @@ namespace LuaScript.Tests
         }
 
         [Fact]
+        public void Fast_KeywordIsRegisteredInCatalog()
+        {
+            Assert.Contains("fast", LuaScript.Compat.Syntax.LuaSyntaxRuleRegistry.CatalogKeywords);
+        }
+
+        [Fact]
         public void Fast_RewritesInsideBlock()
         {
             Assert.Equal(

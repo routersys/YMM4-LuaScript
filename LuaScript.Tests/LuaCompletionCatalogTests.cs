@@ -11,6 +11,8 @@ namespace LuaScript.Tests
             "repeat", "return", "then", "true", "until", "while"
         ];
 
+        private static readonly string[] SyntaxKeywords = ["fast"];
+
         private static readonly string[] Globals =
         [
             "time", "frame", "totalframe", "framerate",
@@ -104,6 +106,7 @@ namespace LuaScript.Tests
 
         private static string[] ExpectedStaticCandidates() =>
             Keywords
+            .Concat(SyntaxKeywords)
             .Concat(Globals)
             .Concat(Namespaces.SelectMany(n => n.Members))
             .Distinct()
