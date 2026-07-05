@@ -533,27 +533,7 @@ namespace LuaScript
             }
 
             _isPixelsDirty = true;
-            double aK = Math.Clamp(a, 0d, 255d) / 255d;
-            byte pb = (byte)Math.Clamp(b * aK, 0d, 255d);
-            byte pg = (byte)Math.Clamp(g * aK, 0d, 255d);
-            byte pr = (byte)Math.Clamp(r * aK, 0d, 255d);
-            byte pa = (byte)Math.Clamp(a, 0d, 255d);
-
-            fixed (byte* buf = _pixelBuffer)
-            {
-                for (int py = y0; py < y1; py++)
-                {
-                    byte* p = buf + (py * cw + x0) * 4;
-                    for (int px = x0; px < x1; px++)
-                    {
-                        p[0] = pb;
-                        p[1] = pg;
-                        p[2] = pr;
-                        p[3] = pa;
-                        p += 4;
-                    }
-                }
-            }
+            PixelBufferSoftwareProcessor.Fill(_pixelBuffer, cw, ch, r, g, b, a, x0, y0, x1 - x0, y1 - y0);
         }
 
         public unsafe void ReadRegion(int x, int y, int w, int h, double[] destination)
@@ -655,72 +635,8 @@ namespace LuaScript
                 return;
             }
 
-            int count = cw * ch * 4;
-            if (_convolveSource is null || _convolveSource.Length < count)
-                _convolveSource = new double[count];
-            var src = _convolveSource;
-
-            fixed (byte* buf = _pixelBuffer)
-            {
-                for (int pi = 0; pi < cw * ch; pi++)
-                {
-                    byte* p = buf + pi * 4;
-                    int di = pi * 4;
-                    double a = p[3];
-                    src[di + 3] = a;
-                    if (a <= 0d)
-                    {
-                        src[di] = 0d;
-                        src[di + 1] = 0d;
-                        src[di + 2] = 0d;
-                    }
-                    else
-                    {
-                        double s = 255d / a;
-                        src[di] = Math.Clamp(p[2] * s, 0d, 255d);
-                        src[di + 1] = Math.Clamp(p[1] * s, 0d, 255d);
-                        src[di + 2] = Math.Clamp(p[0] * s, 0d, 255d);
-                    }
-                }
-            }
-
-            int half = size / 2;
             _isPixelsDirty = true;
-
-            fixed (byte* buf = _pixelBuffer)
-            {
-                for (int y = 0; y < ch; y++)
-                {
-                    for (int x = 0; x < cw; x++)
-                    {
-                        double sr = 0d, sg = 0d, sb = 0d, sa = 0d;
-                        for (int ky = 0; ky < size; ky++)
-                        {
-                            int sy = Math.Clamp(y + ky - half, 0, ch - 1);
-                            for (int kx = 0; kx < size; kx++)
-                            {
-                                int sx = Math.Clamp(x + kx - half, 0, cw - 1);
-                                double kv = kernel[ky * size + kx];
-                                int si = (sy * cw + sx) * 4;
-                                sr += src[si] * kv;
-                                sg += src[si + 1] * kv;
-                                sb += src[si + 2] * kv;
-                                sa += src[si + 3] * kv;
-                            }
-                        }
-                        double rr = Math.Clamp(sr / divisor + offset, 0d, 255d);
-                        double gg = Math.Clamp(sg / divisor + offset, 0d, 255d);
-                        double bb = Math.Clamp(sb / divisor + offset, 0d, 255d);
-                        double aa = Math.Clamp(sa / divisor + offset, 0d, 255d);
-                        double aK = aa / 255d;
-                        byte* p = buf + (y * cw + x) * 4;
-                        p[0] = (byte)Math.Clamp(bb * aK, 0d, 255d);
-                        p[1] = (byte)Math.Clamp(gg * aK, 0d, 255d);
-                        p[2] = (byte)Math.Clamp(rr * aK, 0d, 255d);
-                        p[3] = (byte)aa;
-                    }
-                }
-            }
+            PixelBufferSoftwareProcessor.Convolve(_pixelBuffer, cw, ch, kernel, size, divisor, offset, ref _convolveSource);
         }
 
         public unsafe void Resize(int newWidth, int newHeight, bool linear)
@@ -740,64 +656,7 @@ namespace LuaScript
                 return;
             }
 
-            int srcCount = cw * ch * 4;
-            if (_resizeSource is null || _resizeSource.Length < srcCount)
-                _resizeSource = new byte[srcCount];
-            Buffer.BlockCopy(_pixelBuffer, 0, _resizeSource, 0, srcCount);
-
-            int dstCount = newWidth * newHeight * 4;
-            if (_resizeBuffer is null || _resizeBuffer.Length != dstCount)
-                _resizeBuffer = new byte[dstCount];
-            var src = _resizeSource;
-            var dst = _resizeBuffer;
-
-            fixed (byte* s = src)
-            fixed (byte* d = dst)
-            {
-                for (int y = 0; y < newHeight; y++)
-                {
-                    for (int x = 0; x < newWidth; x++)
-                    {
-                        byte* o = d + (y * newWidth + x) * 4;
-                        if (!linear)
-                        {
-                            int sx = Math.Clamp((int)((x + 0.5) * cw / newWidth), 0, cw - 1);
-                            int sy = Math.Clamp((int)((y + 0.5) * ch / newHeight), 0, ch - 1);
-                            byte* p = s + (sy * cw + sx) * 4;
-                            o[0] = p[0];
-                            o[1] = p[1];
-                            o[2] = p[2];
-                            o[3] = p[3];
-                        }
-                        else
-                        {
-                            double u = (x + 0.5) * cw / newWidth - 0.5;
-                            double v = (y + 0.5) * ch / newHeight - 0.5;
-                            int x0 = (int)Math.Floor(u);
-                            int y0 = (int)Math.Floor(v);
-                            double tx = u - x0;
-                            double ty = v - y0;
-                            for (int c = 0; c < 4; c++)
-                            {
-                                double acc = 0d;
-                                for (int j = 0; j < 2; j++)
-                                {
-                                    int sy = Math.Clamp(y0 + j, 0, ch - 1);
-                                    double wy = j == 0 ? 1d - ty : ty;
-                                    for (int i = 0; i < 2; i++)
-                                    {
-                                        int sx = Math.Clamp(x0 + i, 0, cw - 1);
-                                        double wx = i == 0 ? 1d - tx : tx;
-                                        acc += s[(sy * cw + sx) * 4 + c] * wy * wx;
-                                    }
-                                }
-                                o[c] = (byte)Math.Clamp(acc, 0d, 255d);
-                            }
-                        }
-                    }
-                }
-            }
-
+            var dst = PixelBufferSoftwareProcessor.Resize(_pixelBuffer, cw, ch, newWidth, newHeight, linear, ref _resizeSource, ref _resizeBuffer);
             ReplaceBuffer(dst, newWidth, newHeight);
         }
     }
