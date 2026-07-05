@@ -7,7 +7,6 @@ using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
 using Vortice.Mathematics;
-using YukkuriMovieMaker.Commons;
 
 namespace LuaScript.Engine.Shader
 {
@@ -50,6 +49,8 @@ namespace LuaScript.Engine.Shader
         private byte[] _compositeBuffer = [];
 
         public IBufferCompositor Compositor { get; set; } = SoftwareCompositor.Instance;
+
+        public Action<string, Exception?>? Logger { get; set; }
 
         private ID3D11Device? _device;
         private ID3D11DeviceContext? _context;
@@ -503,7 +504,7 @@ namespace LuaScript.Engine.Shader
             if (!_failureLogged)
             {
                 _failureLogged = true;
-                Log.Default.Write("LuaScript: obj.pixelshader execution failed; the call is skipped.", ex);
+                WriteLog("LuaScript: obj.pixelshader execution failed; the call is skipped.", ex);
             }
             ReleaseDeviceObjects();
             if (_recreateBudget <= 0)
@@ -517,10 +518,12 @@ namespace LuaScript.Engine.Shader
                 return;
             _failureLogged = true;
             if (ex is null)
-                Log.Default.Write("LuaScript: Direct3D 11 is unavailable; obj.pixelshader is disabled.");
+                WriteLog("LuaScript: Direct3D 11 is unavailable; obj.pixelshader is disabled.", null);
             else
-                Log.Default.Write("LuaScript: Direct3D 11 initialization failed; obj.pixelshader is disabled.", ex);
+                WriteLog("LuaScript: Direct3D 11 initialization failed; obj.pixelshader is disabled.", ex);
         }
+
+        private void WriteLog(string message, Exception? exception) => Logger?.Invoke(message, exception);
 
         private void ReleaseShaders()
         {

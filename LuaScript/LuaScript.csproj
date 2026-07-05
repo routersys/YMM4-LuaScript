@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -97,6 +97,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\LuaScript.Kernel\LuaScript.Kernel.csproj" />
 		<ProjectReference Include="..\LuaScript.Compat\LuaScript.Compat.csproj" />
+		<ProjectReference Include="..\LuaScript.Gpu\LuaScript.Gpu.csproj" />
 		<ProjectReference Include="..\LuaScript.Media\LuaScript.Media.csproj" />
 		<ProjectReference Include="..\LuaScript.Runtime\LuaScript.Runtime.csproj" />
 	</ItemGroup>

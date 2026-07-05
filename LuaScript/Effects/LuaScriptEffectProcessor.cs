@@ -187,7 +187,7 @@ namespace LuaScript
                 new SynchronizedCompositor(new HardwareCompositor(_ownCtx), _pixelLoaderSemaphore),
                 SoftwareCompositor.Instance,
                 WarnBufferCompositorDegraded);
-            _pixelShaderRunner = new PixelShaderRunner { Compositor = _bufferCompositor };
+            _pixelShaderRunner = new PixelShaderRunner { Compositor = _bufferCompositor, Logger = WriteGpuLog };
             _context.ResolverProvider = GetFrameResolver;
             _context.Compositor = _bufferCompositor;
             _context.SceneImageLoader = _loadSceneImage ??= LoadSceneImage;
@@ -198,6 +198,14 @@ namespace LuaScript
 
         private static void WarnBufferCompositorDegraded(Exception ex) =>
             Log.Default.Write("LuaScript: hardware buffer compositing failed; falling back to the software compositor.", ex);
+
+        private static void WriteGpuLog(string message, Exception? exception)
+        {
+            if (exception is null)
+                Log.Default.Write(message);
+            else
+                Log.Default.Write(message, exception);
+        }
 
         private AviUtlScriptContext CreateScriptContext()
         {

@@ -16,6 +16,9 @@
   <Project Path="LuaScript.Runtime/LuaScript.Runtime.csproj">
     <Platform Solution="*|x64" Project="Any CPU" />
   </Project>
+  <Project Path="LuaScript.Gpu/LuaScript.Gpu.csproj">
+    <Platform Solution="*|x64" Project="Any CPU" />
+  </Project>
   <Project Path="LuaScript.Tests/LuaScript.Tests.csproj" />
   <Project Path="LuaScript/LuaScript.csproj">
     <Platform Solution="*|x64" Project="x64" />
