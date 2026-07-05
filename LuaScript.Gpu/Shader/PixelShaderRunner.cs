@@ -54,6 +54,7 @@ namespace LuaScript.Engine.Shader
 
         private ID3D11Device? _device;
         private ID3D11DeviceContext? _context;
+        private DriverType _driverType;
         private ID3D11VertexShader? _vertexShader;
         private ID3D11Buffer? _constantBuffer;
         private ID3D11RasterizerState? _rasterizer;
@@ -71,6 +72,7 @@ namespace LuaScript.Engine.Shader
 
         private bool _disposed;
         private bool _unavailable;
+        private bool _hardwareUnavailable;
         private bool _failureLogged;
         private int _recreateBudget = 3;
 
@@ -86,6 +88,37 @@ namespace LuaScript.Engine.Shader
             int targetHeight,
             out string? error)
         {
+            return TryRunCore(hlsl, entryPoint, resources, constants, blend, sampler, target, targetWidth, targetHeight, false, out error);
+        }
+
+        public PixelShaderRunStatus TryRunHardware(
+            string hlsl,
+            string entryPoint,
+            ReadOnlySpan<PixelShaderInput> resources,
+            ReadOnlySpan<float> constants,
+            PixelShaderBlend blend,
+            PixelShaderSampler sampler,
+            byte[] target,
+            int targetWidth,
+            int targetHeight,
+            out string? error)
+        {
+            return TryRunCore(hlsl, entryPoint, resources, constants, blend, sampler, target, targetWidth, targetHeight, true, out error);
+        }
+
+        private PixelShaderRunStatus TryRunCore(
+            string hlsl,
+            string entryPoint,
+            ReadOnlySpan<PixelShaderInput> resources,
+            ReadOnlySpan<float> constants,
+            PixelShaderBlend blend,
+            PixelShaderSampler sampler,
+            byte[] target,
+            int targetWidth,
+            int targetHeight,
+            bool hardwareOnly,
+            out string? error)
+        {
             error = null;
             lock (_locker)
             {
@@ -96,7 +129,7 @@ namespace LuaScript.Engine.Shader
 
                 try
                 {
-                    if (!EnsureDevice())
+                    if (hardwareOnly ? !EnsureHardwareDevice() : !EnsureDevice())
                         return PixelShaderRunStatus.Unavailable;
 
                     var compiled = GetOrCompile(hlsl, entryPoint);
@@ -147,19 +180,49 @@ namespace LuaScript.Engine.Shader
             }
             _recreateBudget--;
 
-            if (!TryCreateDevice(DriverType.Hardware, out var device, out var context) &&
-                !TryCreateDevice(DriverType.Warp, out device, out context))
+            DriverType driverType;
+            if (TryCreateDevice(DriverType.Hardware, out var device, out var context))
+            {
+                driverType = DriverType.Hardware;
+            }
+            else if (TryCreateDevice(DriverType.Warp, out device, out context))
+            {
+                driverType = DriverType.Warp;
+            }
+            else
             {
                 MarkUnavailable(null);
                 return false;
             }
 
+            return InitializeDevice(device, context, driverType, true);
+        }
+
+        private bool EnsureHardwareDevice()
+        {
+            if (_device is not null)
+                return _driverType == DriverType.Hardware;
+            if (_hardwareUnavailable)
+                return false;
+            if (!TryCreateDevice(DriverType.Hardware, out var device, out var context))
+            {
+                _hardwareUnavailable = true;
+                return false;
+            }
+
+            return InitializeDevice(device, context, DriverType.Hardware, false);
+        }
+
+        private bool InitializeDevice(ID3D11Device? device, ID3D11DeviceContext? context, DriverType driverType, bool markUnavailable)
+        {
             try
             {
                 var vsBytecode = CompileOrThrow(VertexShaderSource, "vsmain", "vs_4_0");
                 var vertexShader = device!.CreateVertexShader(vsBytecode);
                 _device = device;
                 _context = context;
+                _driverType = driverType;
+                _hardwareUnavailable = driverType != DriverType.Hardware && _hardwareUnavailable;
                 _vertexShader = vertexShader;
                 _constantBuffer = device.CreateBuffer(new BufferDescription(
                     ConstantBufferSize, BindFlags.ConstantBuffer, ResourceUsage.Dynamic, CpuAccessFlags.Write));
@@ -179,7 +242,10 @@ namespace LuaScript.Engine.Shader
                     context?.Dispose();
                     device?.Dispose();
                 }
-                MarkUnavailable(ex);
+                if (markUnavailable)
+                    MarkUnavailable(ex);
+                else
+                    _hardwareUnavailable = true;
                 return false;
             }
         }
