@@ -160,9 +160,10 @@ local function flushDraws()
     k32.WaitForSingleObject(workEvent, INFINITE)
 end
 
-local function tryPixelProcess(kind)
+local function tryPixelProcess(kind, force)
     if not pixelProcessAvailable then return false end
     cbResult[0] = kind
+    cbResult[9] = force and 1 or 0
     i32[OFF_CB_FOUND] = 0
     i32[OFF_CB_KIND] = CB_KIND_PIXELPROCESS
     i32[OFF_STATUS] = STATUS_CALLBACK
@@ -864,7 +865,7 @@ function obj.copybuffer(dst, src)
     end
 end
 
-local function fillImpl(r, g, b, a, x, y, w, h)
+local function fillImpl(force, r, g, b, a, x, y, w, h)
     ensurePixels()
     flushPixelData()
     r = r or 0; g = g or 0; b = b or 0; a = a or 255
@@ -878,11 +879,13 @@ local function fillImpl(r, g, b, a, x, y, w, h)
     local imageArea = width * height
     local fillArea = (x1 - x0) * (y1 - y0)
     local fullFill = x0 == 0 and y0 == 0 and x1 == width and y1 == height
-    local usePixelProcess = false
-    if fullFill then
-        usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_FULL_THRESHOLD
-    else
-        usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_PARTIAL_THRESHOLD and fillArea * 4 >= imageArea * 3
+    local usePixelProcess = force
+    if not usePixelProcess then
+        if fullFill then
+            usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_FULL_THRESHOLD
+        else
+            usePixelProcess = imageArea >= PIXEL_PROCESS_FILL_PARTIAL_THRESHOLD and fillArea * 4 >= imageArea * 3
+        end
     end
     cbResult[1] = r
     cbResult[2] = g
@@ -892,7 +895,7 @@ local function fillImpl(r, g, b, a, x, y, w, h)
     cbResult[6] = y0
     cbResult[7] = x1 - x0
     cbResult[8] = y1 - y0
-    if usePixelProcess and tryPixelProcess(PIXEL_PROCESS_FILL) then
+    if usePixelProcess and tryPixelProcess(PIXEL_PROCESS_FILL, force) then
         dirty = true
         pdValid = false
         pdDirty = false
@@ -913,8 +916,8 @@ local function fillImpl(r, g, b, a, x, y, w, h)
     pdValid = false
 end
 
-obj.fill = fillImpl
-__fast_fill = fillImpl
+function obj.fill(r, g, b, a, x, y, w, h) fillImpl(false, r, g, b, a, x, y, w, h) end
+function __fast_fill(r, g, b, a, x, y, w, h) fillImpl(true, r, g, b, a, x, y, w, h) end
 
 function obj.getpixelregion(x, y, w, h)
     x = math.floor(x or 0); y = math.floor(y or 0)
@@ -977,7 +980,7 @@ function obj.putpixelregion(x, y, w, h, data)
     pdValid = false
 end
 
-local function convolveImpl(kernel, size, divisor, offset)
+local function convolveImpl(force, kernel, size, divisor, offset)
     if type(kernel) ~= "table" then return end
     size = math.floor(size or 0)
     if size < 1 or size % 2 == 0 then return end
@@ -994,7 +997,7 @@ local function convolveImpl(kernel, size, divisor, offset)
     local inv = divisor or sum
     if inv == 0 then inv = 1 end
     offset = offset or 0
-    if taps * 8 <= CB_TAG_MAX and width * height * taps >= PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD then
+    if taps * 8 <= CB_TAG_MAX and (force or width * height * taps >= PIXEL_PROCESS_CONVOLVE_WORK_THRESHOLD) then
         cbResult[1] = size
         cbResult[2] = inv
         cbResult[3] = offset
@@ -1002,7 +1005,7 @@ local function convolveImpl(kernel, size, divisor, offset)
             cbTagD[i - 1] = k[i]
         end
         i32[OFF_CB_TAGLEN] = taps * 8
-        if tryPixelProcess(PIXEL_PROCESS_CONVOLVE) then
+        if tryPixelProcess(PIXEL_PROCESS_CONVOLVE, force) then
             dirty = true
             pdValid = false
             pdDirty = false
@@ -1061,10 +1064,10 @@ local function convolveImpl(kernel, size, divisor, offset)
     pdValid = false
 end
 
-obj.convolve = convolveImpl
-__fast_convolve = convolveImpl
+function obj.convolve(kernel, size, divisor, offset) convolveImpl(false, kernel, size, divisor, offset) end
+function __fast_convolve(kernel, size, divisor, offset) convolveImpl(true, kernel, size, divisor, offset) end
 
-local function resizeImpl(newW, newH, mode)
+local function resizeImpl(force, newW, newH, mode)
     newW = math.floor(newW or 0); newH = math.floor(newH or 0)
     if newW < 1 then newW = 1 end
     if newH < 1 then newH = 1 end
@@ -1077,7 +1080,7 @@ local function resizeImpl(newW, newH, mode)
     cbResult[1] = newW
     cbResult[2] = newH
     cbResult[3] = linear and 1 or 0
-    if newW * newH >= PIXEL_PROCESS_RESIZE_THRESHOLD and tryPixelProcess(PIXEL_PROCESS_RESIZE) then
+    if (force or newW * newH >= PIXEL_PROCESS_RESIZE_THRESHOLD) and tryPixelProcess(PIXEL_PROCESS_RESIZE, force) then
         width = newW; height = newH
         i32[OFF_WIDTH] = newW; i32[OFF_HEIGHT] = newH
         dirty = true
@@ -1142,8 +1145,8 @@ local function resizeImpl(newW, newH, mode)
     obj.diagonal = math.sqrt(newW * newW + newH * newH)
 end
 
-obj.resize = resizeImpl
-__fast_resize = resizeImpl
+function obj.resize(newW, newH, mode) resizeImpl(false, newW, newH, mode) end
+function __fast_resize(newW, newH, mode) resizeImpl(true, newW, newH, mode) end
 
 local SCENE_VALUE_MAX = 4095
 local SCENE_NIL = {}

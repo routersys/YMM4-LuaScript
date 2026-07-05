@@ -411,11 +411,12 @@ namespace LuaScript.Engine
                         _pixelProcessTarget = new byte[pixelLength];
 
                     int operation = (int)view.ReadDouble(NativeProtocol.CallbackResultOffset);
+                    bool force = view.ReadDouble(NativeProtocol.CallbackResultOffset + 9 * 8) != 0d;
                     processed = operation switch
                     {
-                        NativeProtocol.PixelProcessFill => TryProcessFill(view, pixelProcessor, width, height, pixelLength),
-                        NativeProtocol.PixelProcessConvolve => TryProcessConvolve(view, pixelProcessor, width, height, pixelLength),
-                        NativeProtocol.PixelProcessResize => TryProcessResize(view, pixelProcessor, pixelLength),
+                        NativeProtocol.PixelProcessFill => TryProcessFill(view, pixelProcessor, width, height, pixelLength, force),
+                        NativeProtocol.PixelProcessConvolve => TryProcessConvolve(view, pixelProcessor, width, height, pixelLength, force),
+                        NativeProtocol.PixelProcessResize => TryProcessResize(view, pixelProcessor, pixelLength, force),
                         _ => false,
                     };
                 }
@@ -424,7 +425,7 @@ namespace LuaScript.Engine
             view.Write(NativeProtocol.OffCallbackFound, processed ? 1 : pixelProcessor is null ? -1 : 0);
         }
 
-        private bool TryProcessFill(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength)
+        private bool TryProcessFill(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength, bool force)
         {
             long offset = NativeProtocol.CallbackResultOffset;
             double r = view.ReadDouble(offset + 1 * 8);
@@ -437,13 +438,13 @@ namespace LuaScript.Engine
             int fillHeight = (int)view.ReadDouble(offset + 8 * 8);
             if (x != 0 || y != 0 || fillWidth != width || fillHeight != height)
                 ReadRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
-            if (!pixelProcessor.TryFill(_pixelProcessTarget, width, height, r, g, b, a, x, y, fillWidth, fillHeight))
+            if (!pixelProcessor.TryFill(_pixelProcessTarget, width, height, r, g, b, a, x, y, fillWidth, fillHeight, force))
                 return false;
             WriteRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
             return true;
         }
 
-        private bool TryProcessConvolve(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength)
+        private bool TryProcessConvolve(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int width, int height, int pixelLength, bool force)
         {
             long offset = NativeProtocol.CallbackResultOffset;
             int size = (int)view.ReadDouble(offset + 1 * 8);
@@ -458,13 +459,13 @@ namespace LuaScript.Engine
                 _pixelProcessKernel = new double[taps];
             ReadRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
             view.ReadArray(NativeProtocol.CallbackTagOffset, _pixelProcessKernel, 0, taps);
-            if (!pixelProcessor.TryConvolve(_pixelProcessTarget, width, height, _pixelProcessKernel, size, divisor, kernelOffset))
+            if (!pixelProcessor.TryConvolve(_pixelProcessTarget, width, height, _pixelProcessKernel, size, divisor, kernelOffset, force))
                 return false;
             WriteRegion(_pixelOffset, _pixelProcessTarget, pixelLength);
             return true;
         }
 
-        private bool TryProcessResize(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int sourceLength)
+        private bool TryProcessResize(MemoryMappedViewAccessor view, IPixelBufferProcessor pixelProcessor, int sourceLength, bool force)
         {
             long offset = NativeProtocol.CallbackResultOffset;
             int targetWidth = (int)view.ReadDouble(offset + 1 * 8);
@@ -476,7 +477,7 @@ namespace LuaScript.Engine
             if (targetWidth <= 0 || targetHeight <= 0 || length > PixelRegionCapacity || length > int.MaxValue)
                 return false;
             ReadRegion(_pixelOffset, _pixelProcessTarget, sourceLength);
-            if (!pixelProcessor.TryResize(_pixelProcessTarget, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out var target) || target is null)
+            if (!pixelProcessor.TryResize(_pixelProcessTarget, sourceWidth, sourceHeight, targetWidth, targetHeight, linear, out var target, force) || target is null)
                 return false;
             WriteRegion(_pixelOffset, target, (int)length);
             view.Write(NativeProtocol.OffWidth, targetWidth);
