@@ -1,8 +1,8 @@
 using YukkuriMovieMaker.Generator;
-namespace LuaScript
+
+namespace LuaScript;
+
+[AutoGenLocalizer]
+partial class Texts
 {
-    [AutoGenLocalizer]
-    partial class Texts
-    {
-    }
 }
